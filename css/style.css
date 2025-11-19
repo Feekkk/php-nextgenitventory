@@ -23,6 +23,12 @@ body {
     color: var(--text-color);
     overflow-x: hidden;
     line-height: 1.6;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+body::-webkit-scrollbar {
+    display: none;
 }
 
 /* Background Animation */
