@@ -28,21 +28,20 @@
             </div>
 
             <form class="auth-form" method="POST" action="">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="firstName">First name</label>
-                        <div class="input-wrapper">
-                            <i class="fa-solid fa-user input-icon"></i>
-                            <input type="text" id="firstName" name="firstName" placeholder="John" required autocomplete="given-name">
-                        </div>
+                <div class="form-group">
+                    <label for="staff_id">Staff ID</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-id-card input-icon"></i>
+                        <input type="text" id="staff_id" name="staff_id" placeholder="e.g., TECH001" required autocomplete="username">
                     </div>
+                    <p class="field-hint">Unique staff identification number</p>
+                </div>
 
-                    <div class="form-group">
-                        <label for="lastName">Last name</label>
-                        <div class="input-wrapper">
-                            <i class="fa-solid fa-user input-icon"></i>
-                            <input type="text" id="lastName" name="lastName" placeholder="Doe" required autocomplete="family-name">
-                        </div>
+                <div class="form-group">
+                    <label for="full_name">Full Name</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user input-icon"></i>
+                        <input type="text" id="full_name" name="full_name" placeholder="John Doe" required autocomplete="name">
                     </div>
                 </div>
 
