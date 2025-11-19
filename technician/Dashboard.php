@@ -49,6 +49,12 @@ if (!isset($_SESSION['user_id'])) {
                     </a>
                 </div>
             </div>
+            <div class="dashboard-card recent-activity">
+                <h2>Recent Activity</h2>
+                <ul class="activity-list">
+                    <li class="activity-item">No recent activity</li>
+                </ul>
+            </div>
             <div class="dashboard-card stats">
                 <h2>Statistics</h2>
                 <div class="stats-grid">
@@ -69,12 +75,6 @@ if (!isset($_SESSION['user_id'])) {
                         <span class="stat-value">--</span>
                     </div>
                 </div>
-            </div>
-            <div class="dashboard-card recent-activity">
-                <h2>Recent Activity</h2>
-                <ul class="activity-list">
-                    <li class="activity-item">No recent activity</li>
-                </ul>
             </div>
         </div>
     </div>
