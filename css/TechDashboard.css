@@ -99,27 +99,25 @@ body::-webkit-scrollbar {
     align-items: center;
     justify-content: center;
     padding: 20px;
-    background: linear-gradient(135deg, rgba(108, 92, 231, 0.1), rgba(0, 206, 201, 0.1));
-    border: 1.5px solid var(--glass-border);
+    background: #ffffff;
+    border: 1.5px solid #1a1a2e;
     border-radius: 12px;
     text-decoration: none;
-    color: var(--text-color);
+    color: #1a1a2e;
     transition: all 0.3s ease;
     gap: 10px;
 }
 
 .quick-link-btn i {
     font-size: 2rem;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #1a1a2e;
     transition: transform 0.3s;
 }
 
 .quick-link-btn span {
     font-size: 0.95rem;
     font-weight: 500;
+    color: #1a1a2e;
 }
 
 .quick-link-btn:hover {
@@ -131,7 +129,7 @@ body::-webkit-scrollbar {
 }
 
 .quick-link-btn:hover i {
-    -webkit-text-fill-color: #ffffff;
+    color: #ffffff;
     transform: scale(1.1);
 }
 

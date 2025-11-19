@@ -32,16 +32,16 @@ if (!isset($_SESSION['user_id'])) {
                 <h2>Quick Links</h2>
                 <div class="quick-links-list">
                     <a href="#" class="quick-link-btn">
-                        <i class="fa-solid fa-laptop"></i>
-                        <span>Manage Assets</span>
+                        <i class="fa-solid fa-handshake"></i>
+                        <span>Handover</span>
                     </a>
                     <a href="#" class="quick-link-btn">
-                        <i class="fa-solid fa-wrench"></i>
-                        <span>Report Issue</span>
+                        <i class="fa-solid fa-recycle"></i>
+                        <span>Disposal</span>
                     </a>
                     <a href="#" class="quick-link-btn">
-                        <i class="fa-solid fa-file-lines"></i>
-                        <span>View Reports</span>
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>History</span>
                     </a>
                     <a href="#" class="quick-link-btn">
                         <i class="fa-solid fa-user"></i>
