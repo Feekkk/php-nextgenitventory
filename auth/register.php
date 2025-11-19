@@ -1,3 +1,49 @@
+<?php
+session_start();
+require_once '../database/config.php';
+
+$error = '';
+$success = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $staff_id = trim($_POST['staff_id'] ?? '');
+    $full_name = trim($_POST['full_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirmPassword'] ?? '';
+    
+    if (empty($staff_id) || empty($full_name) || empty($email) || empty($password)) {
+        $error = 'All fields are required.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Invalid email format.';
+    } elseif (strlen($password) < 8) {
+        $error = 'Password must be at least 8 characters long.';
+    } elseif ($password !== $confirmPassword) {
+        $error = 'Passwords do not match.';
+    } else {
+        try {
+            $pdo = getDBConnection();
+            
+            $stmt = $pdo->prepare("SELECT id FROM technician WHERE staff_id = ? OR email = ?");
+            $stmt->execute([$staff_id, $email]);
+            if ($stmt->fetch()) {
+                $error = 'Staff ID or Email already exists.';
+            } else {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                $role = 'technician';
+                
+                $stmt = $pdo->prepare("INSERT INTO technician (staff_id, full_name, email, password, role) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$staff_id, $full_name, $email, $hashedPassword, $role]);
+                
+                $success = 'Registration successful! Redirecting to login...';
+                header("refresh:2;url=login.php");
+            }
+        } catch (PDOException $e) {
+            $error = 'Registration failed. Please try again.';
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,12 +73,26 @@
                 <p>Get started with your IT inventory management</p>
             </div>
 
+            <?php if ($error): ?>
+                <div class="alert alert-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span><?php echo htmlspecialchars($error); ?></span>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="alert alert-success">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span><?php echo htmlspecialchars($success); ?></span>
+                </div>
+            <?php endif; ?>
+
             <form class="auth-form" method="POST" action="">
                 <div class="form-group">
                     <label for="staff_id">Staff ID</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-id-card input-icon"></i>
-                        <input type="text" id="staff_id" name="staff_id" placeholder="e.g., TECH001" required autocomplete="username">
+                        <input type="text" id="staff_id" name="staff_id" placeholder="e.g., TECH001" value="<?php echo htmlspecialchars($_POST['staff_id'] ?? ''); ?>" required autocomplete="username">
                     </div>
                     <p class="field-hint">Unique staff identification number</p>
                 </div>
@@ -41,7 +101,7 @@
                     <label for="full_name">Full Name</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-user input-icon"></i>
-                        <input type="text" id="full_name" name="full_name" placeholder="John Doe" required autocomplete="name">
+                        <input type="text" id="full_name" name="full_name" placeholder="John Doe" value="<?php echo htmlspecialchars($_POST['full_name'] ?? ''); ?>" required autocomplete="name">
                     </div>
                 </div>
 
@@ -49,7 +109,7 @@
                     <label for="email">Email address</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-envelope input-icon"></i>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+                        <input type="email" id="email" name="email" placeholder="you@example.com" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required autocomplete="email">
                     </div>
                 </div>
 

@@ -1,3 +1,55 @@
+<?php
+session_start();
+require_once '../database/config.php';
+
+if (isset($_SESSION['user_id'])) {
+    header('Location: ../technician/dashboard.php');
+    exit;
+}
+
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $remember = isset($_POST['remember']);
+    
+    if (empty($email) || empty($password)) {
+        $error = 'Please enter both email and password.';
+    } else {
+        try {
+            $pdo = getDBConnection();
+            
+            $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, password, role, status FROM technician WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+            
+            if ($user && password_verify($password, $user['password'])) {
+                if ($user['status'] === 'inactive') {
+                    $error = 'Your account is inactive. Please contact administrator.';
+                } else {
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['staff_id'] = $user['staff_id'];
+                    $_SESSION['full_name'] = $user['full_name'];
+                    $_SESSION['email'] = $user['email'];
+                    $_SESSION['role'] = $user['role'];
+                    
+                    if ($remember) {
+                        setcookie('remember_token', base64_encode($user['id']), time() + (86400 * 30), '/');
+                    }
+                    
+                    header('Location: ../technician/dashboard.php');
+                    exit;
+                }
+            } else {
+                $error = 'Invalid email or password.';
+            }
+        } catch (PDOException $e) {
+            $error = 'Login failed. Please try again.';
+        }
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,12 +79,19 @@
                 <p>Sign in to your account to continue</p>
             </div>
 
+            <?php if ($error): ?>
+                <div class="alert alert-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span><?php echo htmlspecialchars($error); ?></span>
+                </div>
+            <?php endif; ?>
+
             <form class="auth-form" method="POST" action="">
                 <div class="form-group">
                     <label for="email">Email address</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-envelope input-icon"></i>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+                        <input type="email" id="email" name="email" placeholder="you@example.com" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required autocomplete="email">
                     </div>
                 </div>
 
