@@ -141,6 +141,58 @@
     color: #ffffff;
 }
 
+.sidebar .menu-item {
+    position: relative;
+}
+
+.sidebar .menu-item.has-dropdown > a::after {
+    content: '\f107';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: auto;
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+}
+
+.sidebar .menu-item.has-dropdown.open > a::after {
+    transform: rotate(180deg);
+}
+
+.sidebar .submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: rgba(26, 26, 46, 0.05);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar .menu-item.open .submenu {
+    max-height: 500px;
+}
+
+.sidebar .submenu li {
+    margin: 0;
+}
+
+.sidebar .submenu li a {
+    padding-left: 50px;
+    font-size: 0.9rem;
+    border-left: none;
+}
+
+.sidebar .submenu li a:hover {
+    background: #1a1a2e;
+    color: #ffffff;
+}
+
+.sidebar .submenu li a.active {
+    background: #1a1a2e;
+    color: #ffffff;
+    border-left: 3px solid #1a1a2e;
+}
+
 /* Header styles */
 .header {
     display: flex;
@@ -343,13 +395,23 @@
         </button>
         <div class="sidebar-header">
             <img src="../public/unikl-rcmp.png" alt="UniKL RCMP Logo">
-            <span>Menu</span>
+            <span>IT Inventory</span>
         </div>
         <ul>
-            <li><a href="../index.php"><i class="fa fa-home"></i> Home</a></li>
             <li><a href="dashboard.php"><i class="fa fa-gauge"></i> Dashboard</a></li>
-            <li><a href="../auth/login.php"><i class="fa fa-right-to-bracket"></i> Login</a></li>
-            <li><a href="../auth/register.php"><i class="fa fa-user-plus"></i> Register</a></li>
+            <li class="menu-item has-dropdown">
+                <a href="#" class="dropdown-toggle"><i class="fa fa-boxes"></i> Inventory</a>
+                <ul class="submenu">
+                    <li><a href="#"><i class="fa fa-laptop"></i> Laptop</a></li>
+                    <li><a href="#"><i class="fa fa-tv"></i> AV</a></li>
+                    <li><a href="#"><i class="fa fa-network-wired"></i> Network</a></li>
+                </ul>
+            </li>
+            <li><a href="#"><i class="fa fa-handshake"></i> Handover</a></li>
+            <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>
+            <li><a href="#"><i class="fa fa-clock-rotate-left"></i> History</a></li>
+            <li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
+            <li><a href="../auth/logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
     
@@ -409,14 +471,45 @@ window.addEventListener('keydown', function (e) {
     }
 });
 
-// Set active menu item based on current page
+// Dropdown functionality
 document.addEventListener('DOMContentLoaded', function() {
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+    
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const menuItem = this.parentElement;
+            const isOpen = menuItem.classList.contains('open');
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.menu-item.open').forEach(item => {
+                if (item !== menuItem) {
+                    item.classList.remove('open');
+                }
+            });
+            
+            // Toggle current dropdown
+            if (isOpen) {
+                menuItem.classList.remove('open');
+            } else {
+                menuItem.classList.add('open');
+            }
+        });
+    });
+    
+    // Set active menu item based on current page
     const currentPath = window.location.pathname;
-    const menuLinks = document.querySelectorAll('.sidebar ul li a');
+    const menuLinks = document.querySelectorAll('.sidebar ul li a:not(.dropdown-toggle)');
     
     menuLinks.forEach(link => {
-        if (link.getAttribute('href') && currentPath.includes(link.getAttribute('href'))) {
+        if (link.getAttribute('href') && link.getAttribute('href') !== '#' && currentPath.includes(link.getAttribute('href'))) {
             link.classList.add('active');
+            // If it's in a submenu, open the parent dropdown
+            const submenuItem = link.closest('.submenu');
+            if (submenuItem) {
+                const parentMenuItem = submenuItem.parentElement;
+                parentMenuItem.classList.add('open');
+            }
         }
     });
 });
