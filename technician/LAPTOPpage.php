@@ -334,12 +334,12 @@ if (!isset($_SESSION['user_id'])) {
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-menu" id="addDropdown">
-                        <button type="button" onclick="window.location.href='LAPTOPadd.php'">
-                            <i class="fa-solid fa-file-circle-plus" style="color: #000;"></i>
+                        <button type="button" onclick="window.location.href='AVadd.php'">
+                            <i class="fa-solid fa-file-circle-plus"></i>
                             Add single asset
                         </button>
-                        <button type="button" class="import" onclick="window.location.href='LAPTOPcsv.php'">
-                            <i class="fa-solid fa-file-import" style="color: #000;"></i>
+                        <button type="button" class="import" onclick="window.location.href='AVcsv.php'">
+                            <i class="fa-solid fa-file-import"></i>
                             Import via CSV
                         </button>
                     </div>

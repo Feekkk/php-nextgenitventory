@@ -45,6 +45,7 @@ if (!isset($_SESSION['user_id'])) {
             display: flex;
             gap: 15px;
             align-items: center;
+            position: relative;
         }
 
         .search-box {
@@ -91,8 +92,63 @@ if (!isset($_SESSION['user_id'])) {
 
         .btn-add:hover {
             background: #0f0f1a;
-            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+        }
+
+        .btn-add i.fa-chevron-down {
+            font-size: 0.8rem;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 110%;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+            min-width: 220px;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .dropdown-menu.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .dropdown-menu button {
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 14px 18px;
+            text-align: left;
+            font-size: 0.95rem;
+            color: #2d3436;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .dropdown-menu button:hover {
+            background: rgba(26, 26, 46, 0.05);
+        }
+
+        .dropdown-menu button i {
+            color: #6c5ce7;
+            width: 18px;
+            text-align: center;
+        }
+
+        .dropdown-menu button.import i {
+            color: #0984e3;
         }
 
         .assets-table-container {
@@ -281,11 +337,23 @@ if (!isset($_SESSION['user_id'])) {
                     <i class="fa-solid fa-search"></i>
                     <input type="text" placeholder="Search assets..." id="searchInput">
                 </div>
-                <button class="btn-add">
-                    <button class="btn-add" id="btn-add" type="button" onclick="window.location.href='AVadd.php'">
+                <div>
+                    <button class="btn-add" id="btn-add" type="button">
                         <i class="fa-solid fa-plus"></i>
-                        Add Asset
+                        Add Assets
+                        <i class="fa-solid fa-chevron-down"></i>
                     </button>
+                    <div class="dropdown-menu" id="addDropdown">
+                        <button type="button" onclick="window.location.href='AVadd.php'">
+                            <i class="fa-solid fa-file-circle-plus"></i>
+                            Add single asset
+                        </button>
+                        <button type="button" class="import" onclick="window.location.href='AVcsv.php'">
+                            <i class="fa-solid fa-file-import"></i>
+                            Import via CSV
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -334,6 +402,19 @@ if (!isset($_SESSION['user_id'])) {
                     row.style.display = 'none';
                 }
             });
+        });
+
+        const addButton = document.getElementById('btn-add');
+        const dropdown = document.getElementById('addDropdown');
+
+        addButton.addEventListener('click', () => {
+            dropdown.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!addButton.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('open');
+            }
         });
     </script>
 </body>
