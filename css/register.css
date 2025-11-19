@@ -22,11 +22,11 @@ body {
     color: var(--text-color);
     min-height: 100vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding: 40px 20px;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .auth-background {
