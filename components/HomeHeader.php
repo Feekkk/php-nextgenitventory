@@ -410,8 +410,8 @@
             <li class="menu-item has-dropdown">
                 <a href="#" class="dropdown-toggle"><i class="fa fa-handshake"></i> Handover</a>
                 <ul class="submenu">
-                    <li><a href="handoverForm.php"><i class="fa fa-file-signature"></i> Form</a></li>
-                    <li><a href="handoverReturn.php"><i class="fa fa-undo"></i> Return</a></li>
+                    <li><a href="HANDform.php"><i class="fa fa-file-signature"></i> Form</a></li>
+                    <li><a href="HANDreturn.php"><i class="fa fa-undo"></i> Return</a></li>
                 </ul>
             </li>
             <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>
