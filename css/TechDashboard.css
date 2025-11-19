@@ -73,8 +73,9 @@ body::-webkit-scrollbar {
 
 .dashboard-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 15px 40px rgba(26, 26, 46, 0.15);
     background: var(--card-hover);
+    border-color: rgba(26, 26, 46, 0.2);
 }
 
 .dashboard-card h2 {
@@ -122,11 +123,11 @@ body::-webkit-scrollbar {
 }
 
 .quick-link-btn:hover {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: #1a1a2e;
     color: #ffffff;
-    border-color: var(--primary-color);
+    border-color: #1a1a2e;
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+    box-shadow: 0 8px 20px rgba(26, 26, 46, 0.3);
 }
 
 .quick-link-btn:hover i {
@@ -156,8 +157,9 @@ body::-webkit-scrollbar {
 
 .stat-box:hover {
     background: rgba(255, 255, 255, 0.8);
+    border-color: #1a1a2e;
     transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(26, 26, 46, 0.2);
 }
 
 .stat-title {
@@ -193,8 +195,9 @@ body::-webkit-scrollbar {
 
 .activity-item:hover {
     background: rgba(255, 255, 255, 0.8);
+    border-left-color: #1a1a2e;
     transform: translateX(5px);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 10px rgba(26, 26, 46, 0.15);
 }
 
 .activity-item:last-child {

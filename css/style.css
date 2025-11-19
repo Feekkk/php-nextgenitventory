@@ -131,19 +131,19 @@ nav a {
 }
 
 nav a:hover {
-    color: var(--primary-color);
+    color: #1a1a2e;
 }
 
 .btn-login {
     padding: 8px 20px;
-    border: 1px solid var(--primary-color);
+    border: 1px solid #1a1a2e;
     border-radius: 20px;
-    color: var(--primary-color);
+    color: #1a1a2e;
     transition: all 0.3s;
 }
 
 .btn-login:hover {
-    background: var(--primary-color);
+    background: #1a1a2e;
     color: #fff;
 }
 

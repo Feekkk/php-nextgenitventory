@@ -83,9 +83,9 @@
 }
 
 .close-sidebar-btn:hover {
-    background: #f8f9fa;
-    border-color: var(--text-muted);
-    color: var(--text-dark);
+    background: #1a1a2e;
+    border-color: #1a1a2e;
+    color: #ffffff;
 }
 
 .sidebar ul {
@@ -121,24 +121,24 @@
 }
 
 .sidebar ul li a:hover {
-    background: #f8f9fa;
-    color: var(--text-dark);
-    border-left-color: var(--primary-color);
+    background: #1a1a2e;
+    color: #ffffff;
+    border-left-color: #1a1a2e;
 }
 
 .sidebar ul li a:hover i {
-    color: var(--primary-color);
+    color: #ffffff;
 }
 
 .sidebar ul li a.active {
-    background: rgba(108, 92, 231, 0.08);
-    color: var(--primary-color);
-    border-left-color: var(--primary-color);
+    background: #1a1a2e;
+    color: #ffffff;
+    border-left-color: #1a1a2e;
     font-weight: 600;
 }
 
 .sidebar ul li a.active i {
-    color: var(--primary-color);
+    color: #ffffff;
 }
 
 /* Header styles */
@@ -177,8 +177,9 @@
 }
 
 .menu-btn:hover {
-    background: #f8f9fa;
-    border-color: var(--text-muted);
+    background: #1a1a2e;
+    border-color: #1a1a2e;
+    color: #ffffff;
 }
 
 .header-content {
@@ -231,8 +232,12 @@
 }
 
 .user-menu:hover {
-    background: #e9ecef;
-    border-color: var(--text-muted);
+    background: #1a1a2e;
+    border-color: #1a1a2e;
+}
+
+.user-menu:hover .user-name {
+    color: #ffffff;
 }
 
 .user-avatar {
