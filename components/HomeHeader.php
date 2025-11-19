@@ -407,7 +407,13 @@
                     <li><a href="NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
                 </ul>
             </li>
-            <li><a href="#"><i class="fa fa-handshake"></i> Handover</a></li>
+            <li class="menu-item has-dropdown">
+                <a href="#" class="dropdown-toggle"><i class="fa fa-handshake"></i> Handover</a>
+                <ul class="submenu">
+                    <li><a href="handoverForm.php"><i class="fa fa-file-signature"></i> Form</a></li>
+                    <li><a href="handoverReturn.php"><i class="fa fa-undo"></i> Return</a></li>
+                </ul>
+            </li>
             <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>
             <li><a href="#"><i class="fa fa-clock-rotate-left"></i> History</a></li>
             <li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
