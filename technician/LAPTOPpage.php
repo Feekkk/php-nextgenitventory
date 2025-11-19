@@ -271,10 +271,10 @@ if (!isset($_SESSION['user_id'])) {
                     <i class="fa-solid fa-search"></i>
                     <input type="text" placeholder="Search assets..." id="searchInput">
                 </div>
-                <button class="btn-add">
-                    <i class="fa-solid fa-plus"></i>
-                    Add Asset
-                </button>
+                    <button class="btn-add" id="btn-add" type="button" onclick="window.location.href='LAPTOPadd.php'">
+                        <i class="fa-solid fa-plus"></i>
+                        Add Asset
+                    </button>
             </div>
         </div>
 
