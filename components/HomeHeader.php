@@ -415,7 +415,7 @@
                 </ul>
             </li>
             <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>
-            <li><a href="#"><i class="fa fa-clock-rotate-left"></i> History</a></li>
+            <li><a href="History.php"><i class="fa fa-clock-rotate-left"></i> History</a></li>
             <li><a href="Profile.php"><i class="fa fa-user"></i> Profile</a></li>
             <li><a href="../auth/logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
         </ul>
