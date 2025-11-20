@@ -21,7 +21,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     <link rel="stylesheet" href="../css/TechDashboard.css">
 </head>
 <body>
-    <?php include_once("../components/HomeHeader.php"); ?>
+    <?php include_once("../components/ADMINheader.php"); ?>
 
     <div class="tech-dashboard-container">
         <div class="dashboard-header">
