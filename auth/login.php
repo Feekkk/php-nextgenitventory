@@ -3,7 +3,11 @@ session_start();
 require_once '../database/config.php';
 
 if (isset($_SESSION['user_id'])) {
-    header('Location: ../technician/dashboard.php');
+    if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
+        header('Location: ../admin/Dashboard.php');
+    } else {
+        header('Location: ../technician/dashboard.php');
+    }
     exit;
 }
 
@@ -17,35 +21,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || empty($password)) {
         $error = 'Please enter both email and password.';
     } else {
-        try {
-            $pdo = getDBConnection();
+        if ($email === 'admin@unikl.com' && $password === 'admin123') {
+            $_SESSION['user_id'] = 'admin';
+            $_SESSION['staff_id'] = 'ADMIN001';
+            $_SESSION['full_name'] = 'Administrator';
+            $_SESSION['email'] = 'admin@unikl.com';
+            $_SESSION['role'] = 'admin';
             
-            $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, password, role, status FROM technician WHERE email = ?");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
-            
-            if ($user && password_verify($password, $user['password'])) {
-                if ($user['status'] === 'inactive') {
-                    $error = 'Your account is inactive. Please contact administrator.';
-                } else {
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['staff_id'] = $user['staff_id'];
-                    $_SESSION['full_name'] = $user['full_name'];
-                    $_SESSION['email'] = $user['email'];
-                    $_SESSION['role'] = $user['role'];
-                    
-                    if ($remember) {
-                        setcookie('remember_token', base64_encode($user['id']), time() + (86400 * 30), '/');
-                    }
-                    
-                    header('Location: ../technician/dashboard.php');
-                    exit;
-                }
-            } else {
-                $error = 'Invalid email or password.';
+            if ($remember) {
+                setcookie('remember_token', base64_encode('admin'), time() + (86400 * 30), '/');
             }
-        } catch (PDOException $e) {
-            $error = 'Login failed. Please try again.';
+            
+            header('Location: ../admin/Dashboard.php');
+            exit;
+        } else {
+            try {
+                $pdo = getDBConnection();
+                
+                $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, password, role, status FROM technician WHERE email = ?");
+                $stmt->execute([$email]);
+                $user = $stmt->fetch();
+                
+                if ($user && password_verify($password, $user['password'])) {
+                    if ($user['status'] === 'inactive') {
+                        $error = 'Your account is inactive. Please contact administrator.';
+                    } else {
+                        $_SESSION['user_id'] = $user['id'];
+                        $_SESSION['staff_id'] = $user['staff_id'];
+                        $_SESSION['full_name'] = $user['full_name'];
+                        $_SESSION['email'] = $user['email'];
+                        $_SESSION['role'] = $user['role'];
+                        
+                        if ($remember) {
+                            setcookie('remember_token', base64_encode($user['id']), time() + (86400 * 30), '/');
+                        }
+                        
+                        header('Location: ../technician/dashboard.php');
+                        exit;
+                    }
+                } else {
+                    $error = 'Invalid email or password.';
+                }
+            } catch (PDOException $e) {
+                $error = 'Login failed. Please try again.';
+            }
         }
     }
 }
