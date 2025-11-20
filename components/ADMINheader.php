@@ -342,7 +342,7 @@
         </div>
         <ul>
             <li><a href="Dashboard.php"><i class="fa fa-gauge"></i> Dashboard</a></li>
-            <li><a href="#"><i class="fa fa-users"></i> Manage Users</a></li>
+            <li><a href="ManageUser.php"><i class="fa fa-users"></i> Manage Users</a></li>
             <li><a href="#"><i class="fa fa-chart-bar"></i> Reports</a></li>
             <li><a href="#"><i class="fa fa-shield-alt"></i> Security</a></li>
             <li><a href="#"><i class="fa fa-history"></i> Audit Trails</a></li>
