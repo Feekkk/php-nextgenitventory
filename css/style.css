@@ -139,6 +139,7 @@ nav a:hover {
     border: 1px solid #1a1a2e;
     border-radius: 20px;
     color: #1a1a2e;
+    text-decoration: none;
     transition: all 0.3s;
 }
 
