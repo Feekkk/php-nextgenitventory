@@ -346,7 +346,7 @@
             <li><a href="Report.php"><i class="fa fa-chart-bar"></i> Reports</a></li>
             <li><a href="#"><i class="fa fa-shield-alt"></i> Security</a></li>
             <li><a href="#"><i class="fa fa-history"></i> Audit Trails</a></li>
-            <li><a href="#"><i class="fa fa-user"></i> Profile</a></li>
+            <li><a href="Profile.php"><i class="fa fa-user"></i> Profile</a></li>
             <li><a href="../auth/logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
