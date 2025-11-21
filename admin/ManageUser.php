@@ -492,7 +492,7 @@ try {
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
-                <a href="#" class="btn-add" onclick="alert('Add user functionality coming soon'); return false;">
+                <a href="AddUser.php" class="btn-add">
                     <i class="fa-solid fa-plus"></i>
                     Add User
                 </a>
