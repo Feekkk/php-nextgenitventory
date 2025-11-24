@@ -272,10 +272,6 @@ $user = [
                             <label for="office">Office Location</label>
                             <input type="text" id="office" name="office" value="<?php echo htmlspecialchars($user['office']); ?>">
                         </div>
-                        <div class="form-group">
-                            <label for="availability">Availability Notes</label>
-                            <input type="text" id="availability" name="availability" placeholder="e.g., On-site Mon-Thu, remote Friday">
-                        </div>
                     </div>
                 </section>
 
@@ -293,10 +289,6 @@ $user = [
                         <div class="form-group">
                             <label for="confirmPassword">Confirm Password</label>
                             <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter new password">
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="signature">Digital Signature</label>
-                            <textarea id="signature" name="signature" placeholder="Add a short signature or note for approvals"></textarea>
                         </div>
                     </div>
                 </section>
