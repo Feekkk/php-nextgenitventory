@@ -105,6 +105,40 @@ if (isset($_SESSION['user_id'])) {
     color: #ffffff;
 }
 
+/* Sidebar footer status */
+.sidebar-status {
+    margin: 20px;
+    padding: 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(108, 92, 231, 0.12), rgba(0, 206, 201, 0.12));
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.sidebar-status h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.sidebar-status p {
+    margin: 6px 0 0 0;
+    font-size: 0.85rem;
+    color: #2d3436;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00b894;
+    box-shadow: 0 0 8px rgba(0, 184, 148, 0.7);
+}
+
 .sidebar ul {
     list-style: none;
     padding: 20px 0;
@@ -453,6 +487,11 @@ if (isset($_SESSION['user_id'])) {
             <li><a href="Profile.php"><i class="fa fa-user"></i> Profile</a></li>
             <li><a href="../auth/logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
         </ul>
+        <div class="sidebar-status">
+            <h4>System Status</h4>
+            <p><span class="status-indicator"></span> Online</p>
+            <p><i class="fa fa-code-branch"></i> Version 1.0.0</p>
+        </div>
     </nav>
     
     <!-- Main header -->
