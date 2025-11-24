@@ -24,12 +24,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid email format.';
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT id FROM handover_queue WHERE staff_id = ? OR email = ?");
+            $stmt = $pdo->prepare("SELECT id FROM queue WHERE staff_id = ? OR email = ?");
             $stmt->execute([$staff_id, $email]);
             if ($stmt->fetch()) {
                 $error = 'Staff ID or Email already exists in the queue.';
             } else {
-                $stmt = $pdo->prepare("INSERT INTO handover_queue (staff_id, staff_name, email, phone, faculty, created_by, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+                $stmt = $pdo->prepare("INSERT INTO queue (staff_id, staff_name, email, phone, faculty, created_by, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
                 $stmt->execute([$staff_id, $staff_name, $email, $phone ?: null, $faculty ?: null, $_SESSION['user_id']]);
                 
                 $success = 'Queue entry added successfully!';
