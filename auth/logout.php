@@ -1,5 +1,17 @@
 <?php
 session_start();
+require_once '../database/config.php';
+
+if (isset($_SESSION['user_id']) && isset($_SESSION['email'])) {
+    try {
+        $pdo = getDBConnection();
+        $session_id = session_id();
+        $stmt = $pdo->prepare("UPDATE login_audit SET logout_time = NOW() WHERE session_id = ? AND logout_time IS NULL ORDER BY login_time DESC LIMIT 1");
+        $stmt->execute([$session_id]);
+    } catch (PDOException $e) {
+        error_log("Failed to log logout: " . $e->getMessage());
+    }
+}
 
 // Clear session data
 $_SESSION = [];

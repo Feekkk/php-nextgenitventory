@@ -2,6 +2,34 @@
 session_start();
 require_once '../database/config.php';
 
+function getClientIP() {
+    $ipKeys = ['HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_X_CLUSTER_CLIENT_IP', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR'];
+    foreach ($ipKeys as $key) {
+        if (array_key_exists($key, $_SERVER) === true) {
+            foreach (explode(',', $_SERVER[$key]) as $ip) {
+                $ip = trim($ip);
+                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
+                    return $ip;
+                }
+            }
+        }
+    }
+    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
+function logLoginAttempt($pdo, $user_id, $staff_id, $email, $status, $failure_reason = null) {
+    try {
+        $ip_address = getClientIP();
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $session_id = session_id();
+        
+        $stmt = $pdo->prepare("INSERT INTO login_audit (user_id, staff_id, email, ip_address, user_agent, login_status, failure_reason, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $staff_id, $email, $ip_address, $user_agent, $status, $failure_reason, $session_id]);
+    } catch (PDOException $e) {
+        error_log("Failed to log login attempt: " . $e->getMessage());
+    }
+}
+
 if (isset($_SESSION['user_id'])) {
     if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
         header('Location: ../admin/Dashboard.php');
@@ -20,8 +48,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($email) || empty($password)) {
         $error = 'Please enter both email and password.';
+        if (!empty($email)) {
+            try {
+                $pdo = getDBConnection();
+                logLoginAttempt($pdo, null, null, $email, 'failed', 'Empty email or password');
+            } catch (PDOException $e) {
+            }
+        }
     } else {
         if ($email === 'admin@unikl.com' && $password === 'admin123') {
+            try {
+                $pdo = getDBConnection();
+                logLoginAttempt($pdo, null, 'ADMIN001', $email, 'success');
+            } catch (PDOException $e) {
+            }
+            
             $_SESSION['user_id'] = 'admin';
             $_SESSION['staff_id'] = 'ADMIN001';
             $_SESSION['full_name'] = 'Administrator';
@@ -45,7 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($user && password_verify($password, $user['password'])) {
                     if ($user['status'] === 'inactive') {
                         $error = 'Your account is inactive. Please contact administrator.';
+                        logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'failed', 'Account inactive');
                     } else {
+                        logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'success');
+                        
                         $_SESSION['user_id'] = $user['id'];
                         $_SESSION['staff_id'] = $user['staff_id'];
                         $_SESSION['full_name'] = $user['full_name'];
@@ -61,9 +105,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } else {
                     $error = 'Invalid email or password.';
+                    logLoginAttempt($pdo, null, null, $email, 'failed', 'Invalid email or password');
                 }
             } catch (PDOException $e) {
                 $error = 'Login failed. Please try again.';
+                try {
+                    $pdo = getDBConnection();
+                    logLoginAttempt($pdo, null, null, $email, 'failed', 'Database error');
+                } catch (PDOException $logError) {
+                }
             }
         }
     }
