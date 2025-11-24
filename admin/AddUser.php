@@ -183,8 +183,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .form-group select {
-            padding-left: 16px;
+            padding-left: 44px;
             cursor: pointer;
+        }
+
+        .input-wrapper .input-icon {
+            pointer-events: none;
+        }
+
+        .input-wrapper select {
+            padding-left: 44px !important;
         }
 
         .form-group input:focus,
