@@ -31,12 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $role = 'technician';
+                $status = 'inactive';
                 
-                $stmt = $pdo->prepare("INSERT INTO technician (staff_id, full_name, email, password, role) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$staff_id, $full_name, $email, $hashedPassword, $role]);
+                $stmt = $pdo->prepare("INSERT INTO technician (staff_id, full_name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$staff_id, $full_name, $email, $hashedPassword, $role, $status]);
                 
-                $success = 'Registration successful! Redirecting to login...';
-                header("refresh:2;url=login.php");
+                $success = 'Registration successful! Your account is pending admin approval. You will be able to login once an administrator activates your account.';
             }
         } catch (PDOException $e) {
             $error = 'Registration failed. Please try again.';
@@ -81,9 +81,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <?php if ($success): ?>
-                <div class="alert alert-success">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <span><?php echo htmlspecialchars($success); ?></span>
+                <div class="alert alert-success" style="background: rgba(0, 184, 148, 0.1); color: #00b894; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(0, 184, 148, 0.2); display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-circle-check" style="margin-top: 2px;"></i>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 8px;"><?php echo htmlspecialchars($success); ?></div>
+                        <div style="font-size: 0.9rem; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 184, 148, 0.2); display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-info-circle"></i>
+                            <span>Please wait for an administrator to approve your account. You will not be able to login until your account is activated.</span>
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <a href="login.php" style="color: #00b894; text-decoration: underline; font-weight: 500;">Go to Login Page</a>
+                        </div>
+                    </div>
                 </div>
             <?php endif; ?>
 

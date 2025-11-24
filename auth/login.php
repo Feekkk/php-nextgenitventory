@@ -85,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($user && password_verify($password, $user['password'])) {
                     if ($user['status'] === 'inactive') {
-                        $error = 'Your account is inactive. Please contact administrator.';
-                        logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'failed', 'Account inactive');
+                        $error = 'Your account is pending admin approval. Please wait for an administrator to activate your account before logging in.';
+                        logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'failed', 'Account inactive - pending approval');
                     } else {
                         logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'success');
                         
