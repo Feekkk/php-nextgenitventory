@@ -1,3 +1,20 @@
+<?php
+$profile_picture = null;
+if (isset($_SESSION['user_id'])) {
+    try {
+        require_once __DIR__ . '/../database/config.php';
+        $pdo = getDBConnection();
+        $stmt = $pdo->prepare("SELECT profile_picture FROM technician WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $result = $stmt->fetch();
+        if ($result && !empty($result['profile_picture'])) {
+            $profile_picture = $result['profile_picture'];
+        }
+    } catch (Exception $e) {
+        // Silently fail if database query fails
+    }
+}
+?>
 <style>
 :root {
     --primary-color: #6c5ce7;
@@ -303,6 +320,23 @@
     color: #fff;
     font-weight: 600;
     font-size: 0.85rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-avatar .avatar-text {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .user-name {
@@ -435,7 +469,11 @@
                 <?php if (isset($_SESSION['full_name'])): ?>
                     <div class="user-menu">
                         <div class="user-avatar">
-                            <?php echo strtoupper(substr($_SESSION['full_name'], 0, 1)); ?>
+                            <?php if (!empty($profile_picture) && file_exists(__DIR__ . '/../' . $profile_picture)): ?>
+                                <img src="../<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture">
+                            <?php else: ?>
+                                <div class="avatar-text"><?php echo strtoupper(substr($_SESSION['full_name'], 0, 1)); ?></div>
+                            <?php endif; ?>
                         </div>
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
                     </div>
