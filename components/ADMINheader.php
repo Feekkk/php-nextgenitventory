@@ -409,8 +409,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const menuLinks = document.querySelectorAll('.sidebar ul li a');
     
     menuLinks.forEach(link => {
-        if (link.getAttribute('href') && link.getAttribute('href') !== '#' && currentPath.includes(link.getAttribute('href'))) {
-            link.classList.add('active');
+        const href = link.getAttribute('href');
+        if (href && href !== '#') {
+            if (currentPath.includes(href) || currentPath.endsWith(href)) {
+                link.classList.add('active');
+            }
+            
+            link.addEventListener('click', function() {
+                if (href !== '#') {
+                    closeSidebar();
+                }
+            });
         }
     });
 });

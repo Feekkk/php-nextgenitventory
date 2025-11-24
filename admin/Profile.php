@@ -12,7 +12,7 @@ $error = '';
 $success = '';
 
 try {
-    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, created_at FROM technician WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
     
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if ($success) {
-                    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, created_at FROM technician WHERE id = ?");
+                    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
                     $user = $stmt->fetch();
                 }
@@ -159,6 +159,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 3rem;
             font-weight: 700;
             margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-wrapper .avatar-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .profile-summary h2 {
@@ -385,7 +402,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="profile-card">
                 <div class="profile-summary">
                     <div class="avatar-wrapper">
-                        <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
+                        <?php if (!empty($user['profile_picture']) && file_exists('../' . $user['profile_picture'])): ?>
+                            <img src="../<?php echo htmlspecialchars($user['profile_picture']); ?>" alt="Profile Picture">
+                        <?php else: ?>
+                            <div class="avatar-text"><?php echo strtoupper(substr($user['full_name'], 0, 1)); ?></div>
+                        <?php endif; ?>
                     </div>
                     <h2><?php echo htmlspecialchars($user['full_name']); ?></h2>
                     <span class="role-badge <?php echo htmlspecialchars($user['role']); ?>">
