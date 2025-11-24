@@ -5,6 +5,18 @@ CREATE DATABASE IF NOT EXISTS `inventory_system` DEFAULT CHARACTER SET utf8mb4 C
 
 USE `inventory_system`;
 
+-- Admin Table
+CREATE TABLE IF NOT EXISTS `admin` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `staff_id` VARCHAR(100) NOT NULL UNIQUE,
+    `name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(255) NOT NULL UNIQUE,
+    `password` VARCHAR(255) NOT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_admin_staff_id` (`staff_id`),
+    INDEX `idx_admin_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Technician Table
 CREATE TABLE IF NOT EXISTS `technician` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
