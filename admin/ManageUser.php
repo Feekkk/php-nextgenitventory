@@ -17,22 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'];
         $user_id = $_POST['user_id'] ?? null;
         
-        if ($action === 'toggle_status' && $user_id) {
-            try {
-                $stmt = $pdo->prepare("SELECT status FROM technician WHERE id = ?");
-                $stmt->execute([$user_id]);
-                $user = $stmt->fetch();
-                
-                if ($user) {
-                    $new_status = $user['status'] === 'active' ? 'inactive' : 'active';
-                    $stmt = $pdo->prepare("UPDATE technician SET status = ? WHERE id = ?");
-                    $stmt->execute([$new_status, $user_id]);
-                    $success = 'User status updated successfully.';
-                }
-            } catch (PDOException $e) {
-                $error = 'Failed to update user status.';
-            }
-        } elseif ($action === 'delete' && $user_id) {
+        if ($action === 'delete' && $user_id) {
             try {
                 if ($user_id == $_SESSION['user_id']) {
                     $error = 'You cannot delete your own account.';
@@ -295,6 +280,10 @@ try {
             transition: all 0.2s ease;
             color: #2d3436;
             font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-action:hover {
@@ -558,12 +547,9 @@ try {
                                 <td><?php echo date('Y-m-d', strtotime($user['created_at'])); ?></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="toggleStatus(<?php echo $user['id']; ?>, '<?php echo $user['status']; ?>')" title="Toggle Status">
-                                            <i class="fa-solid fa-<?php echo $user['status'] === 'active' ? 'ban' : 'check'; ?>"></i>
-                                        </button>
-                                        <button class="btn-action" onclick="editUser(<?php echo $user['id']; ?>)" title="Edit">
+                                        <a href="EditUser.php?id=<?php echo $user['id']; ?>" class="btn-action" title="Edit">
                                             <i class="fa-solid fa-edit"></i>
-                                        </button>
+                                        </a>
                                         <?php if ($user['id'] != $_SESSION['user_id']): ?>
                                             <button class="btn-action danger" onclick="confirmDelete(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['full_name']); ?>')" title="Delete">
                                                 <i class="fa-solid fa-trash"></i>
@@ -631,20 +617,6 @@ try {
         document.getElementById('roleFilter').addEventListener('change', filterUsers);
         document.getElementById('statusFilter').addEventListener('change', filterUsers);
 
-        function toggleStatus(userId, currentStatus) {
-            const action = currentStatus === 'active' ? 'deactivate' : 'activate';
-            document.getElementById('modalTitle').textContent = 'Confirm Status Change';
-            document.getElementById('modalMessage').textContent = `Are you sure you want to ${action} this user?`;
-            document.getElementById('modalAction').value = 'toggle_status';
-            document.getElementById('modalUserId').value = userId;
-            document.getElementById('modalConfirmBtn').textContent = action === 'activate' ? 'Activate' : 'Deactivate';
-            document.getElementById('modalConfirmBtn').className = 'btn-modal btn-modal-toggle';
-            document.getElementById('confirmModal').style.display = 'block';
-        }
-
-        function editUser(userId) {
-            alert('Edit user functionality coming soon');
-        }
 
         function confirmDelete(userId, userName) {
             document.getElementById('modalTitle').textContent = 'Confirm Deletion';
