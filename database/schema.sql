@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS `technician` (
     `password` VARCHAR(255) NOT NULL,
     `role` ENUM('admin', 'technician') DEFAULT 'technician',
     `phone` VARCHAR(20) DEFAULT NULL,
+    `profile_picture` VARCHAR(255) DEFAULT NULL,
     `status` ENUM('active', 'inactive') DEFAULT 'active',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

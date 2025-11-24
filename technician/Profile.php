@@ -12,7 +12,7 @@ $error = '';
 $success = '';
 
 try {
-    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, created_at FROM technician WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
     
@@ -25,6 +25,11 @@ try {
     $user = null;
 }
 
+$profile_dir = '../profile/';
+if (!file_exists($profile_dir)) {
+    mkdir($profile_dir, 0755, true);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -32,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currentPassword = $_POST['currentPassword'] ?? '';
     $newPassword = $_POST['newPassword'] ?? '';
     $confirmPassword = $_POST['confirmPassword'] ?? '';
+    $profile_picture = $user['profile_picture'] ?? null;
     
     if (empty($full_name) || empty($email)) {
         $error = 'Full Name and Email are required.';
@@ -44,6 +50,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$email, $_SESSION['user_id']]);
                 if ($stmt->fetch()) {
                     $error = 'Email already exists.';
+                }
+            }
+            
+            if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['profile_picture'];
+                $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                $max_size = 5 * 1024 * 1024;
+                
+                if (!in_array($file['type'], $allowed_types)) {
+                    $error = 'Invalid file type. Only JPEG, PNG, and GIF images are allowed.';
+                } elseif ($file['size'] > $max_size) {
+                    $error = 'File size too large. Maximum size is 5MB.';
+                } else {
+                    $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    $new_filename = 'user_' . $_SESSION['user_id'] . '_' . time() . '.' . $file_extension;
+                    $upload_path = $profile_dir . $new_filename;
+                    
+                    if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                        if ($profile_picture && file_exists($profile_dir . basename($profile_picture))) {
+                            unlink($profile_dir . basename($profile_picture));
+                        }
+                        $profile_picture = 'profile/' . $new_filename;
+                    } else {
+                        $error = 'Failed to upload profile picture.';
+                    }
                 }
             }
             
@@ -64,8 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $error = 'New passwords do not match.';
                         } else {
                             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                            $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, phone = ?, password = ? WHERE id = ?");
-                            $stmt->execute([$full_name, $email, $phone ?: null, $hashedPassword, $_SESSION['user_id']]);
+                            $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, phone = ?, password = ?, profile_picture = ? WHERE id = ?");
+                            $stmt->execute([$full_name, $email, $phone ?: null, $hashedPassword, $profile_picture, $_SESSION['user_id']]);
                             
                             $_SESSION['full_name'] = $full_name;
                             $_SESSION['email'] = $email;
@@ -74,8 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 } else {
-                    $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, phone = ? WHERE id = ?");
-                    $stmt->execute([$full_name, $email, $phone ?: null, $_SESSION['user_id']]);
+                    $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, phone = ?, profile_picture = ? WHERE id = ?");
+                    $stmt->execute([$full_name, $email, $phone ?: null, $profile_picture, $_SESSION['user_id']]);
                     
                     $_SESSION['full_name'] = $full_name;
                     $_SESSION['email'] = $email;
@@ -84,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if ($success) {
-                    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, created_at FROM technician WHERE id = ?");
+                    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
                     $user = $stmt->fetch();
                 }
@@ -159,6 +190,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 3rem;
             font-weight: 700;
             margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .avatar-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-wrapper .avatar-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-picture-upload {
+            margin-bottom: 20px;
+        }
+
+        .profile-picture-upload label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2d3436;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border: 2px dashed rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #f8f9fa;
+        }
+
+        .file-upload-label:hover {
+            border-color: #1a1a2e;
+            background: #e9ecef;
+        }
+
+        .file-upload-label i {
+            color: #636e72;
+        }
+
+        .file-upload-label span {
+            color: #2d3436;
+            font-size: 0.9rem;
+        }
+
+        .file-upload-preview {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .file-upload-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
         }
 
         .profile-summary h2 {
@@ -385,7 +496,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="profile-card">
                 <div class="profile-summary">
                     <div class="avatar-wrapper">
-                        <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
+                        <?php if (!empty($user['profile_picture']) && file_exists('../' . $user['profile_picture'])): ?>
+                            <img src="../<?php echo htmlspecialchars($user['profile_picture']); ?>" alt="Profile Picture">
+                        <?php else: ?>
+                            <div class="avatar-text"><?php echo strtoupper(substr($user['full_name'], 0, 1)); ?></div>
+                        <?php endif; ?>
                     </div>
                     <h2><?php echo htmlspecialchars($user['full_name']); ?></h2>
                     <span class="role-badge <?php echo htmlspecialchars($user['role']); ?>">
@@ -412,7 +527,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </li>
                     </ul>
                 </div>
-                <form class="profile-form" method="POST" action="">
+                <form class="profile-form" method="POST" action="" enctype="multipart/form-data">
                     <?php if ($error): ?>
                         <div class="alert alert-error">
                             <i class="fa-solid fa-circle-exclamation"></i>
@@ -426,6 +541,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <span><?php echo htmlspecialchars($success); ?></span>
                         </div>
                     <?php endif; ?>
+
+                    <section>
+                        <h3 class="form-section-title">Profile Picture</h3>
+                        <div class="profile-picture-upload">
+                            <label for="profile_picture">Upload Profile Picture</label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png,image/gif" class="file-upload-input" onchange="previewImage(this)">
+                                <label for="profile_picture" class="file-upload-label">
+                                    <i class="fa-solid fa-upload"></i>
+                                    <span>Choose Image (Max 5MB)</span>
+                                </label>
+                            </div>
+                            <div class="file-upload-preview" id="imagePreview">
+                                <img id="previewImg" src="" alt="Preview">
+                            </div>
+                            <small style="color: #636e72; font-size: 0.85rem; display: block; margin-top: 8px;">Accepted formats: JPEG, PNG, GIF</small>
+                        </div>
+                    </section>
 
                     <section>
                         <h3 class="form-section-title">Personal Information</h3>
@@ -511,6 +644,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             input.setAttribute('type', type);
             icon.classList.toggle('fa-eye');
             icon.classList.toggle('fa-eye-slash');
+        }
+
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
         }
     </script>
 </body>
