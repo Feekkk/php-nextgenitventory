@@ -33,19 +33,12 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $full_name = trim($_POST['full_name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirmPassword'] ?? '';
-    $phone = trim($_POST['phone'] ?? '');
     $role = $_POST['role'] ?? 'technician';
     $status = $_POST['status'] ?? 'active';
     
-    if (empty($full_name) || empty($email)) {
-        $error = 'Full Name and Email are required.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Invalid email format.';
-    } elseif (!in_array($role, ['admin', 'technician'])) {
+    if (!in_array($role, ['admin', 'technician'])) {
         $error = 'Invalid role selected.';
     } elseif (!in_array($status, ['active', 'inactive'])) {
         $error = 'Invalid status selected.';
@@ -55,27 +48,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Passwords do not match.';
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT id FROM technician WHERE email = ? AND id != ?");
-            $stmt->execute([$email, $user_id]);
-            if ($stmt->fetch()) {
-                $error = 'Email already exists.';
+            if (!empty($password)) {
+                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE technician SET password = ?, role = ?, status = ? WHERE id = ?");
+                $stmt->execute([$hashedPassword, $role, $status, $user_id]);
             } else {
-                if (!empty($password)) {
-                    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, password = ?, role = ?, phone = ?, status = ? WHERE id = ?");
-                    $stmt->execute([$full_name, $email, $hashedPassword, $role, $phone ?: null, $status, $user_id]);
-                } else {
-                    $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, role = ?, phone = ?, status = ? WHERE id = ?");
-                    $stmt->execute([$full_name, $email, $role, $phone ?: null, $status, $user_id]);
-                }
-                
-                $success = 'User updated successfully! Redirecting to Manage Users...';
-                header("refresh:2;url=ManageUser.php");
-                
-                $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status FROM technician WHERE id = ?");
-                $stmt->execute([$user_id]);
-                $user = $stmt->fetch();
+                $stmt = $pdo->prepare("UPDATE technician SET role = ?, status = ? WHERE id = ?");
+                $stmt->execute([$role, $status, $user_id]);
             }
+            
+            $success = 'User updated successfully! Redirecting to Manage Users...';
+            header("refresh:2;url=ManageUser.php");
+            
+            $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status FROM technician WHERE id = ?");
+            $stmt->execute([$user_id]);
+            $user = $stmt->fetch();
         } catch (PDOException $e) {
             $error = 'Failed to update user. Please try again.';
         }
@@ -372,19 +359,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="full_name" class="required">Full Name</label>
+                            <label for="full_name">Full Name</label>
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-user input-icon"></i>
-                                <input type="text" id="full_name" name="full_name" placeholder="John Doe" value="<?php echo htmlspecialchars($user['full_name']); ?>" required>
+                                <input type="text" id="full_name" name="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" disabled>
                             </div>
+                            <p class="field-hint">Full name cannot be changed</p>
                         </div>
 
                         <div class="form-group">
-                            <label for="email" class="required">Email Address</label>
+                            <label for="email">Email Address</label>
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-envelope input-icon"></i>
-                                <input type="email" id="email" name="email" placeholder="user@example.com" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                                <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" disabled>
                             </div>
+                            <p class="field-hint">Email cannot be changed</p>
                         </div>
                     </div>
 
@@ -392,8 +381,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="phone">Phone Number</label>
                         <div class="input-wrapper">
                             <i class="fa-solid fa-phone input-icon"></i>
-                            <input type="tel" id="phone" name="phone" placeholder="+60 12-345 6789" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>">
+                            <input type="tel" id="phone" name="phone" value="<?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?>" disabled>
                         </div>
+                        <p class="field-hint">Phone number cannot be changed</p>
                     </div>
 
                     <div class="form-row">
