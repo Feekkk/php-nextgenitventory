@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 try {
-    $stmt = $pdo->query("SELECT id, staff_id, full_name, email, role, status, phone, created_at FROM technician ORDER BY created_at DESC");
+    $stmt = $pdo->query("SELECT id, staff_id, full_name, email, role, status, phone, profile_picture, created_at FROM technician ORDER BY created_at DESC");
     $users = $stmt->fetchAll();
 } catch (PDOException $e) {
     $error = 'Failed to load users.';
@@ -180,54 +180,130 @@ try {
             border: 1px solid rgba(0, 184, 148, 0.2);
         }
 
-        .users-table-container {
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .user-card {
             background: rgba(255, 255, 255, 0.7);
             border: 1px solid rgba(0, 0, 0, 0.05);
             border-radius: 16px;
-            padding: 30px;
+            padding: 24px;
             backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            overflow-x: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
         }
 
-        .users-table {
-            width: 100%;
-            border-collapse: collapse;
+        .user-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(26, 26, 46, 0.15);
+            border-color: rgba(26, 26, 46, 0.1);
         }
 
-        .users-table thead {
-            background: rgba(26, 26, 46, 0.05);
-        }
-
-        .users-table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #2d3436;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid rgba(26, 26, 46, 0.1);
-        }
-
-        .users-table td {
-            padding: 18px 15px;
+        .user-card-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            color: #2d3436;
-            font-size: 0.95rem;
         }
 
-        .users-table tbody tr {
-            transition: all 0.2s ease;
+        .user-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a1a2e, #6c5ce7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 2rem;
+            flex-shrink: 0;
+            overflow: hidden;
+            position: relative;
         }
 
-        .users-table tbody tr:hover {
-            background: rgba(26, 26, 46, 0.03);
+        .user-avatar-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
-        .staff-id {
-            font-weight: 600;
+        .user-avatar-large .avatar-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-info-header {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name-large {
+            font-size: 1.2rem;
+            font-weight: 700;
             color: #1a1a2e;
+            margin-bottom: 4px;
+            word-wrap: break-word;
+        }
+
+        .user-staff-id {
+            font-size: 0.85rem;
+            color: #636e72;
+            font-weight: 500;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex: 1;
+        }
+
+        .user-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #2d3436;
+        }
+
+        .user-detail-item i {
+            width: 18px;
+            color: #636e72;
+            font-size: 0.9rem;
+        }
+
+        .user-detail-item span {
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .user-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            margin-top: auto;
+        }
+
+        .user-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .role-badge {
@@ -272,35 +348,43 @@ try {
         }
 
         .btn-action {
-            padding: 6px 12px;
+            padding: 8px 12px;
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: #ffffff;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #2d3436;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
         }
 
         .btn-action:hover {
             background: #1a1a2e;
             color: #ffffff;
             border-color: #1a1a2e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 26, 46, 0.2);
         }
 
         .btn-action.danger:hover {
             background: #d63031;
             border-color: #d63031;
+            box-shadow: 0 4px 12px rgba(214, 48, 49, 0.3);
         }
 
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
             color: #636e72;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
         }
 
         .empty-state i {
@@ -312,6 +396,8 @@ try {
         .empty-state p {
             font-size: 1.1rem;
             margin-bottom: 10px;
+            font-weight: 600;
+            color: #2d3436;
         }
 
         .empty-state span {
@@ -443,17 +529,23 @@ try {
                 width: 100%;
             }
 
-            .users-table-container {
-                padding: 15px;
+            .users-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
             }
 
-            .users-table {
-                font-size: 0.85rem;
+            .user-card {
+                padding: 20px;
             }
 
-            .users-table th,
-            .users-table td {
-                padding: 10px 8px;
+            .user-avatar-large {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+
+            .user-name-large {
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -502,66 +594,72 @@ try {
             </div>
         <?php endif; ?>
 
-        <div class="users-table-container">
-            <table class="users-table">
-                <thead>
-                    <tr>
-                        <th>Staff ID</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <?php if (empty($users)): ?>
-                        <tr>
-                            <td colspan="8">
-                                <div class="empty-state">
-                                    <i class="fa-solid fa-users"></i>
-                                    <p>No users found</p>
-                                    <span>Start by adding your first user</span>
+        <div class="users-grid" id="usersGrid">
+            <?php if (empty($users)): ?>
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i class="fa-solid fa-users"></i>
+                    <p>No users found</p>
+                    <span>Start by adding your first user</span>
+                </div>
+            <?php else: ?>
+                <?php foreach ($users as $user): ?>
+                    <div class="user-card" data-role="<?php echo htmlspecialchars($user['role']); ?>" data-status="<?php echo htmlspecialchars($user['status']); ?>">
+                        <div class="user-card-header">
+                            <div class="user-avatar-large">
+                                <?php if (!empty($user['profile_picture']) && file_exists('../' . $user['profile_picture'])): ?>
+                                    <img src="../<?php echo htmlspecialchars($user['profile_picture']); ?>" alt="Profile Picture">
+                                <?php else: ?>
+                                    <div class="avatar-text"><?php echo strtoupper(substr($user['full_name'], 0, 1)); ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="user-info-header">
+                                <div class="user-name-large"><?php echo htmlspecialchars($user['full_name']); ?></div>
+                                <div class="user-staff-id"><?php echo htmlspecialchars($user['staff_id']); ?></div>
+                            </div>
+                        </div>
+                        
+                        <div class="user-details">
+                            <div class="user-detail-item">
+                                <i class="fa-solid fa-envelope"></i>
+                                <span><?php echo htmlspecialchars($user['email']); ?></span>
+                            </div>
+                            <?php if ($user['phone']): ?>
+                                <div class="user-detail-item">
+                                    <i class="fa-solid fa-phone"></i>
+                                    <span><?php echo htmlspecialchars($user['phone']); ?></span>
                                 </div>
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($users as $user): ?>
-                            <tr data-role="<?php echo htmlspecialchars($user['role']); ?>" data-status="<?php echo htmlspecialchars($user['status']); ?>">
-                                <td class="staff-id"><?php echo htmlspecialchars($user['staff_id']); ?></td>
-                                <td><?php echo htmlspecialchars($user['full_name']); ?></td>
-                                <td><?php echo htmlspecialchars($user['email']); ?></td>
-                                <td><?php echo htmlspecialchars($user['phone'] ?? 'N/A'); ?></td>
-                                <td>
-                                    <span class="role-badge <?php echo htmlspecialchars($user['role']); ?>">
-                                        <?php echo ucfirst(htmlspecialchars($user['role'])); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="status-badge <?php echo htmlspecialchars($user['status']); ?>">
-                                        <?php echo ucfirst(htmlspecialchars($user['status'])); ?>
-                                    </span>
-                                </td>
-                                <td><?php echo date('Y-m-d', strtotime($user['created_at'])); ?></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a href="EditUser.php?id=<?php echo $user['id']; ?>" class="btn-action" title="Edit">
-                                            <i class="fa-solid fa-edit"></i>
-                                        </a>
-                                        <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                            <button class="btn-action danger" onclick="confirmDelete(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['full_name']); ?>')" title="Delete">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                            <?php endif; ?>
+                            <div class="user-detail-item">
+                                <i class="fa-solid fa-calendar"></i>
+                                <span>Joined <?php echo date('M Y', strtotime($user['created_at'])); ?></span>
+                            </div>
+                        </div>
+
+                        <div class="user-card-footer">
+                            <div class="user-badges">
+                                <span class="role-badge <?php echo htmlspecialchars($user['role']); ?>">
+                                    <?php echo ucfirst(htmlspecialchars($user['role'])); ?>
+                                </span>
+                                <span class="status-badge <?php echo htmlspecialchars($user['status']); ?>">
+                                    <?php echo ucfirst(htmlspecialchars($user['status'])); ?>
+                                </span>
+                            </div>
+                            <div class="action-buttons">
+                                <a href="EditUser.php?id=<?php echo $user['id']; ?>" class="btn-action" title="Edit">
+                                    <i class="fa-solid fa-edit"></i>
+                                    <span>Edit</span>
+                                </a>
+                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                    <button class="btn-action danger" onclick="confirmDelete(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['full_name']); ?>')" title="Delete">
+                                        <i class="fa-solid fa-trash"></i>
+                                        <span>Delete</span>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -594,21 +692,21 @@ try {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const roleFilter = document.getElementById('roleFilter').value;
             const statusFilter = document.getElementById('statusFilter').value;
-            const rows = document.querySelectorAll('.users-table tbody tr');
+            const cards = document.querySelectorAll('.user-card');
             
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                const rowRole = row.getAttribute('data-role');
-                const rowStatus = row.getAttribute('data-status');
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                const cardRole = card.getAttribute('data-role');
+                const cardStatus = card.getAttribute('data-status');
                 
                 const matchesSearch = searchTerm === '' || text.includes(searchTerm);
-                const matchesRole = roleFilter === 'all' || rowRole === roleFilter;
-                const matchesStatus = statusFilter === 'all' || rowStatus === statusFilter;
+                const matchesRole = roleFilter === 'all' || cardRole === roleFilter;
+                const matchesStatus = statusFilter === 'all' || cardStatus === statusFilter;
                 
                 if (matchesSearch && matchesRole && matchesStatus) {
-                    row.style.display = '';
+                    card.style.display = '';
                 } else {
-                    row.style.display = 'none';
+                    card.style.display = 'none';
                 }
             });
         }
