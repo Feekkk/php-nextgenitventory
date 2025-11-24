@@ -335,29 +335,51 @@ try {
             color: #d63031;
         }
 
+        .pagination-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .pagination-info {
+            color: #636e72;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
         .pagination {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            margin-top: 24px;
+            gap: 8px;
         }
 
         .pagination a,
         .pagination span {
-            padding: 8px 14px;
+            padding: 10px 16px;
             border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 6px;
+            border-radius: 8px;
             text-decoration: none;
             color: #2d3436;
-            font-weight: 500;
+            font-weight: 600;
             transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
         }
 
         .pagination a:hover {
             background: #1a1a2e;
             color: #ffffff;
             border-color: #1a1a2e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 26, 46, 0.2);
         }
 
         .pagination .current {
@@ -367,9 +389,38 @@ try {
         }
 
         .pagination .disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
             pointer-events: none;
+            background: #f8f9fa;
+        }
+
+        .pagination-btn {
+            padding: 10px 20px;
+            background: #1a1a2e;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #0f0f1a;
+            box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #e9ecef;
+            color: #636e72;
         }
 
         .no-data {
@@ -530,32 +581,80 @@ try {
                 </table>
 
                 <?php if ($total_pages > 1): ?>
-                    <div class="pagination">
-                        <?php if ($page > 1): ?>
-                            <a href="?page=<?php echo $page - 1; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
-                                <i class="fa fa-chevron-left"></i> Previous
-                            </a>
-                        <?php else: ?>
-                            <span class="disabled"><i class="fa fa-chevron-left"></i> Previous</span>
-                        <?php endif; ?>
-
-                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <?php if ($i == $page): ?>
-                                <span class="current"><?php echo $i; ?></span>
+                    <div class="pagination-wrapper">
+                        <div class="pagination-info">
+                            Showing <?php echo $offset + 1; ?> - <?php echo min($offset + $per_page, $total_records); ?> of <?php echo number_format($total_records); ?> logs
+                            (Page <?php echo $page; ?> of <?php echo $total_pages; ?>)
+                        </div>
+                        <div class="pagination">
+                            <?php if ($page > 1): ?>
+                                <a href="?page=1&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 16px;">
+                                    <i class="fa fa-angle-double-left"></i> First
+                                </a>
+                                <a href="?page=<?php echo $page - 1; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 20px;">
+                                    <i class="fa fa-chevron-left"></i> Previous
+                                </a>
                             <?php else: ?>
-                                <a href="?page=<?php echo $i; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
-                                    <?php echo $i; ?>
+                                <span class="pagination-btn" style="opacity: 0.5; cursor: not-allowed; pointer-events: none; background: #e9ecef; color: #636e72;">
+                                    <i class="fa fa-angle-double-left"></i> First
+                                </span>
+                                <span class="pagination-btn" style="opacity: 0.5; cursor: not-allowed; pointer-events: none; background: #e9ecef; color: #636e72;">
+                                    <i class="fa fa-chevron-left"></i> Previous
+                                </span>
+                            <?php endif; ?>
+
+                            <?php
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            if ($start_page > 1): ?>
+                                <a href="?page=1&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">1</a>
+                                <?php if ($start_page > 2): ?>
+                                    <span style="padding: 10px 8px; color: #636e72;">...</span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+
+                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                <?php if ($i == $page): ?>
+                                    <span class="current"><?php echo $i; ?></span>
+                                <?php else: ?>
+                                    <a href="?page=<?php echo $i; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
+                                        <?php echo $i; ?>
+                                    </a>
+                                <?php endif; ?>
+                            <?php endfor; ?>
+
+                            <?php if ($end_page < $total_pages): ?>
+                                <?php if ($end_page < $total_pages - 1): ?>
+                                    <span style="padding: 10px 8px; color: #636e72;">...</span>
+                                <?php endif; ?>
+                                <a href="?page=<?php echo $total_pages; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
+                                    <?php echo $total_pages; ?>
                                 </a>
                             <?php endif; ?>
-                        <?php endfor; ?>
 
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $page + 1; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
-                                Next <i class="fa fa-chevron-right"></i>
-                            </a>
-                        <?php else: ?>
-                            <span class="disabled">Next <i class="fa fa-chevron-right"></i></span>
-                        <?php endif; ?>
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?page=<?php echo $page + 1; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 20px;">
+                                    Next <i class="fa fa-chevron-right"></i>
+                                </a>
+                                <a href="?page=<?php echo $total_pages; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 16px;">
+                                    Last <i class="fa fa-angle-double-right"></i>
+                                </a>
+                            <?php else: ?>
+                                <span class="pagination-btn" style="opacity: 0.5; cursor: not-allowed; pointer-events: none; background: #e9ecef; color: #636e72;">
+                                    Next <i class="fa fa-chevron-right"></i>
+                                </span>
+                                <span class="pagination-btn" style="opacity: 0.5; cursor: not-allowed; pointer-events: none; background: #e9ecef; color: #636e72;">
+                                    Last <i class="fa fa-angle-double-right"></i>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="pagination-wrapper">
+                        <div class="pagination-info">
+                            Showing <?php echo $total_records; ?> log<?php echo $total_records != 1 ? 's' : ''; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             <?php endif; ?>
