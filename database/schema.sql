@@ -45,3 +45,23 @@ CREATE TABLE IF NOT EXISTS `login_audit` (
     INDEX `idx_ip_address` (`ip_address`),
     FOREIGN KEY (`user_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Handover Queue Table
+CREATE TABLE IF NOT EXISTS `queue` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `staff_id` VARCHAR(100) NOT NULL,
+    `staff_name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `faculty` VARCHAR(255) DEFAULT NULL,
+    `status` ENUM('pending', 'processing', 'completed', 'cancelled') DEFAULT 'pending',
+    `created_by` INT(11) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_staff_id` (`staff_id`),
+    INDEX `idx_email` (`email`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_created_by` (`created_by`),
+    FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -46,6 +46,17 @@ if (!isset($_SESSION['user_id'])) {
             gap: 15px;
             align-items: center;
             position: relative;
+            flex-wrap: wrap;
+        }
+
+        .actions-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .dropdown-wrapper {
+            position: relative;
         }
 
         .search-box {
@@ -93,6 +104,27 @@ if (!isset($_SESSION['user_id'])) {
         .btn-add:hover {
             background: #0f0f1a;
             box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+        }
+
+        .btn-queue {
+            padding: 10px 20px;
+            background: #0984e3;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(9, 132, 227, 0.2);
+        }
+
+        .btn-queue:hover {
+            background: #0770c4;
+            box-shadow: 0 6px 16px rgba(9, 132, 227, 0.3);
         }
 
         .btn-add i.fa-chevron-down {
@@ -327,22 +359,28 @@ if (!isset($_SESSION['user_id'])) {
                     <i class="fa-solid fa-search"></i>
                     <input type="text" placeholder="Search assets..." id="searchInput">
                 </div>
-                <div>
-                    <button class="btn-add" id="btn-add" type="button">
-                        <i class="fa-solid fa-plus"></i>
-                        Add Assets
-                        <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-menu" id="addDropdown">
-                        <button type="button" onclick="window.location.href='AVadd.php'">
-                            <i class="fa-solid fa-file-circle-plus"></i>
-                            Add single asset
+                <div class="actions-group">
+                    <div class="dropdown-wrapper">
+                        <button class="btn-add" id="btn-add" type="button">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Assets
+                            <i class="fa-solid fa-chevron-down"></i>
                         </button>
-                        <button type="button" class="import" onclick="window.location.href='AVcsv.php'">
-                            <i class="fa-solid fa-file-import"></i>
-                            Import via CSV
-                        </button>
+                        <div class="dropdown-menu" id="addDropdown">
+                            <button type="button" onclick="window.location.href='LAPTOPadd.php'">
+                                <i class="fa-solid fa-file-circle-plus"></i>
+                                Add single asset
+                            </button>
+                            <button type="button" class="import" onclick="window.location.href='LAPTOPcsv.php'">
+                                <i class="fa-solid fa-file-import"></i>
+                                Import via CSV
+                            </button>
+                        </div>
                     </div>
+                    <button type="button" class="btn-queue" onclick="window.location.href='QUEUEpage.php'">
+                        <i class="fa-solid fa-list-check"></i>
+                        Add Queue
+                    </button>
                 </div>
             </div>
         </div>
