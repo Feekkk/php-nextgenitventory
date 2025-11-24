@@ -9,6 +9,56 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 
 $pdo = getDBConnection();
 $error = '';
+$success = '';
+$cleanup_message = '';
+
+function cleanupOldAuditLogs($pdo) {
+    try {
+        $threeMonthsAgo = date('Y-m-d H:i:s', strtotime('-3 months'));
+        $stmt = $pdo->prepare("DELETE FROM login_audit WHERE login_time < ?");
+        $stmt->execute([$threeMonthsAgo]);
+        return $stmt->rowCount();
+    } catch (PDOException $e) {
+        error_log("Failed to cleanup audit logs: " . $e->getMessage());
+        return false;
+    }
+}
+
+function shouldRunAutoCleanup() {
+    $cleanup_file = __DIR__ . '/.last_cleanup';
+    if (!file_exists($cleanup_file)) {
+        return true;
+    }
+    $last_cleanup = file_get_contents($cleanup_file);
+    $last_cleanup_time = $last_cleanup ? (int)$last_cleanup : 0;
+    $one_day_ago = time() - (24 * 60 * 60);
+    return $last_cleanup_time < $one_day_ago;
+}
+
+function recordCleanupTime() {
+    $cleanup_file = __DIR__ . '/.last_cleanup';
+    file_put_contents($cleanup_file, time());
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'cleanup') {
+    $deleted_count = cleanupOldAuditLogs($pdo);
+    if ($deleted_count !== false) {
+        $success = "Successfully deleted {$deleted_count} old audit log records (older than 3 months).";
+        recordCleanupTime();
+    } else {
+        $error = 'Failed to cleanup old audit logs.';
+    }
+}
+
+if (shouldRunAutoCleanup()) {
+    $deleted_count = cleanupOldAuditLogs($pdo);
+    if ($deleted_count !== false && $deleted_count > 0) {
+        $cleanup_message = "Automatically deleted {$deleted_count} old audit log records (older than 3 months).";
+        recordCleanupTime();
+    } elseif ($deleted_count !== false) {
+        recordCleanupTime();
+    }
+}
 
 $filter_status = $_GET['status'] ?? 'all';
 $filter_email = $_GET['email'] ?? '';
@@ -354,15 +404,38 @@ try {
     <?php include_once("../components/ADMINheader.php"); ?>
 
     <div class="security-page-container">
-        <div class="page-header">
-            <h1><i class="fa fa-shield-alt"></i> Security & Audit Trails</h1>
-            <p>Monitor and review all login attempts and security events.</p>
+        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h1><i class="fa fa-shield-alt"></i> Security & Audit Trails</h1>
+                <p>Monitor and review all login attempts and security events.</p>
+            </div>
+            <a href="?action=cleanup&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" 
+               class="btn btn-primary" 
+               onclick="return confirm('Are you sure you want to delete all audit logs older than 3 months? This action cannot be undone.');"
+               style="padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; text-decoration: none; background: #1a1a2e; color: #ffffff; transition: all 0.2s ease;">
+                <i class="fa fa-trash-alt"></i>
+                Cleanup Old Logs
+            </a>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-error" style="background: rgba(214, 48, 49, 0.1); color: #d63031; padding: 14px 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(214, 48, 49, 0.2);">
+            <div class="alert alert-error" style="background: rgba(214, 48, 49, 0.1); color: #d63031; padding: 14px 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(214, 48, 49, 0.2); display: flex; align-items: center; gap: 12px;">
                 <i class="fa-solid fa-circle-exclamation"></i>
                 <span><?php echo htmlspecialchars($error); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($success): ?>
+            <div class="alert alert-success" style="background: rgba(0, 184, 148, 0.1); color: #00b894; padding: 14px 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(0, 184, 148, 0.2); display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-circle-check"></i>
+                <span><?php echo htmlspecialchars($success); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($cleanup_message): ?>
+            <div class="alert alert-info" style="background: rgba(108, 92, 231, 0.1); color: #6c5ce7; padding: 14px 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(108, 92, 231, 0.2); display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-info-circle"></i>
+                <span><?php echo htmlspecialchars($cleanup_message); ?></span>
             </div>
         <?php endif; ?>
 
