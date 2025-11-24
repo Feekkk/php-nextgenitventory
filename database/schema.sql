@@ -22,3 +22,25 @@ CREATE TABLE IF NOT EXISTS `technician` (
     INDEX `idx_email` (`email`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Login Audit Trail Table
+CREATE TABLE IF NOT EXISTS `login_audit` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `user_id` INT(11) DEFAULT NULL,
+    `staff_id` VARCHAR(100) DEFAULT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` TEXT DEFAULT NULL,
+    `login_status` ENUM('success', 'failed') NOT NULL,
+    `failure_reason` VARCHAR(255) DEFAULT NULL,
+    `login_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `logout_time` TIMESTAMP NULL DEFAULT NULL,
+    `session_id` VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_email` (`email`),
+    INDEX `idx_login_status` (`login_status`),
+    INDEX `idx_login_time` (`login_time`),
+    INDEX `idx_ip_address` (`ip_address`),
+    FOREIGN KEY (`user_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
