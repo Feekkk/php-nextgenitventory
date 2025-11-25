@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS `queue` (
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_staff_id` (`staff_id`),
+    INDEX `idx_staff_name` (`staff_name`),
     INDEX `idx_email` (`email`),
     INDEX `idx_status` (`status`),
     INDEX `idx_created_by` (`created_by`),

@@ -11,6 +11,7 @@ $pdo = getDBConnection();
 $error = '';
 $success = '';
 $pendingQueues = [];
+$searchTerm = trim($_GET['search'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $staff_id = trim($_POST['staff_id'] ?? '');
@@ -43,7 +44,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 try {
-    $pendingStmt = $pdo->query("SELECT staff_id, staff_name, email, phone, faculty, created_at FROM queue WHERE status = 'pending' ORDER BY created_at DESC");
+    $pendingSql = "SELECT staff_id, staff_name, email, phone, faculty, created_at FROM queue WHERE status = 'pending'";
+    $pendingParams = [];
+
+    if ($searchTerm !== '') {
+        $pendingSql .= " AND (staff_name LIKE :search OR staff_id LIKE :search)";
+        $pendingParams['search'] = '%' . $searchTerm . '%';
+    }
+
+    $pendingSql .= " ORDER BY created_at DESC";
+
+    $pendingStmt = $pdo->prepare($pendingSql);
+    $pendingStmt->execute($pendingParams);
     $pendingQueues = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = $error ?: 'Unable to load pending queue data right now.';
@@ -91,6 +103,23 @@ try {
             padding: 40px;
             backdrop-filter: blur(10px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .queue-search {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .queue-search .form-group {
+            flex: 1;
+            margin: 0;
+        }
+
+        .queue-search .btn {
+            margin-top: 24px;
         }
 
         .alert {
@@ -327,8 +356,32 @@ try {
 
         <div class="queue-form" style="margin-top: 30px;">
             <h3 class="form-section-title">Pending Queue</h3>
+            <form method="GET" class="queue-search">
+                <div class="form-group">
+                    <label for="search">Search by Staff ID or Name</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                        <input type="text" id="search" name="search" placeholder="e.g., STAFF001 or John" value="<?php echo htmlspecialchars($searchTerm); ?>">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-search"></i>
+                    Search
+                </button>
+                <?php if ($searchTerm !== ''): ?>
+                    <a href="QUEUEpage.php" class="btn btn-secondary" style="text-decoration:none;">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Reset
+                    </a>
+                <?php endif; ?>
+            </form>
+
+            <?php if ($searchTerm !== ''): ?>
+                <p>Showing results for "<strong><?php echo htmlspecialchars($searchTerm); ?></strong>".</p>
+            <?php endif; ?>
+
             <?php if (empty($pendingQueues)): ?>
-                <p>No pending staff in the queue.</p>
+                <p><?php echo $searchTerm === '' ? 'No pending staff in the queue.' : 'No pending staff match your search.'; ?></p>
             <?php else: ?>
                 <div style="overflow-x:auto;">
                     <table style="width:100%; border-collapse:collapse;">
