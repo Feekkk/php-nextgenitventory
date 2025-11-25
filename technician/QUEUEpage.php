@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getDBConnection();
 $error = '';
 $success = '';
+$pendingQueues = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $staff_id = trim($_POST['staff_id'] ?? '');
@@ -39,6 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Failed to add queue entry. Please try again.';
         }
     }
+}
+
+try {
+    $pendingStmt = $pdo->query("SELECT staff_id, staff_name, email, phone, faculty, created_at FROM queue WHERE status = 'pending' ORDER BY created_at DESC");
+    $pendingQueues = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $error = $error ?: 'Unable to load pending queue data right now.';
 }
 ?>
 <!DOCTYPE html>
@@ -315,6 +323,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </div>
             </form>
+        </div>
+
+        <div class="queue-form" style="margin-top: 30px;">
+            <h3 class="form-section-title">Pending Queue</h3>
+            <?php if (empty($pendingQueues)): ?>
+                <p>No pending staff in the queue.</p>
+            <?php else: ?>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#f2f2f2;">
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Staff ID</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Staff Name</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Email</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Phone</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Faculty</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Queued At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pendingQueues as $queueItem): ?>
+                                <tr>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['staff_id']); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['staff_name']); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['email']); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['phone'] ?? '-'); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['faculty'] ?? '-'); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars(date('d M Y, h:i A', strtotime($queueItem['created_at']))); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
