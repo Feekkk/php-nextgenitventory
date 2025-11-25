@@ -55,6 +55,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/register.css">
+    <style>
+        .auth-back-home {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .back-home-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            color: #2d3436;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .back-home-btn:hover {
+            background: #1a1a2e;
+            border-color: #1a1a2e;
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 26, 46, 0.2);
+        }
+
+        .back-home-btn i {
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 <body>
     <div class="auth-container">
@@ -161,6 +197,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="auth-footer">
                 <p>Already have an account? <a href="login.php">Sign in</a></p>
+            </div>
+
+            <div class="auth-back-home">
+                <a href="../index.php" class="back-home-btn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Back to Home</span>
+                </a>
             </div>
         </div>
     </div>
