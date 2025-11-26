@@ -12,15 +12,24 @@ $error = '';
 $success = '';
 $cleanup_message = '';
 
-function cleanupOldAuditLogs($pdo, $type = 'login') {
+function cleanupOldAuditLogs($pdo, $type = 'login', $deleteAll = false) {
     try {
-        $threeMonthsAgo = date('Y-m-d H:i:s', strtotime('-3 months'));
-        if ($type === 'profile') {
-            $stmt = $pdo->prepare("DELETE FROM profile_audit WHERE action_time < ?");
+        if ($deleteAll) {
+            if ($type === 'profile') {
+                $stmt = $pdo->prepare("DELETE FROM profile_audit");
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM login_audit");
+            }
+            $stmt->execute();
         } else {
-            $stmt = $pdo->prepare("DELETE FROM login_audit WHERE login_time < ?");
+            $threeMonthsAgo = date('Y-m-d H:i:s', strtotime('-3 months'));
+            if ($type === 'profile') {
+                $stmt = $pdo->prepare("DELETE FROM profile_audit WHERE action_time < ?");
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM login_audit WHERE login_time < ?");
+            }
+            $stmt->execute([$threeMonthsAgo]);
         }
-        $stmt->execute([$threeMonthsAgo]);
         return $stmt->rowCount();
     } catch (PDOException $e) {
         error_log("Failed to cleanup audit logs: " . $e->getMessage());
@@ -47,12 +56,12 @@ function recordCleanupTime() {
 $audit_type = $_GET['type'] ?? 'login';
 
 if (isset($_GET['action']) && $_GET['action'] === 'cleanup') {
-    $deleted_count = cleanupOldAuditLogs($pdo, $audit_type);
+    $deleted_count = cleanupOldAuditLogs($pdo, $audit_type, true);
     if ($deleted_count !== false) {
-        $success = "Successfully deleted {$deleted_count} old audit log records (older than 3 months).";
+        $success = "Successfully deleted {$deleted_count} audit log records.";
         recordCleanupTime();
     } else {
-        $error = 'Failed to cleanup old audit logs.';
+        $error = 'Failed to cleanup audit logs.';
     }
 }
 
@@ -577,10 +586,10 @@ try {
             </div>
             <a href="?action=cleanup&type=<?php echo htmlspecialchars($audit_type); ?>&status=<?php echo htmlspecialchars($filter_status); ?>&action_type=<?php echo htmlspecialchars($filter_action); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" 
                class="btn btn-primary" 
-               onclick="return confirm('Are you sure you want to delete all audit logs older than 3 months? This action cannot be undone.');"
+               onclick="return confirm('Are you sure you want to delete ALL audit logs? This action cannot be undone.');"
                style="padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; text-decoration: none; background: #1a1a2e; color: #ffffff; transition: all 0.2s ease;">
                 <i class="fa fa-trash-alt"></i>
-                Cleanup Old Logs
+                Delete All Logs
             </a>
         </div>
 
