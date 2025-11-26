@@ -6,6 +6,46 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$netAssets = [];
+$netAssetsError = '';
+
+try {
+    $stmt = $pdo->query("
+        SELECT na.*, t.full_name AS created_by_name
+        FROM net_assets na
+        LEFT JOIN technician t ON na.created_by = t.id
+        ORDER BY na.created_at DESC, na.asset_id DESC
+    ");
+    $netAssets = $stmt->fetchAll();
+} catch (PDOException $e) {
+    $netAssetsError = 'Unable to load network assets right now. Please try again later.';
+}
+
+function formatAssetId($id)
+{
+    return sprintf('NET-%05d', $id);
+}
+
+function formatStatusClass($status)
+{
+    $map = [
+        'AVAILABLE' => 'AVAILABLE',
+        'UNAVAILABLE' => 'UNAVAILABLE',
+        'MAINTENANCE' => 'MAINTENANCE',
+        'DISPOSED' => 'DISPOSED',
+    ];
+
+    $statusKey = strtolower(trim($status ?? ''));
+    return $map[$statusKey] ?? 'unknown';
+}
+
+function formatStatusLabel($status)
+{
+    $status = trim((string)$status);
+    return $status === '' ? 'Unknown' : ucwords(str_replace('-', ' ', $status));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -257,6 +297,16 @@ if (!isset($_SESSION['user_id'])) {
             color: #636e72;
         }
 
+        .status-badge.spare {
+            background: rgba(255, 159, 67, 0.15);
+            color: #d35400;
+        }
+
+        .status-badge.unknown {
+            background: rgba(99, 110, 114, 0.15);
+            color: #2d3436;
+        }
+
         .action-buttons {
             display: flex;
             gap: 8px;
@@ -299,6 +349,25 @@ if (!isset($_SESSION['user_id'])) {
         .empty-state span {
             font-size: 0.9rem;
             color: #636e72;
+        }
+
+        .asset-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.85rem;
+            color: #636e72;
+        }
+
+        .asset-meta span:first-child {
+            font-weight: 600;
+        }
+
+        .data-message {
+            text-align: center;
+            padding: 20px;
+            color: #c0392b;
+            font-weight: 600;
         }
 
         @media (max-width: 768px) {
@@ -362,24 +431,75 @@ if (!isset($_SESSION['user_id'])) {
                 <thead>
                     <tr>
                         <th>Asset ID</th>
-                        <th>Type</th>
-                        <th>Brand/Model</th>
+                        <th>Brand / Model</th>
                         <th>Serial Number</th>
+                        <th>MAC Address</th>
+                        <th>IP Address</th>
                         <th>Location</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th>Remarks</th>
+                        <th>Created By</th>
                     </tr>
                 </thead>
                 <tbody id="assetsTableBody">
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <i class="fa-solid fa-network-wired"></i>
-                                <p>No assets found</p>
-                                <span>Start by adding your first network equipment</span>
-                            </div>
-                        </td>
-                    </tr>
+                    <?php if ($netAssetsError) : ?>
+                        <tr>
+                            <td colspan="9">
+                                <div class="data-message"><?php echo htmlspecialchars($netAssetsError); ?></div>
+                            </td>
+                        </tr>
+                    <?php elseif (empty($netAssets)) : ?>
+                        <tr>
+                            <td colspan="9">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-network-wired"></i>
+                                    <p>No assets found</p>
+                                    <span>Start by adding your first network equipment</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else : ?>
+                        <?php foreach ($netAssets as $asset) : ?>
+                            <?php
+                                $statusClass = formatStatusClass($asset['status'] ?? '');
+                                $statusLabel = formatStatusLabel($asset['status'] ?? '');
+                                $locationParts = array_filter([$asset['building'] ?? '', $asset['level'] ?? '']);
+                                $locationLabel = !empty($locationParts) ? implode(', ', $locationParts) : '-';
+                                $createdMeta = $asset['created_at'] ? date('d M Y, H:i', strtotime($asset['created_at'])) : '-';
+                                $remarks = $asset['remarks'] ?? '';
+                                $brand = trim((string)($asset['brand'] ?? ''));
+                                $model = trim((string)($asset['model'] ?? ''));
+                                $brandModel = trim($brand . ' ' . $model);
+                                if ($brandModel === '') {
+                                    $brandModel = '-';
+                                }
+                                $serial = trim((string)($asset['serial'] ?? ''));
+                                if ($serial === '') {
+                                    $serial = '-';
+                                }
+                            ?>
+                            <tr>
+                                <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
+                                <td><?php echo htmlspecialchars($brandModel); ?></td>
+                                <td><?php echo htmlspecialchars($serial); ?></td>
+                                <td><?php echo htmlspecialchars($asset['mac_add'] ?: '-'); ?></td>
+                                <td><?php echo htmlspecialchars($asset['ip_add'] ?: '-'); ?></td>
+                                <td><?php echo htmlspecialchars($locationLabel); ?></td>
+                                <td>
+                                    <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>">
+                                        <?php echo htmlspecialchars($statusLabel); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo htmlspecialchars($remarks !== '' ? $remarks : '-'); ?></td>
+                                <td>
+                                    <div class="asset-meta">
+                                        <span><?php echo htmlspecialchars($asset['created_by_name'] ?? 'Unknown'); ?></span>
+                                        <span><?php echo htmlspecialchars($createdMeta); ?></span>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

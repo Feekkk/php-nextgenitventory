@@ -6,6 +6,91 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$errors = [];
+$successMessage = '';
+$allowedStatuses = ['AVAILABLE', 'UNAVAIBLE', 'MAINTENANCE', 'DISPOSED'];
+$formData = [
+    'serial' => '',
+    'brand' => '',
+    'model' => '',
+    'mac_add' => '',
+    'ip_add' => '',
+    'building' => '',
+    'level' => '',
+    'status' => '',
+    'remarks' => '',
+];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    foreach (array_keys($formData) as $field) {
+        $formData[$field] = trim($_POST[$field] ?? '');
+    }
+
+    if ($formData['serial'] === '') {
+        $errors[] = 'Serial number is required.';
+    }
+
+    if ($formData['brand'] === '') {
+        $errors[] = 'Brand is required.';
+    }
+
+    if ($formData['model'] === '') {
+        $errors[] = 'Model is required.';
+    }
+
+    if ($formData['status'] === '' || !in_array($formData['status'], $allowedStatuses, true)) {
+        $errors[] = 'Select a valid status.';
+    }
+
+    if ($formData['ip_add'] !== '' && !filter_var($formData['ip_add'], FILTER_VALIDATE_IP)) {
+        $errors[] = 'Enter a valid IP address.';
+    }
+
+    if ($formData['mac_add'] !== '') {
+        $mac = strtoupper(str_replace('-', ':', $formData['mac_add']));
+        if (!preg_match('/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/', $mac)) {
+            $errors[] = 'Enter a valid MAC address (e.g., AA:BB:CC:DD:EE:FF).';
+        } else {
+            $formData['mac_add'] = $mac;
+        }
+    }
+
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO net_assets (
+                    serial, model, brand, mac_add, ip_add,
+                    building, level, status, remarks, created_by
+                ) VALUES (
+                    :serial, :model, :brand, :mac_add, :ip_add,
+                    :building, :level, :status, :remarks, :created_by
+                )
+            ");
+
+            $stmt->execute([
+                ':serial' => $formData['serial'],
+                ':model' => $formData['model'],
+                ':brand' => $formData['brand'],
+                ':mac_add' => $formData['mac_add'] ?: null,
+                ':ip_add' => $formData['ip_add'] ?: null,
+                ':building' => $formData['building'] ?: null,
+                ':level' => $formData['level'] ?: null,
+                ':status' => $formData['status'],
+                ':remarks' => $formData['remarks'] ?: null,
+                ':created_by' => $_SESSION['user_id'],
+            ]);
+
+            $successMessage = 'Network asset saved successfully.';
+            foreach (array_keys($formData) as $field) {
+                $formData[$field] = '';
+            }
+        } catch (PDOException $e) {
+            $errors[] = 'Unable to save asset right now. Please try again.';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -138,6 +223,30 @@ if (!isset($_SESSION['user_id'])) {
             background: #e3e6ed;
         }
 
+        .alert {
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .alert ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .alert-error {
+            background: rgba(192, 57, 43, 0.1);
+            border: 1px solid rgba(192, 57, 43, 0.2);
+            color: #c0392b;
+        }
+
+        .alert-success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -162,42 +271,35 @@ if (!isset($_SESSION['user_id'])) {
             <p>Register routers, switches, wireless gear, and other network equipment with complete deployment details.</p>
         </div>
 
-        <form class="network-form">
+        <?php if (!empty($errors)) : ?>
+            <div class="alert alert-error">
+                <ul>
+                    <?php foreach ($errors as $error) : ?>
+                        <li><?php echo htmlspecialchars($error); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php elseif ($successMessage) : ?>
+            <div class="alert alert-success">
+                <?php echo htmlspecialchars($successMessage); ?>
+            </div>
+        <?php endif; ?>
+
+        <form class="network-form" method="POST" autocomplete="off">
             <div class="form-section">
                 <h3 class="form-section-title">Asset Information</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="assetId">Asset ID</label>
-                        <input type="text" id="assetId" name="assetId" placeholder="e.g., NET-000321">
+                        <label for="serial">Serial Number <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="serial" name="serial" placeholder="Enter serial number" value="<?php echo htmlspecialchars($formData['serial']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="equipmentType">Equipment Type</label>
-                        <select id="equipmentType" name="equipmentType">
-                            <option value="">Select equipment type</option>
-                            <option value="router">Router</option>
-                            <option value="switch">Switch</option>
-                            <option value="firewall">Firewall</option>
-                            <option value="access-point">Access Point</option>
-                            <option value="controller">Wireless Controller</option>
-                            <option value="modem">Modem</option>
-                            <option value="other">Other</option>
-                        </select>
+                        <label for="brand">Brand <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="brand" name="brand" placeholder="e.g., Cisco" value="<?php echo htmlspecialchars($formData['brand']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="brand">Brand</label>
-                        <input type="text" id="brand" name="brand" placeholder="e.g., Cisco">
-                    </div>
-                    <div class="form-group">
-                        <label for="model">Model</label>
-                        <input type="text" id="model" name="model" placeholder="e.g., Catalyst 9300">
-                    </div>
-                    <div class="form-group">
-                        <label for="serialNumber">Serial Number</label>
-                        <input type="text" id="serialNumber" name="serialNumber" placeholder="Enter serial number">
-                    </div>
-                    <div class="form-group">
-                        <label for="assetTag">Asset Tag</label>
-                        <input type="text" id="assetTag" name="assetTag" placeholder="Enter asset tag">
+                        <label for="model">Model <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="model" name="model" placeholder="e.g., Catalyst 9300" value="<?php echo htmlspecialchars($formData['model']); ?>" required>
                     </div>
                 </div>
             </div>
@@ -206,28 +308,12 @@ if (!isset($_SESSION['user_id'])) {
                 <h3 class="form-section-title">Network Configuration</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="ipAddress">Management IP Address</label>
-                        <input type="text" id="ipAddress" name="ipAddress" placeholder="e.g., 10.10.10.5">
+                        <label for="mac_add">MAC Address</label>
+                        <input type="text" id="mac_add" name="mac_add" placeholder="e.g., AA:BB:CC:DD:EE:FF" value="<?php echo htmlspecialchars($formData['mac_add']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="macAddress">MAC Address</label>
-                        <input type="text" id="macAddress" name="macAddress" placeholder="e.g., AA:BB:CC:DD:EE:FF">
-                    </div>
-                    <div class="form-group">
-                        <label for="firmwareVersion">Firmware / OS Version</label>
-                        <input type="text" id="firmwareVersion" name="firmwareVersion" placeholder="e.g., IOS XE 17.6.4">
-                    </div>
-                    <div class="form-group">
-                        <label for="managementVlan">Management VLAN</label>
-                        <input type="text" id="managementVlan" name="managementVlan" placeholder="e.g., VLAN 10">
-                    </div>
-                    <div class="form-group">
-                        <label for="uplinkCapacity">Uplink Capacity</label>
-                        <input type="text" id="uplinkCapacity" name="uplinkCapacity" placeholder="e.g., 10Gbps SFP+">
-                    </div>
-                    <div class="form-group">
-                        <label for="portCount">Number of Ports</label>
-                        <input type="number" id="portCount" name="portCount" placeholder="e.g., 48">
+                        <label for="ip_add">Management IP Address</label>
+                        <input type="text" id="ip_add" name="ip_add" placeholder="e.g., 10.10.10.5" value="<?php echo htmlspecialchars($formData['ip_add']); ?>">
                     </div>
                 </div>
             </div>
@@ -236,44 +322,22 @@ if (!isset($_SESSION['user_id'])) {
                 <h3 class="form-section-title">Deployment Details</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="location">Location</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., Data Center, Rack B2">
+                        <label for="building">Building</label>
+                        <input type="text" id="building" name="building" placeholder="e.g., Main Campus" value="<?php echo htmlspecialchars($formData['building']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="rackPosition">Rack / Mount Position</label>
-                        <input type="text" id="rackPosition" name="rackPosition" placeholder="e.g., Rack 4, U12">
+                        <label for="level">Level / Floor</label>
+                        <input type="text" id="level" name="level" placeholder="e.g., Level 3" value="<?php echo htmlspecialchars($formData['level']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="assignedTeam">Assigned Team / Department</label>
-                        <input type="text" id="assignedTeam" name="assignedTeam" placeholder="e.g., Network Operations">
-                    </div>
-                    <div class="form-group">
-                        <label for="purchaseDate">Purchase Date</label>
-                        <input type="date" id="purchaseDate" name="purchaseDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="warrantyExpiry">Warranty Expiry</label>
-                        <input type="date" id="warrantyExpiry" name="warrantyExpiry">
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Status</label>
-                        <select id="status" name="status">
+                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
+                        <select id="status" name="status" required>
                             <option value="">Select status</option>
-                            <option value="available">Available</option>
-                            <option value="in-use">In Use</option>
-                            <option value="maintenance">Under Maintenance</option>
-                            <option value="spare">Spare / Standby</option>
-                            <option value="disposed">Disposed</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="condition">Condition</label>
-                        <select id="condition" name="condition">
-                            <option value="">Select condition</option>
-                            <option value="excellent">Excellent</option>
-                            <option value="good">Good</option>
-                            <option value="fair">Fair</option>
-                            <option value="needs-repair">Needs Repair</option>
+                            <?php foreach ($allowedStatuses as $status) : ?>
+                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
+                                    <?php echo ucwords(str_replace('-', ' ', $status)); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -282,22 +346,9 @@ if (!isset($_SESSION['user_id'])) {
             <div class="form-section">
                 <h3 class="form-section-title">Additional Information</h3>
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="supplier">Supplier / Vendor</label>
-                        <input type="text" id="supplier" name="supplier" placeholder="Enter supplier name">
-                    </div>
-                    <div class="form-group">
-                        <label for="cost">Purchase Cost (MYR)</label>
-                        <input type="number" step="0.01" id="cost" name="cost" placeholder="Enter cost">
-                    </div>
                     <div class="form-group" style="grid-column: 1 / -1;">
-                        <label for="notes">Notes</label>
-                        <textarea id="notes" name="notes" placeholder="Add remarks, maintenance history, licenses, etc."></textarea>
-                    </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label for="attachments">Attachments</label>
-                        <input type="file" id="attachments" name="attachments" multiple>
-                        <small style="color: #636e72;">Upload diagrams, invoices, or configuration backups (optional).</small>
+                        <label for="remarks">Remarks</label>
+                        <textarea id="remarks" name="remarks" placeholder="Add deployment notes, maintenance info, etc."><?php echo htmlspecialchars($formData['remarks']); ?></textarea>
                     </div>
                 </div>
             </div>
