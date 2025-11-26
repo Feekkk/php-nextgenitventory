@@ -140,6 +140,58 @@
     color: #ffffff;
 }
 
+.sidebar .menu-item {
+    position: relative;
+}
+
+.sidebar .menu-item.has-dropdown > a::after {
+    content: '\f107';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: auto;
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+}
+
+.sidebar .menu-item.has-dropdown.open > a::after {
+    transform: rotate(180deg);
+}
+
+.sidebar .submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: rgba(26, 26, 46, 0.05);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar .menu-item.open .submenu {
+    max-height: 500px;
+}
+
+.sidebar .submenu li {
+    margin: 0;
+}
+
+.sidebar .submenu li a {
+    padding-left: 50px;
+    font-size: 0.9rem;
+    border-left: none;
+}
+
+.sidebar .submenu li a:hover {
+    background: #1a1a2e;
+    color: #ffffff;
+}
+
+.sidebar .submenu li a.active {
+    background: #1a1a2e;
+    color: #ffffff;
+    border-left: 3px solid #1a1a2e;
+}
+
 .header {
     display: flex;
     align-items: center;
@@ -343,7 +395,14 @@
         <ul>
             <li><a href="Dashboard.php"><i class="fa fa-gauge"></i> Dashboard</a></li>
             <li><a href="ManageUser.php"><i class="fa fa-users"></i> Manage Users</a></li>
-            <li><a href="ADDitems.php"><i class="fa fa-box"></i> Inventory</a></li>
+            <li class="menu-item has-dropdown">
+                <a href="#" class="dropdown-toggle"><i class="fa fa-boxes"></i> Inventory</a>
+                <ul class="submenu">
+                    <li><a href="../technician/LAPTOPpage.php"><i class="fa fa-laptop"></i> Laptop</a></li>
+                    <li><a href="../technician/AVpage.php"><i class="fa fa-tv"></i> AV</a></li>
+                    <li><a href="../technician/NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
+                </ul>
+            </li>
             <li><a href="Report.php"><i class="fa fa-chart-bar"></i> Reports</a></li>
             <li><a href="Security.php"><i class="fa fa-shield-alt"></i> Security</a></li>
             <li><a href="#"><i class="fa fa-history"></i> Audit Trails</a></li>
@@ -406,14 +465,41 @@ window.addEventListener('keydown', function (e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+    
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const menuItem = this.parentElement;
+            const isOpen = menuItem.classList.contains('open');
+            
+            document.querySelectorAll('.menu-item.open').forEach(item => {
+                if (item !== menuItem) {
+                    item.classList.remove('open');
+                }
+            });
+            
+            if (isOpen) {
+                menuItem.classList.remove('open');
+            } else {
+                menuItem.classList.add('open');
+            }
+        });
+    });
+    
     const currentPath = window.location.pathname;
-    const menuLinks = document.querySelectorAll('.sidebar ul li a');
+    const menuLinks = document.querySelectorAll('.sidebar ul li a:not(.dropdown-toggle)');
     
     menuLinks.forEach(link => {
         const href = link.getAttribute('href');
         if (href && href !== '#') {
             if (currentPath.includes(href) || currentPath.endsWith(href)) {
                 link.classList.add('active');
+                const submenuItem = link.closest('.submenu');
+                if (submenuItem) {
+                    const parentMenuItem = submenuItem.parentElement;
+                    parentMenuItem.classList.add('open');
+                }
             }
             
             link.addEventListener('click', function() {
