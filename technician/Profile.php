@@ -11,6 +11,23 @@ $pdo = getDBConnection();
 $error = '';
 $success = '';
 
+function logProfileAudit($pdo, $user_id, $staff_id, $email, $action_type, $fields_changed = [], $old_values = [], $new_values = []) {
+    try {
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $session_id = session_id();
+        
+        $fields_changed_str = !empty($fields_changed) ? json_encode($fields_changed) : null;
+        $old_values_str = !empty($old_values) ? json_encode($old_values) : null;
+        $new_values_str = !empty($new_values) ? json_encode($new_values) : null;
+        
+        $stmt = $pdo->prepare("INSERT INTO profile_audit (user_id, staff_id, email, action_type, fields_changed, old_values, new_values, ip_address, user_agent, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $staff_id, $email, $action_type, $fields_changed_str, $old_values_str, $new_values_str, $ip_address, $user_agent, $session_id]);
+    } catch (PDOException $e) {
+        error_log("Failed to log profile audit: " . $e->getMessage());
+    }
+}
+
 try {
     $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
@@ -79,6 +96,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             if (!$error) {
+                $fields_changed = [];
+                $old_values = [];
+                $new_values = [];
+                $action_types = [];
+                
+                if ($full_name !== $user['full_name']) {
+                    $fields_changed[] = 'full_name';
+                    $old_values['full_name'] = $user['full_name'];
+                    $new_values['full_name'] = $full_name;
+                    $action_types[] = 'update_name';
+                }
+                
+                if ($email !== $user['email']) {
+                    $fields_changed[] = 'email';
+                    $old_values['email'] = $user['email'];
+                    $new_values['email'] = $email;
+                    $action_types[] = 'update_email';
+                }
+                
+                if (($phone ?: '') !== ($user['phone'] ?: '')) {
+                    $fields_changed[] = 'phone';
+                    $old_values['phone'] = $user['phone'] ?? '';
+                    $new_values['phone'] = $phone ?: '';
+                    $action_types[] = 'update_phone';
+                }
+                
+                if ($profile_picture !== $user['profile_picture'] && $profile_picture !== null) {
+                    $fields_changed[] = 'profile_picture';
+                    $old_values['profile_picture'] = $user['profile_picture'] ?? '';
+                    $new_values['profile_picture'] = $profile_picture;
+                    $action_types[] = 'upload_picture';
+                }
+                
                 if (!empty($newPassword)) {
                     if (empty($currentPassword)) {
                         $error = 'Current password is required to change password.';
@@ -101,6 +151,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $_SESSION['full_name'] = $full_name;
                             $_SESSION['email'] = $email;
                             $success = 'Profile updated successfully!';
+                            
+                            $action_types[] = 'change_password';
+                            $fields_changed[] = 'password';
+                            $old_values['password'] = '***';
+                            $new_values['password'] = '***';
+                            
+                            if (!empty($action_types)) {
+                                $primary_action = in_array('change_password', $action_types) ? 'change_password' : 
+                                                 (in_array('upload_picture', $action_types) ? 'upload_picture' : 'update_profile');
+                                logProfileAudit($pdo, $_SESSION['user_id'], $user['staff_id'], $email, $primary_action, $fields_changed, $old_values, $new_values);
+                            }
+                            
                             header("refresh:1;url=Profile.php");
                         }
                     }
@@ -111,6 +173,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['full_name'] = $full_name;
                     $_SESSION['email'] = $email;
                     $success = 'Profile updated successfully!';
+                    
+                    if (!empty($fields_changed)) {
+                        $primary_action = in_array('upload_picture', $action_types) ? 'upload_picture' : 'update_profile';
+                        logProfileAudit($pdo, $_SESSION['user_id'], $user['staff_id'], $email, $primary_action, $fields_changed, $old_values, $new_values);
+                    }
+                    
                     header("refresh:1;url=Profile.php");
                 }
                 

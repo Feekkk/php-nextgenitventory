@@ -58,6 +58,30 @@ CREATE TABLE IF NOT EXISTS `login_audit` (
     FOREIGN KEY (`user_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Profile Audit Trail Table
+CREATE TABLE IF NOT EXISTS `profile_audit` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `user_id` INT(11) DEFAULT NULL,
+    `staff_id` VARCHAR(100) DEFAULT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `action_type` ENUM('update_profile', 'change_password', 'upload_picture', 'update_email', 'update_phone', 'update_name') NOT NULL,
+    `fields_changed` TEXT DEFAULT NULL,
+    `old_values` TEXT DEFAULT NULL,
+    `new_values` TEXT DEFAULT NULL,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` TEXT DEFAULT NULL,
+    `session_id` VARCHAR(255) DEFAULT NULL,
+    `action_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_staff_id` (`staff_id`),
+    INDEX `idx_email` (`email`),
+    INDEX `idx_action_type` (`action_type`),
+    INDEX `idx_action_time` (`action_time`),
+    INDEX `idx_ip_address` (`ip_address`),
+    FOREIGN KEY (`user_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Handover Queue Table
 CREATE TABLE IF NOT EXISTS `queue` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
