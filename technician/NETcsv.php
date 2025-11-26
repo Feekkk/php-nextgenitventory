@@ -249,10 +249,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             line-height: 1.6;
         }
 
+        .sample-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 25px;
+        }
+
         .sample-table {
+            min-width: 600px;
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px;
             font-size: 0.9rem;
         }
 
@@ -262,6 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 10px;
             text-align: left;
             background: #fff;
+            white-space: nowrap;
         }
 
         .sample-table th {
@@ -397,34 +404,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="guidelines">
                     <h3>Column template</h3>
-                    <table class="sample-table">
-                        <thead>
-                            <tr>
-                                <th>serial</th>
-                                <th>model</th>
-                                <th>brand</th>
-                                <th>mac_add</th>
-                                <th>ip_add</th>
-                                <th>building</th>
-                                <th>level</th>
-                                <th>status</th>
-                                <th>remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>SN4452331</td>
-                                <td>Catalyst 9300</td>
-                                <td>Cisco</td>
-                                <td>AA:BB:CC:DD:EE:FF</td>
-                                <td>10.10.10.5</td>
-                                <td>Data Center</td>
-                                <td>Level 2</td>
-                                <td>available</td>
-                                <td>Core switch for lab</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="sample-table-wrapper">
+                        <table class="sample-table">
+                            <thead>
+                                <tr>
+                                    <th>serial</th>
+                                    <th>model</th>
+                                    <th>brand</th>
+                                    <th>mac_add</th>
+                                    <th>ip_add</th>
+                                    <th>building</th>
+                                    <th>level</th>
+                                    <th>status</th>
+                                    <th>remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>SN4452331</td>
+                                    <td>Catalyst 9300</td>
+                                    <td>Cisco</td>
+                                    <td>AA:BB:CC:DD:EE:FF</td>
+                                    <td>10.10.10.5</td>
+                                    <td>Data Center</td>
+                                    <td>Level 2</td>
+                                    <td>available</td>
+                                    <td>Core switch for lab</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                     <small style="color:#636e72;">Use lowercase headers with underscores to match the schema.</small>
                 </div>
 
