@@ -671,6 +671,7 @@ try {
                             <option value="update_email" <?php echo $filter_action === 'update_email' ? 'selected' : ''; ?>>Update Email</option>
                             <option value="update_phone" <?php echo $filter_action === 'update_phone' ? 'selected' : ''; ?>>Update Phone</option>
                             <option value="update_name" <?php echo $filter_action === 'update_name' ? 'selected' : ''; ?>>Update Name</option>
+                            <option value="admin_update" <?php echo $filter_action === 'admin_update' ? 'selected' : ''; ?>>Admin Update</option>
                         </select>
                     </div>
                 <?php else: ?>

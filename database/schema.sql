@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS `profile_audit` (
     `user_id` INT(11) DEFAULT NULL,
     `staff_id` VARCHAR(100) DEFAULT NULL,
     `email` VARCHAR(255) NOT NULL,
-    `action_type` ENUM('update_profile', 'change_password', 'upload_picture', 'update_email', 'update_phone', 'update_name') NOT NULL,
+    `action_type` ENUM('update_profile', 'change_password', 'upload_picture', 'update_email', 'update_phone', 'update_name', 'admin_update') NOT NULL,
     `fields_changed` TEXT DEFAULT NULL,
     `old_values` TEXT DEFAULT NULL,
     `new_values` TEXT DEFAULT NULL,

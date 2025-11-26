@@ -12,6 +12,27 @@ $error = '';
 $success = '';
 $user = null;
 
+function logProfileAudit($pdo, $user_id, $staff_id, $email, $action_type, $fields_changed = [], $old_values = [], $new_values = [], $admin_id = null) {
+    try {
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $session_id = session_id();
+        
+        if ($admin_id) {
+            $old_values['updated_by_admin'] = $admin_id;
+        }
+        
+        $fields_changed_str = !empty($fields_changed) ? json_encode($fields_changed) : null;
+        $old_values_str = !empty($old_values) ? json_encode($old_values) : null;
+        $new_values_str = !empty($new_values) ? json_encode($new_values) : null;
+        
+        $stmt = $pdo->prepare("INSERT INTO profile_audit (user_id, staff_id, email, action_type, fields_changed, old_values, new_values, ip_address, user_agent, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $staff_id, $email, $action_type, $fields_changed_str, $old_values_str, $new_values_str, $ip_address, $user_agent, $session_id]);
+    } catch (PDOException $e) {
+        error_log("Failed to log profile audit: " . $e->getMessage());
+    }
+}
+
 $user_id = $_GET['id'] ?? null;
 
 if (!$user_id) {
@@ -48,6 +69,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Passwords do not match.';
     } else {
         try {
+            $fields_changed = [];
+            $old_values = [];
+            $new_values = [];
+            
+            if ($role !== $user['role']) {
+                $fields_changed[] = 'role';
+                $old_values['role'] = $user['role'];
+                $new_values['role'] = $role;
+            }
+            
+            if ($status !== $user['status']) {
+                $fields_changed[] = 'status';
+                $old_values['status'] = $user['status'];
+                $new_values['status'] = $status;
+            }
+            
+            if (!empty($password)) {
+                $fields_changed[] = 'password';
+                $old_values['password'] = '***';
+                $new_values['password'] = '***';
+            }
+            
             if (!empty($password)) {
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("UPDATE technician SET password = ?, role = ?, status = ? WHERE id = ?");
@@ -55,6 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmt = $pdo->prepare("UPDATE technician SET role = ?, status = ? WHERE id = ?");
                 $stmt->execute([$role, $status, $user_id]);
+            }
+            
+            if (!empty($fields_changed)) {
+                logProfileAudit($pdo, $user_id, $user['staff_id'], $user['email'], 'admin_update', $fields_changed, $old_values, $new_values, $_SESSION['user_id']);
             }
             
             $success = 'User updated successfully! Redirecting to Manage Users...';
