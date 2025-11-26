@@ -12,10 +12,14 @@ $error = '';
 $success = '';
 $cleanup_message = '';
 
-function cleanupOldAuditLogs($pdo) {
+function cleanupOldAuditLogs($pdo, $type = 'login') {
     try {
         $threeMonthsAgo = date('Y-m-d H:i:s', strtotime('-3 months'));
-        $stmt = $pdo->prepare("DELETE FROM login_audit WHERE login_time < ?");
+        if ($type === 'profile') {
+            $stmt = $pdo->prepare("DELETE FROM profile_audit WHERE action_time < ?");
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM login_audit WHERE login_time < ?");
+        }
         $stmt->execute([$threeMonthsAgo]);
         return $stmt->rowCount();
     } catch (PDOException $e) {
@@ -40,8 +44,10 @@ function recordCleanupTime() {
     file_put_contents($cleanup_file, time());
 }
 
+$audit_type = $_GET['type'] ?? 'login';
+
 if (isset($_GET['action']) && $_GET['action'] === 'cleanup') {
-    $deleted_count = cleanupOldAuditLogs($pdo);
+    $deleted_count = cleanupOldAuditLogs($pdo, $audit_type);
     if ($deleted_count !== false) {
         $success = "Successfully deleted {$deleted_count} old audit log records (older than 3 months).";
         recordCleanupTime();
@@ -51,75 +57,133 @@ if (isset($_GET['action']) && $_GET['action'] === 'cleanup') {
 }
 
 if (shouldRunAutoCleanup()) {
-    $deleted_count = cleanupOldAuditLogs($pdo);
-    if ($deleted_count !== false && $deleted_count > 0) {
-        $cleanup_message = "Automatically deleted {$deleted_count} old audit log records (older than 3 months).";
+    $deleted_count_login = cleanupOldAuditLogs($pdo, 'login');
+    $deleted_count_profile = cleanupOldAuditLogs($pdo, 'profile');
+    $total_deleted = ($deleted_count_login !== false ? $deleted_count_login : 0) + ($deleted_count_profile !== false ? $deleted_count_profile : 0);
+    if ($total_deleted > 0) {
+        $cleanup_message = "Automatically deleted {$total_deleted} old audit log records (older than 3 months).";
         recordCleanupTime();
-    } elseif ($deleted_count !== false) {
+    } elseif ($deleted_count_login !== false && $deleted_count_profile !== false) {
         recordCleanupTime();
     }
 }
 
 $filter_status = $_GET['status'] ?? 'all';
+$filter_action = $_GET['action_type'] ?? 'all';
 $filter_email = $_GET['email'] ?? '';
 $filter_date = $_GET['date'] ?? '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page = 20;
 $offset = ($page - 1) * $per_page;
+$total_records = 0;
 
 try {
-    $where_conditions = [];
-    $params = [];
-    
-    if ($filter_status !== 'all') {
-        $where_conditions[] = "la.login_status = ?";
-        $params[] = $filter_status;
+    if ($audit_type === 'profile') {
+        $where_conditions = [];
+        $params = [];
+        
+        if ($filter_action !== 'all') {
+            $where_conditions[] = "pa.action_type = ?";
+            $params[] = $filter_action;
+        }
+        
+        if (!empty($filter_email)) {
+            $where_conditions[] = "pa.email LIKE ?";
+            $params[] = "%{$filter_email}%";
+        }
+        
+        if (!empty($filter_date)) {
+            $where_conditions[] = "DATE(pa.action_time) = ?";
+            $params[] = $filter_date;
+        }
+        
+        $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+        
+        $count_sql = "SELECT COUNT(*) as total FROM profile_audit pa $where_clause";
+        $count_stmt = $pdo->prepare($count_sql);
+        $count_stmt->execute($params);
+        $total_records = $count_stmt->fetch()['total'];
+        $total_pages = ceil($total_records / $per_page);
+        
+        $sql = "SELECT pa.*, t.full_name 
+                FROM profile_audit pa 
+                LEFT JOIN technician t ON pa.user_id = t.id 
+                $where_clause 
+                ORDER BY pa.action_time DESC 
+                LIMIT ? OFFSET ?";
+        
+        $params[] = $per_page;
+        $params[] = $offset;
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $audit_logs = $stmt->fetchAll();
+        
+        $stats_sql = "SELECT 
+                        COUNT(*) as total_edits,
+                        COUNT(DISTINCT user_id) as unique_users,
+                        SUM(CASE WHEN action_type = 'change_password' THEN 1 ELSE 0 END) as password_changes
+                      FROM profile_audit";
+        $stats_stmt = $pdo->query($stats_sql);
+        $stats = $stats_stmt->fetch();
+    } else {
+        $where_conditions = [];
+        $params = [];
+        
+        if ($filter_status !== 'all') {
+            $where_conditions[] = "la.login_status = ?";
+            $params[] = $filter_status;
+        }
+        
+        if (!empty($filter_email)) {
+            $where_conditions[] = "la.email LIKE ?";
+            $params[] = "%{$filter_email}%";
+        }
+        
+        if (!empty($filter_date)) {
+            $where_conditions[] = "DATE(la.login_time) = ?";
+            $params[] = $filter_date;
+        }
+        
+        $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+        
+        $count_sql = "SELECT COUNT(*) as total FROM login_audit la $where_clause";
+        $count_stmt = $pdo->prepare($count_sql);
+        $count_stmt->execute($params);
+        $total_records = $count_stmt->fetch()['total'];
+        $total_pages = ceil($total_records / $per_page);
+        
+        $sql = "SELECT la.*, t.full_name 
+                FROM login_audit la 
+                LEFT JOIN technician t ON la.user_id = t.id 
+                $where_clause 
+                ORDER BY la.login_time DESC 
+                LIMIT ? OFFSET ?";
+        
+        $params[] = $per_page;
+        $params[] = $offset;
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $audit_logs = $stmt->fetchAll();
+        
+        $stats_sql = "SELECT 
+                        COUNT(*) as total_attempts,
+                        SUM(CASE WHEN login_status = 'success' THEN 1 ELSE 0 END) as successful,
+                        SUM(CASE WHEN login_status = 'failed' THEN 1 ELSE 0 END) as failed
+                      FROM login_audit";
+        $stats_stmt = $pdo->query($stats_sql);
+        $stats = $stats_stmt->fetch();
     }
-    
-    if (!empty($filter_email)) {
-        $where_conditions[] = "la.email LIKE ?";
-        $params[] = "%{$filter_email}%";
-    }
-    
-    if (!empty($filter_date)) {
-        $where_conditions[] = "DATE(la.login_time) = ?";
-        $params[] = $filter_date;
-    }
-    
-    $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
-    
-    $count_sql = "SELECT COUNT(*) as total FROM login_audit la $where_clause";
-    $count_stmt = $pdo->prepare($count_sql);
-    $count_stmt->execute($params);
-    $total_records = $count_stmt->fetch()['total'];
-    $total_pages = ceil($total_records / $per_page);
-    
-    $sql = "SELECT la.*, t.full_name 
-            FROM login_audit la 
-            LEFT JOIN technician t ON la.user_id = t.id 
-            $where_clause 
-            ORDER BY la.login_time DESC 
-            LIMIT ? OFFSET ?";
-    
-    $params[] = $per_page;
-    $params[] = $offset;
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $audit_logs = $stmt->fetchAll();
-    
-    $stats_sql = "SELECT 
-                    COUNT(*) as total_attempts,
-                    SUM(CASE WHEN login_status = 'success' THEN 1 ELSE 0 END) as successful,
-                    SUM(CASE WHEN login_status = 'failed' THEN 1 ELSE 0 END) as failed
-                  FROM login_audit";
-    $stats_stmt = $pdo->query($stats_sql);
-    $stats = $stats_stmt->fetch();
     
 } catch (PDOException $e) {
     $error = 'Failed to load audit logs.';
     $audit_logs = [];
-    $stats = ['total_attempts' => 0, 'successful' => 0, 'failed' => 0];
+    if ($audit_type === 'profile') {
+        $stats = ['total_edits' => 0, 'unique_users' => 0, 'password_changes' => 0];
+    } else {
+        $stats = ['total_attempts' => 0, 'successful' => 0, 'failed' => 0];
+    }
     $total_pages = 0;
+    $total_records = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -435,6 +499,53 @@ try {
             opacity: 0.3;
         }
 
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #636e72;
+            transition: all 0.2s ease;
+            position: relative;
+            top: 2px;
+        }
+
+        .tab:hover {
+            color: #1a1a2e;
+        }
+
+        .tab.active {
+            color: #1a1a2e;
+            border-bottom-color: #1a1a2e;
+        }
+
+        .action-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            background: rgba(108, 92, 231, 0.1);
+            color: #6c5ce7;
+        }
+
+        .fields-changed {
+            max-width: 300px;
+            font-size: 0.85rem;
+            color: #636e72;
+        }
+
         @media (max-width: 768px) {
             .filters-form {
                 grid-template-columns: 1fr;
@@ -448,6 +559,10 @@ try {
             .audit-table td {
                 padding: 10px 8px;
             }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
@@ -458,14 +573,27 @@ try {
         <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
             <div>
                 <h1><i class="fa fa-shield-alt"></i> Security & Audit Trails</h1>
-                <p>Monitor and review all login attempts and security events.</p>
+                <p>Monitor and review all login attempts and profile edit activities.</p>
             </div>
-            <a href="?action=cleanup&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" 
+            <a href="?action=cleanup&type=<?php echo htmlspecialchars($audit_type); ?>&status=<?php echo htmlspecialchars($filter_status); ?>&action_type=<?php echo htmlspecialchars($filter_action); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" 
                class="btn btn-primary" 
                onclick="return confirm('Are you sure you want to delete all audit logs older than 3 months? This action cannot be undone.');"
                style="padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; text-decoration: none; background: #1a1a2e; color: #ffffff; transition: all 0.2s ease;">
                 <i class="fa fa-trash-alt"></i>
                 Cleanup Old Logs
+            </a>
+        </div>
+
+        <div class="tabs">
+            <a href="?type=login&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" 
+               class="tab <?php echo $audit_type === 'login' ? 'active' : ''; ?>" 
+               style="text-decoration: none; color: inherit;">
+                <i class="fa fa-sign-in-alt"></i> Login Audit
+            </a>
+            <a href="?type=profile&action_type=<?php echo htmlspecialchars($filter_action); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" 
+               class="tab <?php echo $audit_type === 'profile' ? 'active' : ''; ?>" 
+               style="text-decoration: none; color: inherit;">
+                <i class="fa fa-user-edit"></i> Profile Edit Audit
             </a>
         </div>
 
@@ -491,30 +619,61 @@ try {
         <?php endif; ?>
 
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Total Login Attempts</div>
-                <div class="stat-value"><?php echo number_format($stats['total_attempts']); ?></div>
-            </div>
-            <div class="stat-card success">
-                <div class="stat-label">Successful Logins</div>
-                <div class="stat-value"><?php echo number_format($stats['successful']); ?></div>
-            </div>
-            <div class="stat-card failed">
-                <div class="stat-label">Failed Attempts</div>
-                <div class="stat-value"><?php echo number_format($stats['failed']); ?></div>
-            </div>
+            <?php if ($audit_type === 'profile'): ?>
+                <div class="stat-card">
+                    <div class="stat-label">Total Profile Edits</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_edits'] ?? 0); ?></div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">Unique Users</div>
+                    <div class="stat-value"><?php echo number_format($stats['unique_users'] ?? 0); ?></div>
+                </div>
+                <div class="stat-card failed">
+                    <div class="stat-label">Password Changes</div>
+                    <div class="stat-value"><?php echo number_format($stats['password_changes'] ?? 0); ?></div>
+                </div>
+            <?php else: ?>
+                <div class="stat-card">
+                    <div class="stat-label">Total Login Attempts</div>
+                    <div class="stat-value"><?php echo number_format($stats['total_attempts'] ?? 0); ?></div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">Successful Logins</div>
+                    <div class="stat-value"><?php echo number_format($stats['successful'] ?? 0); ?></div>
+                </div>
+                <div class="stat-card failed">
+                    <div class="stat-label">Failed Attempts</div>
+                    <div class="stat-value"><?php echo number_format($stats['failed'] ?? 0); ?></div>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="filters-card">
             <form method="GET" action="" class="filters-form">
-                <div class="form-group">
-                    <label for="status">Login Status</label>
-                    <select id="status" name="status">
-                        <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
-                        <option value="success" <?php echo $filter_status === 'success' ? 'selected' : ''; ?>>Success</option>
-                        <option value="failed" <?php echo $filter_status === 'failed' ? 'selected' : ''; ?>>Failed</option>
-                    </select>
-                </div>
+                <input type="hidden" name="type" value="<?php echo htmlspecialchars($audit_type); ?>">
+                <?php if ($audit_type === 'profile'): ?>
+                    <div class="form-group">
+                        <label for="action_type">Action Type</label>
+                        <select id="action_type" name="action_type">
+                            <option value="all" <?php echo $filter_action === 'all' ? 'selected' : ''; ?>>All Actions</option>
+                            <option value="update_profile" <?php echo $filter_action === 'update_profile' ? 'selected' : ''; ?>>Update Profile</option>
+                            <option value="change_password" <?php echo $filter_action === 'change_password' ? 'selected' : ''; ?>>Change Password</option>
+                            <option value="upload_picture" <?php echo $filter_action === 'upload_picture' ? 'selected' : ''; ?>>Upload Picture</option>
+                            <option value="update_email" <?php echo $filter_action === 'update_email' ? 'selected' : ''; ?>>Update Email</option>
+                            <option value="update_phone" <?php echo $filter_action === 'update_phone' ? 'selected' : ''; ?>>Update Phone</option>
+                            <option value="update_name" <?php echo $filter_action === 'update_name' ? 'selected' : ''; ?>>Update Name</option>
+                        </select>
+                    </div>
+                <?php else: ?>
+                    <div class="form-group">
+                        <label for="status">Login Status</label>
+                        <select id="status" name="status">
+                            <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
+                            <option value="success" <?php echo $filter_status === 'success' ? 'selected' : ''; ?>>Success</option>
+                            <option value="failed" <?php echo $filter_status === 'failed' ? 'selected' : ''; ?>>Failed</option>
+                        </select>
+                    </div>
+                <?php endif; ?>
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="text" id="email" name="email" value="<?php echo htmlspecialchars($filter_email); ?>" placeholder="Search by email">
@@ -528,9 +687,9 @@ try {
                         <i class="fa fa-search"></i> Filter
                     </button>
                 </div>
-                <?php if ($filter_status !== 'all' || !empty($filter_email) || !empty($filter_date)): ?>
+                <?php if (($audit_type === 'login' && ($filter_status !== 'all' || !empty($filter_email) || !empty($filter_date))) || ($audit_type === 'profile' && ($filter_action !== 'all' || !empty($filter_email) || !empty($filter_date)))): ?>
                 <div class="form-group">
-                    <a href="Security.php" class="btn btn-secondary">
+                    <a href="Security.php?type=<?php echo htmlspecialchars($audit_type); ?>" class="btn btn-secondary">
                         <i class="fa fa-times"></i> Clear
                     </a>
                 </div>
@@ -545,53 +704,108 @@ try {
                     <p>No audit logs found.</p>
                 </div>
             <?php else: ?>
-                <table class="audit-table">
-                    <thead>
-                        <tr>
-                            <th>Date & Time</th>
-                            <th>User</th>
-                            <th>Email</th>
-                            <th>Staff ID</th>
-                            <th>IP Address</th>
-                            <th>Status</th>
-                            <th>Failure Reason</th>
-                            <th>User Agent</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($audit_logs as $log): ?>
+                <?php if ($audit_type === 'profile'): ?>
+                    <table class="audit-table">
+                        <thead>
                             <tr>
-                                <td><?php echo date('Y-m-d H:i:s', strtotime($log['login_time'])); ?></td>
-                                <td><?php echo htmlspecialchars($log['full_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($log['email']); ?></td>
-                                <td><?php echo htmlspecialchars($log['staff_id'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($log['ip_address'] ?? 'N/A'); ?></td>
-                                <td>
-                                    <span class="status-badge <?php echo htmlspecialchars($log['login_status']); ?>">
-                                        <?php echo htmlspecialchars($log['login_status']); ?>
-                                    </span>
-                                </td>
-                                <td><?php echo htmlspecialchars($log['failure_reason'] ?? '-'); ?></td>
-                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?php echo htmlspecialchars($log['user_agent'] ?? 'N/A'); ?>">
-                                    <?php echo htmlspecialchars($log['user_agent'] ?? 'N/A'); ?>
-                                </td>
+                                <th>Date & Time</th>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Staff ID</th>
+                                <th>Action Type</th>
+                                <th>Fields Changed</th>
+                                <th>IP Address</th>
+                                <th>User Agent</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($audit_logs as $log): ?>
+                                <tr>
+                                    <td><?php echo date('Y-m-d H:i:s', strtotime($log['action_time'])); ?></td>
+                                    <td><?php echo htmlspecialchars($log['full_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['email']); ?></td>
+                                    <td><?php echo htmlspecialchars($log['staff_id'] ?? 'N/A'); ?></td>
+                                    <td>
+                                        <span class="action-badge">
+                                            <?php echo htmlspecialchars(str_replace('_', ' ', $log['action_type'])); ?>
+                                        </span>
+                                    </td>
+                                    <td class="fields-changed">
+                                        <?php 
+                                        $fields = json_decode($log['fields_changed'] ?? '[]', true);
+                                        if (!empty($fields)) {
+                                            echo htmlspecialchars(implode(', ', $fields));
+                                        } else {
+                                            echo '-';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($log['ip_address'] ?? 'N/A'); ?></td>
+                                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?php echo htmlspecialchars($log['user_agent'] ?? 'N/A'); ?>">
+                                        <?php echo htmlspecialchars($log['user_agent'] ?? 'N/A'); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Staff ID</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>Failure Reason</th>
+                                <th>User Agent</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($audit_logs as $log): ?>
+                                <tr>
+                                    <td><?php echo date('Y-m-d H:i:s', strtotime($log['login_time'])); ?></td>
+                                    <td><?php echo htmlspecialchars($log['full_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['email']); ?></td>
+                                    <td><?php echo htmlspecialchars($log['staff_id'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['ip_address'] ?? 'N/A'); ?></td>
+                                    <td>
+                                        <span class="status-badge <?php echo htmlspecialchars($log['login_status']); ?>">
+                                            <?php echo htmlspecialchars($log['login_status']); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($log['failure_reason'] ?? '-'); ?></td>
+                                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?php echo htmlspecialchars($log['user_agent'] ?? 'N/A'); ?>">
+                                        <?php echo htmlspecialchars($log['user_agent'] ?? 'N/A'); ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
 
                 <?php if ($total_pages > 1): ?>
                     <div class="pagination-wrapper">
                         <div class="pagination-info">
-                            Showing <?php echo $offset + 1; ?> - <?php echo min($offset + $per_page, $total_records); ?> of <?php echo number_format($total_records); ?> logs
+                            Showing <?php echo $offset + 1; ?> - <?php echo min($offset + $per_page, ($total_records ?? 0)); ?> of <?php echo number_format($total_records ?? 0); ?> logs
                             (Page <?php echo $page; ?> of <?php echo $total_pages; ?>)
                         </div>
                         <div class="pagination">
+                            <?php
+                            $pagination_params = "type=" . htmlspecialchars($audit_type);
+                            if ($audit_type === 'profile') {
+                                $pagination_params .= "&action_type=" . htmlspecialchars($filter_action);
+                            } else {
+                                $pagination_params .= "&status=" . htmlspecialchars($filter_status);
+                            }
+                            $pagination_params .= "&email=" . htmlspecialchars($filter_email) . "&date=" . htmlspecialchars($filter_date);
+                            ?>
                             <?php if ($page > 1): ?>
-                                <a href="?page=1&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 16px;">
+                                <a href="?page=1&<?php echo $pagination_params; ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 16px;">
                                     <i class="fa fa-angle-double-left"></i> First
                                 </a>
-                                <a href="?page=<?php echo $page - 1; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 20px;">
+                                <a href="?page=<?php echo $page - 1; ?>&<?php echo $pagination_params; ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 20px;">
                                     <i class="fa fa-chevron-left"></i> Previous
                                 </a>
                             <?php else: ?>
@@ -608,7 +822,7 @@ try {
                             $end_page = min($total_pages, $page + 2);
                             
                             if ($start_page > 1): ?>
-                                <a href="?page=1&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">1</a>
+                                <a href="?page=1&<?php echo $pagination_params; ?>">1</a>
                                 <?php if ($start_page > 2): ?>
                                     <span style="padding: 10px 8px; color: #636e72;">...</span>
                                 <?php endif; ?>
@@ -618,7 +832,7 @@ try {
                                 <?php if ($i == $page): ?>
                                     <span class="current"><?php echo $i; ?></span>
                                 <?php else: ?>
-                                    <a href="?page=<?php echo $i; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
+                                    <a href="?page=<?php echo $i; ?>&<?php echo $pagination_params; ?>">
                                         <?php echo $i; ?>
                                     </a>
                                 <?php endif; ?>
@@ -628,16 +842,16 @@ try {
                                 <?php if ($end_page < $total_pages - 1): ?>
                                     <span style="padding: 10px 8px; color: #636e72;">...</span>
                                 <?php endif; ?>
-                                <a href="?page=<?php echo $total_pages; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>">
+                                <a href="?page=<?php echo $total_pages; ?>&<?php echo $pagination_params; ?>">
                                     <?php echo $total_pages; ?>
                                 </a>
                             <?php endif; ?>
 
                             <?php if ($page < $total_pages): ?>
-                                <a href="?page=<?php echo $page + 1; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 20px;">
+                                <a href="?page=<?php echo $page + 1; ?>&<?php echo $pagination_params; ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 20px;">
                                     Next <i class="fa fa-chevron-right"></i>
                                 </a>
-                                <a href="?page=<?php echo $total_pages; ?>&status=<?php echo htmlspecialchars($filter_status); ?>&email=<?php echo htmlspecialchars($filter_email); ?>&date=<?php echo htmlspecialchars($filter_date); ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 16px;">
+                                <a href="?page=<?php echo $total_pages; ?>&<?php echo $pagination_params; ?>" class="pagination-btn" style="text-decoration: none; padding: 10px 16px;">
                                     Last <i class="fa fa-angle-double-right"></i>
                                 </a>
                             <?php else: ?>
@@ -653,7 +867,7 @@ try {
                 <?php else: ?>
                     <div class="pagination-wrapper">
                         <div class="pagination-info">
-                            Showing <?php echo $total_records; ?> log<?php echo $total_records != 1 ? 's' : ''; ?>
+                            Showing <?php echo $total_records ?? 0; ?> log<?php echo ($total_records ?? 0) != 1 ? 's' : ''; ?>
                         </div>
                     </div>
                 <?php endif; ?>
