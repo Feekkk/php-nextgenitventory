@@ -102,3 +102,26 @@ CREATE TABLE IF NOT EXISTS `queue` (
     INDEX `idx_created_by` (`created_by`),
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Network Assets Table
+CREATE TABLE IF NOT EXISTS `net_assets` (
+    `asset_id` INT(11) NOT NULL AUTO_INCREMENT,
+    `serial` VARCHAR(100) DEFAULT NULL,
+    `model` VARCHAR(100) DEFAULT NULL,
+    `brand` VARCHAR(100) DEFAULT NULL,
+    `mac_add` VARCHAR(17) DEFAULT NULL,
+    `ip_add` VARCHAR(45) DEFAULT NULL,
+    `building` VARCHAR(100) DEFAULT NULL,
+    `level` VARCHAR(50) DEFAULT NULL,
+    `status` VARCHAR(50) DEFAULT NULL,
+    `remarks` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_by` INT(11) DEFAULT NULL,
+    PRIMARY KEY (`asset_id`),
+    INDEX `idx_serial` (`serial`),
+    INDEX `idx_mac_add` (`mac_add`),
+    INDEX `idx_ip_add` (`ip_add`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_building_level` (`building`, `level`),
+    FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
