@@ -394,7 +394,14 @@
         </div>
         <ul>
             <li><a href="Dashboard.php"><i class="fa fa-gauge"></i> Dashboard</a></li>
-            <li><a href="ManageUser.php"><i class="fa fa-users"></i> Manage Users</a></li>
+            <li class="menu-item has-dropdown">
+                <a href="#" class="dropdown-toggle"><i class="fa fa-users"></i> Manage Users</a>
+                <ul class="submenu">
+                    <li><a href="AddUser.php"><i class="fa fa-user-plus"></i> Add User</a></li>
+                    <li><a href="AddStaff.php"><i class="fa fa-id-badge"></i> Add Staff</a></li>
+                    <li><a href="ManageUser.php"><i class="fa fa-users-gear"></i> User List</a></li>
+                </ul>
+            </li>
             <li class="menu-item has-dropdown">
                 <a href="#" class="dropdown-toggle"><i class="fa fa-boxes"></i> Inventory</a>
                 <ul class="submenu">
