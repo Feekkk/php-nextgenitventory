@@ -439,18 +439,19 @@ function formatStatusLabel($status)
                         <th>Status</th>
                         <th>Remarks</th>
                         <th>Created By</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="assetsTableBody">
                     <?php if ($netAssetsError) : ?>
                         <tr>
-                            <td colspan="9">
+                            <td colspan="10">
                                 <div class="data-message"><?php echo htmlspecialchars($netAssetsError); ?></div>
                             </td>
                         </tr>
                     <?php elseif (empty($netAssets)) : ?>
                         <tr>
-                            <td colspan="9">
+                            <td colspan="10">
                                 <div class="empty-state">
                                     <i class="fa-solid fa-network-wired"></i>
                                     <p>No assets found</p>
@@ -495,6 +496,13 @@ function formatStatusLabel($status)
                                     <div class="asset-meta">
                                         <span><?php echo htmlspecialchars($asset['created_by_name'] ?? 'Unknown'); ?></span>
                                         <span><?php echo htmlspecialchars($createdMeta); ?></span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-action" onclick="window.location.href='../pages/NETview.php?id=<?php echo $asset['asset_id']; ?>'">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

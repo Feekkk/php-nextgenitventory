@@ -471,7 +471,7 @@ function formatStatusLabel($status)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'">
+                                        <button class="btn-action" onclick="window.location.href='../pages/AVview.php?id=<?php echo $asset['asset_id']; ?>'">
                                             <i class="fa-solid fa-eye"></i> View
                                         </button>
                                     </div>

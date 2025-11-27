@@ -1,0 +1,531 @@
+<?php
+session_start();
+require_once '../database/config.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../auth/login.php');
+    exit;
+}
+
+$pdo = getDBConnection();
+$asset = null;
+$error = '';
+
+$assetId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($assetId > 0) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT la.*, sl.staff_name AS assigned_to_name
+            FROM laptop_desktop_assets la
+            LEFT JOIN staff_list sl ON la.staff_id = sl.staff_id
+            WHERE la.asset_id = :id
+        ");
+        $stmt->execute([':id' => $assetId]);
+        $asset = $stmt->fetch();
+        
+        if (!$asset) {
+            $error = 'Asset not found.';
+        }
+    } catch (PDOException $e) {
+        $error = 'Unable to load asset details. Please try again later.';
+    }
+} else {
+    $error = 'Invalid asset ID.';
+}
+
+function formatAssetId($id) {
+    return sprintf('LAP-%05d', $id);
+}
+
+function formatStatusClass($status) {
+    $status = strtoupper(trim($status ?? ''));
+    $map = [
+        'AVAILABLE' => 'available',
+        'IN-USE' => 'in-use',
+        'MAINTENANCE' => 'maintenance',
+        'DISPOSED' => 'disposed',
+    ];
+    return $map[$status] ?? 'unknown';
+}
+
+function formatStatusLabel($status) {
+    $status = trim((string)$status);
+    return $status === '' ? 'Unknown' : ucwords(str_replace('-', ' ', $status));
+}
+
+function formatDate($date) {
+    if (!$date || $date === '0000-00-00') return '-';
+    return date('d M Y', strtotime($date));
+}
+
+function formatCurrency($amount) {
+    if (!$amount || $amount == 0) return '-';
+    return 'MYR ' . number_format($amount, 2);
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laptop/Desktop Asset Details - UniKL RCMP IT Inventory</title>
+    <link rel="icon" type="image/png" href="../public/rcmp.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/TechDashboard.css">
+    <style>
+        .view-page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #000000;
+        }
+
+        .btn-back {
+            padding: 10px 20px;
+            background: #f1f2f6;
+            color: #2d3436;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-back:hover {
+            background: #e3e6ed;
+        }
+
+        .asset-details-container {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        .asset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid rgba(26, 26, 46, 0.1);
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .asset-id-section {
+            flex: 1;
+        }
+
+        .asset-id-label {
+            font-size: 0.9rem;
+            color: #636e72;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .asset-id-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .asset-status-section {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .status-badge.available {
+            background: rgba(0, 184, 148, 0.1);
+            color: #00b894;
+        }
+
+        .status-badge.in-use {
+            background: rgba(108, 92, 231, 0.1);
+            color: #6c5ce7;
+        }
+
+        .status-badge.maintenance {
+            background: rgba(253, 121, 168, 0.1);
+            color: #fd79a8;
+        }
+
+        .status-badge.disposed {
+            background: rgba(99, 110, 114, 0.1);
+            color: #636e72;
+        }
+
+        .status-badge.unknown {
+            background: rgba(99, 110, 114, 0.15);
+            color: #2d3436;
+        }
+
+        .asset-type-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            background: rgba(108, 92, 231, 0.1);
+            color: #6c5ce7;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .detail-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(26, 26, 46, 0.1);
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .detail-label {
+            font-size: 0.85rem;
+            color: #636e72;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-size: 1rem;
+            color: #2d3436;
+            font-weight: 500;
+        }
+
+        .detail-value.empty {
+            color: #b2bec3;
+            font-style: italic;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: #c0392b;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .error-message i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: rgba(192, 57, 43, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .view-page-container {
+                padding: 20px 15px 60px;
+            }
+
+            .asset-details-container {
+                padding: 25px;
+            }
+
+            .asset-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .asset-status-section {
+                align-items: flex-start;
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+                gap: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <?php include_once("../components/HomeHeader.php"); ?>
+
+    <div class="view-page-container">
+        <div class="page-header">
+            <h1 class="page-title">Laptop/Desktop Asset Details</h1>
+            <a href="../technician/LAPTOPpage.php" class="btn-back">
+                <i class="fa-solid fa-arrow-left"></i>
+                Back to Assets
+            </a>
+        </div>
+
+        <?php if ($error || !$asset) : ?>
+            <div class="asset-details-container">
+                <div class="error-message">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <p><?php echo htmlspecialchars($error); ?></p>
+                </div>
+            </div>
+        <?php else : ?>
+            <div class="asset-details-container">
+                <div class="asset-header">
+                    <div class="asset-id-section">
+                        <div class="asset-id-label">Asset ID</div>
+                        <div class="asset-id-value"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></div>
+                        <?php if (!empty($asset['category'])) : ?>
+                            <div style="margin-top: 10px;">
+                                <span class="asset-type-badge"><?php echo htmlspecialchars($asset['category']); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="asset-status-section">
+                        <span class="status-badge <?php echo htmlspecialchars(formatStatusClass($asset['status'] ?? '')); ?>">
+                            <?php echo htmlspecialchars(formatStatusLabel($asset['status'] ?? '')); ?>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="details-grid">
+                    <div class="detail-section">
+                        <h3 class="section-title">Asset Information</h3>
+                        <div class="detail-item">
+                            <div class="detail-label">Brand</div>
+                            <div class="detail-value <?php echo empty($asset['brand']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['brand'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Model</div>
+                            <div class="detail-value <?php echo empty($asset['model']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['model'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Serial Number</div>
+                            <div class="detail-value <?php echo empty($asset['serial_num']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['serial_num'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Category</div>
+                            <div class="detail-value <?php echo empty($asset['category']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['category'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Acquisition Type</div>
+                            <div class="detail-value <?php echo empty($asset['acquisition_type']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['acquisition_type'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value">
+                                <span class="status-badge <?php echo htmlspecialchars(formatStatusClass($asset['status'] ?? '')); ?>">
+                                    <?php echo htmlspecialchars(formatStatusLabel($asset['status'] ?? '')); ?>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Assigned To</div>
+                            <div class="detail-value <?php echo empty($asset['assigned_to_name']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['assigned_to_name'] ?: '-'); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Hardware Specifications</h3>
+                        <div class="detail-item">
+                            <div class="detail-label">Processor</div>
+                            <div class="detail-value <?php echo empty($asset['processor']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['processor'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Memory (RAM)</div>
+                            <div class="detail-value <?php echo empty($asset['memory']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['memory'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Storage</div>
+                            <div class="detail-value <?php echo empty($asset['storage']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['storage'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">GPU</div>
+                            <div class="detail-value <?php echo empty($asset['gpu']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['gpu'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Operating System</div>
+                            <div class="detail-value <?php echo empty($asset['os']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['os'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Part Number</div>
+                            <div class="detail-value <?php echo empty($asset['part_number']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['part_number'] ?: '-'); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Warranty & Supplier</h3>
+                        <div class="detail-item">
+                            <div class="detail-label">Warranty Expiry</div>
+                            <div class="detail-value <?php echo empty($asset['warranty_expiry']) ? 'empty' : ''; ?>">
+                                <?php echo formatDate($asset['warranty_expiry']); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Supplier</div>
+                            <div class="detail-value <?php echo empty($asset['supplier']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['supplier'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Period</div>
+                            <div class="detail-value <?php echo empty($asset['period']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['period'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Department</div>
+                            <div class="detail-value <?php echo empty($asset['department']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['department'] ?: '-'); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Purchase Information</h3>
+                        <div class="detail-item">
+                            <div class="detail-label">P.O. Date</div>
+                            <div class="detail-value <?php echo empty($asset['P.O_DATE']) ? 'empty' : ''; ?>">
+                                <?php echo formatDate($asset['P.O_DATE']); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">P.O. Number</div>
+                            <div class="detail-value <?php echo empty($asset['P.O_NUM']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['P.O_NUM'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">D.O. Date</div>
+                            <div class="detail-value <?php echo empty($asset['D.O_DATE']) ? 'empty' : ''; ?>">
+                                <?php echo formatDate($asset['D.O_DATE']); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">D.O. Number</div>
+                            <div class="detail-value <?php echo empty($asset['D.O_NUM']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['D.O_NUM'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Invoice Date</div>
+                            <div class="detail-value <?php echo empty($asset['INVOICE_DATE']) ? 'empty' : ''; ?>">
+                                <?php echo formatDate($asset['INVOICE_DATE']); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Invoice Number</div>
+                            <div class="detail-value <?php echo empty($asset['INVOICE_NUM']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['INVOICE_NUM'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Purchase Cost</div>
+                            <div class="detail-value <?php echo empty($asset['PURCHASE_COST']) ? 'empty' : ''; ?>">
+                                <?php echo formatCurrency($asset['PURCHASE_COST']); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Cost</div>
+                            <div class="detail-value <?php echo empty($asset['cost']) ? 'empty' : ''; ?>">
+                                <?php echo formatCurrency($asset['cost']); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 class="section-title">Additional Information</h3>
+                        <div class="detail-item">
+                            <div class="detail-label">Activity Log</div>
+                            <div class="detail-value <?php echo empty($asset['activity_log']) ? 'empty' : ''; ?>" style="white-space: pre-wrap;">
+                                <?php echo htmlspecialchars($asset['activity_log'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Remarks</div>
+                            <div class="detail-value <?php echo empty($asset['remarks']) ? 'empty' : ''; ?>" style="white-space: pre-wrap;">
+                                <?php echo htmlspecialchars($asset['remarks'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Created At</div>
+                            <div class="detail-value <?php echo empty($asset['created_at']) ? 'empty' : ''; ?>">
+                                <?php echo $asset['created_at'] ? date('d M Y, H:i', strtotime($asset['created_at'])) : '-'; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <footer>
+        <?php include_once("../components/Footer.php"); ?>
+    </footer>
+</body>
+</html>
+
