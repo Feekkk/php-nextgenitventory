@@ -80,7 +80,7 @@ function formatCurrency($amount) {
         .view-page-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px 80px;
+            padding: 110px 20px 80px;
         }
 
         .page-header {
@@ -267,7 +267,7 @@ function formatCurrency($amount) {
 
         @media (max-width: 768px) {
             .view-page-container {
-                padding: 20px 15px 60px;
+                padding: 90px 15px 60px;
             }
 
             .asset-details-container {
@@ -288,10 +288,109 @@ function formatCurrency($amount) {
                 gap: 25px;
             }
         }
+        .simple-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            color: #2d3436;
+            height: 70px;
+            padding: 0 30px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .simple-header .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.3rem;
+            font-weight: 600;
+            gap: 12px;
+            text-decoration: none;
+            color: #2d3436;
+        }
+
+        .simple-header .logo img {
+            height: 38px;
+        }
+
+        .simple-header .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+        }
+
+        .simple-header .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #6c5ce7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.85rem;
+            overflow: hidden;
+        }
+
+        .simple-header .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .simple-header .user-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #2d3436;
+        }
     </style>
 </head>
 <body>
-    <?php include_once("../components/HomeHeader.php"); ?>
+    <header class="simple-header">
+        <a class="logo" href="../index.php">
+            <img src="../public/unikl-rcmp.png" alt="UniKL RCMP Logo">
+            <span>UniKL RCMP IT Inventory</span>
+        </a>
+        <div class="header-actions">
+            <?php
+            $profile_picture = null;
+            if (isset($_SESSION['user_id'])) {
+                try {
+                    $stmt = $pdo->prepare("SELECT profile_picture FROM technician WHERE id = ?");
+                    $stmt->execute([$_SESSION['user_id']]);
+                    $result = $stmt->fetch();
+                    if ($result && !empty($result['profile_picture'])) {
+                        $profile_picture = $result['profile_picture'];
+                    }
+                } catch (Exception $e) {
+                }
+            }
+            ?>
+            <?php if (isset($_SESSION['full_name'])): ?>
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <?php if (!empty($profile_picture) && file_exists(__DIR__ . '/../' . $profile_picture)): ?>
+                            <img src="../<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture">
+                        <?php else: ?>
+                            <?php echo strtoupper(substr($_SESSION['full_name'], 0, 1)); ?>
+                        <?php endif; ?>
+                    </div>
+                    <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
+                </div>
+            <?php endif; ?>
+        </div>
+    </header>
 
     <div class="view-page-container">
         <div class="page-header">
