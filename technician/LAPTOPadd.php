@@ -6,6 +6,137 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$errors = [];
+$successMessage = '';
+$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
+$formData = [
+    'serial_num' => '',
+    'brand' => '',
+    'model' => '',
+    'acquisition_type' => '',
+    'category' => '',
+    'status' => '',
+    'staff_id' => '',
+    'processor' => '',
+    'memory' => '',
+    'os' => '',
+    'storage' => '',
+    'gpu' => '',
+    'warranty_expiry' => '',
+    'part_number' => '',
+    'supplier' => '',
+    'period' => '',
+    'activity_log' => '',
+    'P.O_DATE' => '',
+    'P.O_NUM' => '',
+    'D.O_DATE' => '',
+    'D.O_NUM' => '',
+    'INVOICE_DATE' => '',
+    'INVOICE_NUM' => '',
+    'PURCHASE_COST' => '',
+    'department' => '',
+    'cost' => '',
+    'remarks' => '',
+];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    foreach (array_keys($formData) as $field) {
+        $formData[$field] = trim($_POST[$field] ?? '');
+    }
+
+    if ($formData['serial_num'] === '') {
+        $errors[] = 'Serial number is required.';
+    }
+
+    if ($formData['brand'] === '') {
+        $errors[] = 'Brand is required.';
+    }
+
+    if ($formData['model'] === '') {
+        $errors[] = 'Model is required.';
+    }
+
+    if ($formData['status'] === '' || !in_array($formData['status'], $allowedStatuses, true)) {
+        $errors[] = 'Select a valid status.';
+    }
+
+    if ($formData['PURCHASE_COST'] !== '' && !is_numeric($formData['PURCHASE_COST'])) {
+        $errors[] = 'Purchase cost must be a valid number.';
+    }
+
+    if ($formData['cost'] !== '' && !is_numeric($formData['cost'])) {
+        $errors[] = 'Cost must be a valid number.';
+    }
+
+    if ($formData['staff_id'] !== '' && !is_numeric($formData['staff_id'])) {
+        $errors[] = 'Staff ID must be a valid number.';
+    }
+
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO laptop_desktop_assets (
+                    serial_num, brand, model, acquisition_type, category, status, staff_id,
+                    processor, memory, os, storage, gpu, warranty_expiry, part_number,
+                    supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
+                    `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, department, cost, remarks
+                ) VALUES (
+                    :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
+                    :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
+                    :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
+                    :invoice_date, :invoice_num, :purchase_cost, :department, :cost, :remarks
+                )
+            ");
+
+            $poDate = $formData['P.O_DATE'] ?: null;
+            $doDate = $formData['D.O_DATE'] ?: null;
+            $invoiceDate = $formData['INVOICE_DATE'] ?: null;
+            $warrantyExpiry = $formData['warranty_expiry'] ?: null;
+            $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
+            $cost = $formData['cost'] !== '' ? $formData['cost'] : null;
+            $staffId = $formData['staff_id'] !== '' ? $formData['staff_id'] : null;
+
+            $stmt->execute([
+                ':serial_num' => $formData['serial_num'],
+                ':brand' => $formData['brand'],
+                ':model' => $formData['model'],
+                ':acquisition_type' => $formData['acquisition_type'] ?: null,
+                ':category' => $formData['category'] ?: null,
+                ':status' => $formData['status'],
+                ':staff_id' => $staffId,
+                ':processor' => $formData['processor'] ?: null,
+                ':memory' => $formData['memory'] ?: null,
+                ':os' => $formData['os'] ?: null,
+                ':storage' => $formData['storage'] ?: null,
+                ':gpu' => $formData['gpu'] ?: null,
+                ':warranty_expiry' => $warrantyExpiry,
+                ':part_number' => $formData['part_number'] ?: null,
+                ':supplier' => $formData['supplier'] ?: null,
+                ':period' => $formData['period'] ?: null,
+                ':activity_log' => $formData['activity_log'] ?: null,
+                ':po_date' => $poDate,
+                ':po_num' => $formData['P.O_NUM'] ?: null,
+                ':do_date' => $doDate,
+                ':do_num' => $formData['D.O_NUM'] ?: null,
+                ':invoice_date' => $invoiceDate,
+                ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
+                ':purchase_cost' => $purchaseCost,
+                ':department' => $formData['department'] ?: null,
+                ':cost' => $cost,
+                ':remarks' => $formData['remarks'] ?: null,
+            ]);
+
+            $successMessage = 'Laptop/Desktop asset saved successfully.';
+            foreach (array_keys($formData) as $field) {
+                $formData[$field] = '';
+            }
+        } catch (PDOException $e) {
+            $errors[] = 'Unable to save asset right now. Please try again.';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -138,6 +269,30 @@ if (!isset($_SESSION['user_id'])) {
             background: #e3e6ed;
         }
 
+        .alert {
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .alert ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .alert-error {
+            background: rgba(192, 57, 43, 0.1);
+            border: 1px solid rgba(192, 57, 43, 0.2);
+            color: #c0392b;
+        }
+
+        .alert-success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -162,39 +317,51 @@ if (!isset($_SESSION['user_id'])) {
             <p>Register new laptops or desktops, track their assignment, and document key details.</p>
         </div>
 
-        <form class="asset-form">
+        <?php if (!empty($errors)) : ?>
+            <div class="alert alert-error">
+                <ul>
+                    <?php foreach ($errors as $error) : ?>
+                        <li><?php echo htmlspecialchars($error); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php elseif ($successMessage) : ?>
+            <div class="alert alert-success">
+                <?php echo htmlspecialchars($successMessage); ?>
+            </div>
+        <?php endif; ?>
+
+        <form class="asset-form" method="POST" autocomplete="off">
             <div class="form-section">
                 <h3 class="form-section-title">Asset Information</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="assetId">Asset ID</label>
-                        <input type="text" id="assetId" name="assetId" placeholder="e.g., LT-000123">
+                        <label for="serial_num">Serial Number <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="serial_num" name="serial_num" placeholder="Enter serial number" value="<?php echo htmlspecialchars($formData['serial_num']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="deviceType">Device Type</label>
-                        <select id="deviceType" name="deviceType">
-                            <option value="">Select device type</option>
-                            <option value="laptop">Laptop</option>
-                            <option value="desktop">Desktop</option>
-                            <option value="workstation">Workstation</option>
-                            <option value="all-in-one">All-in-One</option>
+                        <label for="brand">Brand <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="brand" name="brand" placeholder="e.g., Dell" value="<?php echo htmlspecialchars($formData['brand']); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="model">Model <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="model" name="model" placeholder="e.g., Latitude 7420" value="<?php echo htmlspecialchars($formData['model']); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" name="category">
+                            <option value="">Select category</option>
+                            <option value="Laptop" <?php echo $formData['category'] === 'Laptop' ? 'selected' : ''; ?>>Laptop</option>
+                            <option value="Desktop AIO" <?php echo $formData['category'] === 'Desktop AIO' ? 'selected' : ''; ?>>Desktop AIO</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="brand">Brand</label>
-                        <input type="text" id="brand" name="brand" placeholder="e.g., Dell">
+                        <label for="acquisition_type">Acquisition Type</label>
+                        <input type="text" id="acquisition_type" name="acquisition_type" placeholder="e.g., Purchase, Lease" value="<?php echo htmlspecialchars($formData['acquisition_type']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="model">Model</label>
-                        <input type="text" id="model" name="model" placeholder="e.g., Latitude 7420">
-                    </div>
-                    <div class="form-group">
-                        <label for="serialNumber">Serial Number</label>
-                        <input type="text" id="serialNumber" name="serialNumber" placeholder="Enter serial number">
-                    </div>
-                    <div class="form-group">
-                        <label for="assetTag">Asset Tag</label>
-                        <input type="text" id="assetTag" name="assetTag" placeholder="Enter asset tag">
+                        <label for="part_number">Part Number</label>
+                        <input type="text" id="part_number" name="part_number" placeholder="Enter part number" value="<?php echo htmlspecialchars($formData['part_number']); ?>">
                     </div>
                 </div>
             </div>
@@ -203,28 +370,24 @@ if (!isset($_SESSION['user_id'])) {
                 <h3 class="form-section-title">Hardware Specifications</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="cpu">CPU</label>
-                        <input type="text" id="cpu" name="cpu" placeholder="e.g., Intel Core i7-1185G7">
+                        <label for="processor">Processor</label>
+                        <input type="text" id="processor" name="processor" placeholder="e.g., Intel Core i7-1185G7" value="<?php echo htmlspecialchars($formData['processor']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="ram">RAM</label>
-                        <input type="text" id="ram" name="ram" placeholder="e.g., 16GB DDR4">
+                        <label for="memory">Memory</label>
+                        <input type="text" id="memory" name="memory" placeholder="e.g., 16GB DDR4" value="<?php echo htmlspecialchars($formData['memory']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="storage">Storage</label>
-                        <input type="text" id="storage" name="storage" placeholder="e.g., 512GB NVMe SSD">
+                        <input type="text" id="storage" name="storage" placeholder="e.g., 512GB NVMe SSD" value="<?php echo htmlspecialchars($formData['storage']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="gpu">Graphics</label>
-                        <input type="text" id="gpu" name="gpu" placeholder="e.g., Intel Iris Xe">
+                        <label for="gpu">GPU</label>
+                        <input type="text" id="gpu" name="gpu" placeholder="e.g., Intel Iris Xe" value="<?php echo htmlspecialchars($formData['gpu']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="os">Operating System</label>
-                        <input type="text" id="os" name="os" placeholder="e.g., Windows 11 Pro">
-                    </div>
-                    <div class="form-group">
-                        <label for="additionalSpecs">Additional Specs</label>
-                        <input type="text" id="additionalSpecs" name="additionalSpecs" placeholder="e.g., 14\" FHD Touch, Fingerprint Reader">
+                        <input type="text" id="os" name="os" placeholder="e.g., Windows 11 Pro" value="<?php echo htmlspecialchars($formData['os']); ?>">
                     </div>
                 </div>
             </div>
@@ -233,34 +396,73 @@ if (!isset($_SESSION['user_id'])) {
                 <h3 class="form-section-title">Deployment Details</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="location">Location</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., IT Office, Block B">
-                    </div>
-                    <div class="form-group">
-                        <label for="assignedTo">Assigned To</label>
-                        <input type="text" id="assignedTo" name="assignedTo" placeholder="e.g., John Doe">
+                        <label for="staff_id">Staff ID</label>
+                        <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" value="<?php echo htmlspecialchars($formData['staff_id']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="department">Department</label>
-                        <input type="text" id="department" name="department" placeholder="e.g., IT Support">
+                        <input type="text" id="department" name="department" placeholder="e.g., IT Support" value="<?php echo htmlspecialchars($formData['department']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="purchaseDate">Purchase Date</label>
-                        <input type="date" id="purchaseDate" name="purchaseDate">
+                        <label for="warranty_expiry">Warranty Expiry</label>
+                        <input type="date" id="warranty_expiry" name="warranty_expiry" value="<?php echo htmlspecialchars($formData['warranty_expiry']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="warrantyExpiry">Warranty Expiry</label>
-                        <input type="date" id="warrantyExpiry" name="warrantyExpiry">
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Status</label>
-                        <select id="status" name="status">
+                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
+                        <select id="status" name="status" required>
                             <option value="">Select status</option>
-                            <option value="available">Available</option>
-                            <option value="in-use">In Use</option>
-                            <option value="maintenance">Under Maintenance</option>
-                            <option value="disposed">Disposed</option>
+                            <?php foreach ($allowedStatuses as $status) : ?>
+                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
+                                    <?php echo ucwords(str_replace('-', ' ', strtolower($status))); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="supplier">Supplier</label>
+                        <input type="text" id="supplier" name="supplier" placeholder="Enter supplier name" value="<?php echo htmlspecialchars($formData['supplier']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="period">Period</label>
+                        <input type="text" id="period" name="period" placeholder="e.g., 2024-2025" value="<?php echo htmlspecialchars($formData['period']); ?>">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Purchase Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="P.O_DATE">P.O. Date</label>
+                        <input type="date" id="P.O_DATE" name="P.O_DATE" value="<?php echo htmlspecialchars($formData['P.O_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="P.O_NUM">P.O. Number</label>
+                        <input type="text" id="P.O_NUM" name="P.O_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['P.O_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="D.O_DATE">D.O. Date</label>
+                        <input type="date" id="D.O_DATE" name="D.O_DATE" value="<?php echo htmlspecialchars($formData['D.O_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="D.O_NUM">D.O. Number</label>
+                        <input type="text" id="D.O_NUM" name="D.O_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['D.O_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="INVOICE_DATE">Invoice Date</label>
+                        <input type="date" id="INVOICE_DATE" name="INVOICE_DATE" value="<?php echo htmlspecialchars($formData['INVOICE_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="INVOICE_NUM">Invoice Number</label>
+                        <input type="text" id="INVOICE_NUM" name="INVOICE_NUM" placeholder="Enter invoice number" value="<?php echo htmlspecialchars($formData['INVOICE_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="PURCHASE_COST">Purchase Cost (MYR)</label>
+                        <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter purchase cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="cost">Cost (MYR)</label>
+                        <input type="number" step="0.01" id="cost" name="cost" placeholder="Enter cost" value="<?php echo htmlspecialchars($formData['cost']); ?>">
                     </div>
                 </div>
             </div>
@@ -268,12 +470,26 @@ if (!isset($_SESSION['user_id'])) {
             <div class="form-section">
                 <h3 class="form-section-title">Additional Information</h3>
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="supplier">Supplier / Vendor</label>
-                        <input type="text" id="supplier" name="supplier" placeholder="Enter supplier name">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="activity_log">Activity Log</label>
+                        <textarea id="activity_log" name="activity_log" placeholder="Enter activity log entries"><?php echo htmlspecialchars($formData['activity_log']); ?></textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="cost">Purchase Cost (MYR)</label>
-                        <input type="number" step="0.01" id="cost" name="cost" placeholder="Enter cost">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="remarks">Remarks</label>
+                        <textarea id="remarks" name="remarks" placeholder="Add any additional notes or remarks"><?php echo htmlspecialchars($formData['remarks']); ?></textarea>
                     </div>
+                </div>
+            </div>
 
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Asset</button>
+            </div>
+        </form>
+    </div>
+
+    <footer>
+        <?php include_once("../components/Footer.php"); ?>
+    </footer>
+</body>
+</html>
