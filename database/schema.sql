@@ -82,24 +82,24 @@ CREATE TABLE IF NOT EXISTS `profile_audit` (
     FOREIGN KEY (`user_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Handover Queue Table
-CREATE TABLE IF NOT EXISTS `queue` (
-    `id` INT(11) NOT NULL AUTO_INCREMENT,
-    `staff_id` VARCHAR(100) NOT NULL,
+-- Staff List Table
+CREATE TABLE IF NOT EXISTS `staff_list` (
+    `staff_id` INT(11) NOT NULL AUTO_INCREMENT,
     `staff_name` VARCHAR(100) NOT NULL,
-    `email` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(255) DEFAULT NULL,
     `phone` VARCHAR(20) DEFAULT NULL,
     `faculty` VARCHAR(255) DEFAULT NULL,
-    `status` ENUM('pending', 'processing', 'completed', 'cancelled') DEFAULT 'pending',
-    `created_by` INT(11) DEFAULT NULL,
+    `status` ENUM('available', 'unavailable', 'queue', 'pending', 'handovers') DEFAULT 'available',
+    `remarks` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_by` INT(11) DEFAULT NULL,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `idx_staff_id` (`staff_id`),
+    PRIMARY KEY (`staff_id`),
     INDEX `idx_staff_name` (`staff_name`),
     INDEX `idx_email` (`email`),
     INDEX `idx_status` (`status`),
     INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_updated_at` (`updated_at`),
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
