@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getDBConnection();
 $errors = [];
 $successMessage = '';
-$allowedStatuses = ['AVAILABLE', 'UNAVAIBLE', 'MAINTENANCE', 'DISPOSED'];
+$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
 $formData = [
     'serial' => '',
     'brand' => '',
@@ -20,6 +20,13 @@ $formData = [
     'building' => '',
     'level' => '',
     'status' => '',
+    'P.O_DATE' => '',
+    'P.O_NUM' => '',
+    'D.O_DATE' => '',
+    'D.O_NUM' => '',
+    'INVOICE_DATE' => '',
+    'INVOICE_NUM' => '',
+    'PURCHASE_COST' => '',
     'remarks' => '',
 ];
 
@@ -57,17 +64,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($formData['PURCHASE_COST'] !== '' && !is_numeric($formData['PURCHASE_COST'])) {
+        $errors[] = 'Purchase cost must be a valid number.';
+    }
+
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
                 INSERT INTO net_assets (
                     serial, model, brand, mac_add, ip_add,
-                    building, level, status, remarks, created_by
+                    building, level, status, `P.O_DATE`, `P.O_NUM`,
+                    `D.O_DATE`, `D.O_NUM`, `INVOICE_DATE`, `INVOICE_NUM`,
+                    `PURCHASE_COST`, remarks, created_by
                 ) VALUES (
                     :serial, :model, :brand, :mac_add, :ip_add,
-                    :building, :level, :status, :remarks, :created_by
+                    :building, :level, :status, :po_date, :po_num,
+                    :do_date, :do_num, :invoice_date, :invoice_num,
+                    :purchase_cost, :remarks, :created_by
                 )
             ");
+
+            $poDate = $formData['P.O_DATE'] ?: null;
+            $invoiceDate = $formData['INVOICE_DATE'] ?: null;
+            $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
 
             $stmt->execute([
                 ':serial' => $formData['serial'],
@@ -78,6 +97,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':building' => $formData['building'] ?: null,
                 ':level' => $formData['level'] ?: null,
                 ':status' => $formData['status'],
+                ':po_date' => $poDate,
+                ':po_num' => $formData['P.O_NUM'] ?: null,
+                ':do_date' => $formData['D.O_DATE'] ?: null,
+                ':do_num' => $formData['D.O_NUM'] ?: null,
+                ':invoice_date' => $invoiceDate,
+                ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
+                ':purchase_cost' => $purchaseCost,
                 ':remarks' => $formData['remarks'] ?: null,
                 ':created_by' => $_SESSION['user_id'],
             ]);
@@ -335,10 +361,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="">Select status</option>
                             <?php foreach ($allowedStatuses as $status) : ?>
                                 <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
-                                    <?php echo ucwords(str_replace('-', ' ', $status)); ?>
+                                    <?php echo ucwords(str_replace('-', ' ', strtolower($status))); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Purchase Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="P.O_DATE">P.O. Date</label>
+                        <input type="date" id="P.O_DATE" name="P.O_DATE" value="<?php echo htmlspecialchars($formData['P.O_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="P.O_NUM">P.O. Number</label>
+                        <input type="text" id="P.O_NUM" name="P.O_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['P.O_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="D.O_DATE">D.O. Date</label>
+                        <input type="text" id="D.O_DATE" name="D.O_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['D.O_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="D.O_NUM">D.O. Number</label>
+                        <input type="text" id="D.O_NUM" name="D.O_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['D.O_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="INVOICE_DATE">Invoice Date</label>
+                        <input type="date" id="INVOICE_DATE" name="INVOICE_DATE" value="<?php echo htmlspecialchars($formData['INVOICE_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="INVOICE_NUM">Invoice Number</label>
+                        <input type="text" id="INVOICE_NUM" name="INVOICE_NUM" placeholder="Enter invoice number" value="<?php echo htmlspecialchars($formData['INVOICE_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="PURCHASE_COST">Purchase Cost (MYR)</label>
+                        <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>">
                     </div>
                 </div>
             </div>

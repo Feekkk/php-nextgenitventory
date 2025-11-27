@@ -12,9 +12,9 @@ $errors = [];
 $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
-$allowedStatuses = ['AVAILABLE', 'UNAVAIBLE', 'MAINTENANCE', 'DISPOSED'];
+$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
 $requiredHeaders = ['serial', 'model', 'brand', 'status'];
-$optionalHeaders = ['mac_add', 'ip_add', 'building', 'level', 'remarks'];
+$optionalHeaders = ['mac_add', 'ip_add', 'building', 'level', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
@@ -63,10 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insertStmt = $pdo->prepare("
                             INSERT INTO net_assets (
                                 serial, model, brand, mac_add, ip_add,
-                                building, level, status, remarks, created_by
+                                building, level, status, `P.O_DATE`, `P.O_NUM`,
+                                `D.O_DATE`, `D.O_NUM`, `INVOICE_DATE`, `INVOICE_NUM`,
+                                `PURCHASE_COST`, remarks, created_by
                             ) VALUES (
                                 :serial, :model, :brand, :mac_add, :ip_add,
-                                :building, :level, :status, :remarks, :created_by
+                                :building, :level, :status, :po_date, :po_num,
+                                :do_date, :do_num, :invoice_date, :invoice_num,
+                                :purchase_cost, :remarks, :created_by
                             )
                         ");
 
@@ -86,6 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'building' => '',
                                 'level' => '',
                                 'status' => '',
+                                'p.o_date' => '',
+                                'p.o_num' => '',
+                                'd.o_date' => '',
+                                'd.o_num' => '',
+                                'invoice_date' => '',
+                                'invoice_num' => '',
+                                'purchase_cost' => '',
                                 'remarks' => '',
                             ];
 
@@ -103,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
-                            if ($rowData['status'] !== '' && !in_array(strtolower($rowData['status']), $allowedStatuses, true)) {
+                            if ($rowData['status'] !== '' && !in_array(strtoupper($rowData['status']), $allowedStatuses, true)) {
                                 $rowErrors[] = 'Invalid status value';
                             }
 
@@ -120,13 +131,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
+                            if ($rowData['p.o_date'] !== '') {
+                                $date = DateTime::createFromFormat('Y-m-d', $rowData['p.o_date']);
+                                if (!$date || $date->format('Y-m-d') !== $rowData['p.o_date']) {
+                                    $rowErrors[] = 'Invalid P.O. date format (use YYYY-MM-DD)';
+                                }
+                            }
+
+                            if ($rowData['invoice_date'] !== '') {
+                                $date = DateTime::createFromFormat('Y-m-d', $rowData['invoice_date']);
+                                if (!$date || $date->format('Y-m-d') !== $rowData['invoice_date']) {
+                                    $rowErrors[] = 'Invalid invoice date format (use YYYY-MM-DD)';
+                                }
+                            }
+
+                            if ($rowData['purchase_cost'] !== '' && !is_numeric($rowData['purchase_cost'])) {
+                                $rowErrors[] = 'Purchase cost must be a number';
+                            }
+
                             if (!empty($rowErrors)) {
                                 $skippedRows[] = "Row {$lineNumber}: " . implode('; ', $rowErrors);
                                 $lineNumber++;
                                 continue;
                             }
 
-                            $statusValue = strtolower($rowData['status']);
+                            $statusValue = strtoupper($rowData['status']);
+                            
+                            $poDate = $rowData['p.o_date'] ?: null;
+                            $invoiceDate = $rowData['invoice_date'] ?: null;
+                            $purchaseCost = $rowData['purchase_cost'] !== '' ? $rowData['purchase_cost'] : null;
 
                             $insertStmt->execute([
                                 ':serial' => $rowData['serial'],
@@ -137,6 +170,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':building' => $rowData['building'] ?: null,
                                 ':level' => $rowData['level'] ?: null,
                                 ':status' => $statusValue,
+                                ':po_date' => $poDate,
+                                ':po_num' => $rowData['p.o_num'] ?: null,
+                                ':do_date' => $rowData['d.o_date'] ?: null,
+                                ':do_num' => $rowData['d.o_num'] ?: null,
+                                ':invoice_date' => $invoiceDate,
+                                ':invoice_num' => $rowData['invoice_num'] ?: null,
+                                ':purchase_cost' => $purchaseCost,
                                 ':remarks' => $rowData['remarks'] ?: null,
                                 ':created_by' => $_SESSION['user_id'],
                             ]);
@@ -397,7 +437,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <ul>
                         <li>Ensure headers match the template (lowercase, underscores).</li>
                         <li>Required columns: serial, model, brand, status.</li>
-                        <li>Optional columns: mac_add, ip_add, building, level, remarks.</li>
+                        <li>Optional columns: mac_add, ip_add, building, level, p.o_date, p.o_num, d.o_date, d.o_num, invoice_date, invoice_num, purchase_cost, remarks.</li>
+                        <li>Date columns (p.o_date, invoice_date) should be in YYYY-MM-DD format.</li>
                         <li>Strip sensitive credentials from exports before uploading.</li>
                     </ul>
                 </div>
@@ -416,6 +457,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <th>building</th>
                                     <th>level</th>
                                     <th>status</th>
+                                    <th>p.o_date</th>
+                                    <th>p.o_num</th>
+                                    <th>d.o_date</th>
+                                    <th>d.o_num</th>
+                                    <th>invoice_date</th>
+                                    <th>invoice_num</th>
+                                    <th>purchase_cost</th>
                                     <th>remarks</th>
                                 </tr>
                             </thead>
@@ -428,7 +476,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>10.10.10.5</td>
                                     <td>Data Center</td>
                                     <td>Level 2</td>
-                                    <td>available</td>
+                                    <td>AVAILABLE</td>
+                                    <td>2024-01-15</td>
+                                    <td>PO-2024-001</td>
+                                    <td>2024-01-20</td>
+                                    <td>DO-2024-001</td>
+                                    <td>2024-01-25</td>
+                                    <td>INV-2024-001</td>
+                                    <td>15000.00</td>
                                     <td>Core switch for lab</td>
                                 </tr>
                             </tbody>
