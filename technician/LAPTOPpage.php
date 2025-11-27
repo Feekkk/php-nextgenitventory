@@ -499,8 +499,8 @@ function formatStatusLabel($status)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="window.location.href='LAPTOPedit.php?id=<?php echo $asset['asset_id']; ?>'">
-                                            <i class="fa-solid fa-edit"></i> Edit
+                                        <button class="btn-action" onclick="window.location.href='LAPTOPview.php?id=<?php echo $asset['asset_id']; ?>'">
+                                            <i class="fa-solid fa-eye"></i> View
                                         </button>
                                     </div>
                                 </td>
