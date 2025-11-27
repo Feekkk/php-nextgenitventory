@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS `admin` (
 -- Technician Table
 CREATE TABLE IF NOT EXISTS `technician` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
-    `staff_id` VARCHAR(100) NOT NULL UNIQUE,
-    `full_name` VARCHAR(100) NOT NULL,
+    `tech_id` VARCHAR(100) NOT NULL UNIQUE,
+    `tech_name` VARCHAR(100) NOT NULL,
     `email` VARCHAR(255) NOT NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
     `role` ENUM('admin', 'technician') DEFAULT 'technician',
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `technician` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `idx_staff_id` (`staff_id`),
+    INDEX `idx_tech_id` (`tech_id`),
     INDEX `idx_email` (`email`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `technician` (
 CREATE TABLE IF NOT EXISTS `login_audit` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
     `user_id` INT(11) DEFAULT NULL,
-    `staff_id` VARCHAR(100) DEFAULT NULL,
+    `tech_id` VARCHAR(100) DEFAULT NULL,
     `email` VARCHAR(255) NOT NULL,
     `ip_address` VARCHAR(45) DEFAULT NULL,
     `user_agent` TEXT DEFAULT NULL,
@@ -50,19 +50,19 @@ CREATE TABLE IF NOT EXISTS `login_audit` (
     `logout_time` TIMESTAMP NULL DEFAULT NULL,
     `session_id` VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (`id`),
-    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_tech_id` (`tech_id`),
     INDEX `idx_email` (`email`),
     INDEX `idx_login_status` (`login_status`),
     INDEX `idx_login_time` (`login_time`),
     INDEX `idx_ip_address` (`ip_address`),
-    FOREIGN KEY (`user_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+    FOREIGN KEY (`tech_id`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Profile Audit Trail Table
 CREATE TABLE IF NOT EXISTS `profile_audit` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
-    `user_id` INT(11) DEFAULT NULL,
-    `staff_id` VARCHAR(100) DEFAULT NULL,
+    `tech_id` INT(11) DEFAULT NULL,
+    `tech_id` VARCHAR(100) DEFAULT NULL,
     `email` VARCHAR(255) NOT NULL,
     `action_type` ENUM('update_profile', 'change_password', 'upload_picture', 'update_email', 'update_phone', 'update_name', 'admin_update') NOT NULL,
     `fields_changed` TEXT DEFAULT NULL,
@@ -73,8 +73,7 @@ CREATE TABLE IF NOT EXISTS `profile_audit` (
     `session_id` VARCHAR(255) DEFAULT NULL,
     `action_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `idx_user_id` (`user_id`),
-    INDEX `idx_staff_id` (`staff_id`),
+    INDEX `idx_tech_id` (`tech_id`),
     INDEX `idx_email` (`email`),
     INDEX `idx_action_type` (`action_type`),
     INDEX `idx_action_time` (`action_time`),
