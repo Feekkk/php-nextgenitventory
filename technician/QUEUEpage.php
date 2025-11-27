@@ -14,41 +14,49 @@ $pendingQueues = [];
 $searchTerm = trim($_GET['search'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $staff_id = trim($_POST['staff_id'] ?? '');
     $staff_name = trim($_POST['staff_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $faculty = trim($_POST['faculty'] ?? '');
+    $remarks = trim($_POST['remarks'] ?? '');
     
-    if (empty($staff_id) || empty($staff_name) || empty($email)) {
-        $error = 'Staff ID, Staff Name, and Email are required.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (empty($staff_name)) {
+        $error = 'Staff Name is required.';
+    } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Invalid email format.';
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT id FROM queue WHERE staff_id = ? OR email = ?");
-            $stmt->execute([$staff_id, $email]);
-            if ($stmt->fetch()) {
-                $error = 'Staff ID or Email already exists in the queue.';
+            if (!empty($email)) {
+                $stmt = $pdo->prepare("SELECT staff_id FROM staff_list WHERE email = ?");
+                $stmt->execute([$email]);
+                if ($stmt->fetch()) {
+                    $error = 'Email already exists in the staff list.';
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO staff_list (staff_name, email, phone, faculty, remarks, created_by, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+                    $stmt->execute([$staff_name, $email ?: null, $phone ?: null, $faculty ?: null, $remarks ?: null, $_SESSION['user_id']]);
+                    
+                    $success = 'Staff added to queue successfully!';
+                    header("refresh:2;url=QUEUEpage.php");
+                }
             } else {
-                $stmt = $pdo->prepare("INSERT INTO queue (staff_id, staff_name, email, phone, faculty, created_by, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
-                $stmt->execute([$staff_id, $staff_name, $email, $phone ?: null, $faculty ?: null, $_SESSION['user_id']]);
+                $stmt = $pdo->prepare("INSERT INTO staff_list (staff_name, email, phone, faculty, remarks, created_by, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')");
+                $stmt->execute([$staff_name, null, $phone ?: null, $faculty ?: null, $remarks ?: null, $_SESSION['user_id']]);
                 
-                $success = 'Queue entry added successfully!';
+                $success = 'Staff added to queue successfully!';
                 header("refresh:2;url=QUEUEpage.php");
             }
         } catch (PDOException $e) {
-            $error = 'Failed to add queue entry. Please try again.';
+            $error = 'Failed to add staff to queue. Please try again.';
         }
     }
 }
 
 try {
-    $pendingSql = "SELECT staff_id, staff_name, email, phone, faculty, created_at FROM queue WHERE status = 'pending'";
+    $pendingSql = "SELECT staff_id, staff_name, email, phone, faculty, remarks, created_at FROM staff_list WHERE status IN ('pending', 'queue')";
     $pendingParams = [];
 
     if ($searchTerm !== '') {
-        $pendingSql .= " AND (staff_name LIKE :search OR staff_id LIKE :search)";
+        $pendingSql .= " AND (staff_name LIKE :search OR email LIKE :search)";
         $pendingParams['search'] = '%' . $searchTerm . '%';
     }
 
@@ -300,14 +308,6 @@ try {
                     <h3 class="form-section-title">Staff Information</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="staff_id" class="required">Staff ID</label>
-                            <div class="input-wrapper">
-                                <i class="fa-solid fa-id-card input-icon"></i>
-                                <input type="text" id="staff_id" name="staff_id" placeholder="e.g., STAFF001" value="<?php echo htmlspecialchars($_POST['staff_id'] ?? ''); ?>" required>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
                             <label for="staff_name" class="required">Staff Name</label>
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-user input-icon"></i>
@@ -316,10 +316,10 @@ try {
                         </div>
 
                         <div class="form-group">
-                            <label for="email" class="required">Email Address</label>
+                            <label for="email">Email Address</label>
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-envelope input-icon"></i>
-                                <input type="email" id="email" name="email" placeholder="staff@unikl.edu.my" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required>
+                                <input type="email" id="email" name="email" placeholder="staff@unikl.edu.my" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
                             </div>
                         </div>
 
@@ -337,6 +337,11 @@ try {
                                 <i class="fa-solid fa-building input-icon"></i>
                                 <input type="text" id="faculty" name="faculty" placeholder="e.g., Faculty of Engineering" value="<?php echo htmlspecialchars($_POST['faculty'] ?? ''); ?>">
                             </div>
+                        </div>
+
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="remarks">Remarks</label>
+                            <textarea id="remarks" name="remarks" placeholder="Add any additional notes or remarks" style="width: 100%; padding: 12px 16px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px; font-size: 0.95rem; font-family: 'Inter', sans-serif; resize: vertical; min-height: 100px;"><?php echo htmlspecialchars($_POST['remarks'] ?? ''); ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -358,10 +363,10 @@ try {
             <h3 class="form-section-title">Pending Queue</h3>
             <form method="GET" class="queue-search">
                 <div class="form-group">
-                    <label for="search">Search by Staff ID or Name</label>
+                    <label for="search">Search by Staff Name or Email</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-magnifying-glass input-icon"></i>
-                        <input type="text" id="search" name="search" placeholder="e.g., STAFF001 or John" value="<?php echo htmlspecialchars($searchTerm); ?>">
+                        <input type="text" id="search" name="search" placeholder="e.g., John or john@unikl.edu.my" value="<?php echo htmlspecialchars($searchTerm); ?>">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary">
@@ -387,11 +392,12 @@ try {
                     <table style="width:100%; border-collapse:collapse;">
                         <thead>
                             <tr style="background:#f2f2f2;">
-                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Staff ID</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">ID</th>
                                 <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Staff Name</th>
                                 <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Email</th>
                                 <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Phone</th>
                                 <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Faculty</th>
+                                <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Remarks</th>
                                 <th style="text-align:left; padding:12px; border-bottom:1px solid #ddd;">Queued At</th>
                             </tr>
                         </thead>
@@ -400,9 +406,10 @@ try {
                                 <tr>
                                     <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['staff_id']); ?></td>
                                     <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['staff_name']); ?></td>
-                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['email']); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['email'] ?? '-'); ?></td>
                                     <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['phone'] ?? '-'); ?></td>
                                     <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['faculty'] ?? '-'); ?></td>
+                                    <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars($queueItem['remarks'] ?? '-'); ?></td>
                                     <td style="padding:12px; border-bottom:1px solid #f1f1f1;"><?php echo htmlspecialchars(date('d M Y, h:i A', strtotime($queueItem['created_at']))); ?></td>
                                 </tr>
                             <?php endforeach; ?>
