@@ -13,7 +13,7 @@ $netAssetsError = '';
 
 try {
     $stmt = $pdo->query("
-        SELECT na.*, t.full_name AS created_by_name
+        SELECT na.*, t.tech_name AS created_by_name
         FROM net_assets na
         LEFT JOIN technician t ON na.created_by = t.id
         ORDER BY na.created_at DESC, na.asset_id DESC

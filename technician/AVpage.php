@@ -6,6 +6,45 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$avAssets = [];
+$avAssetsError = '';
+
+try {
+    $stmt = $pdo->query("
+        SELECT aa.*, t.tech_name AS created_by_name
+        FROM av_assets aa
+        LEFT JOIN technician t ON aa.created_by = t.id
+        ORDER BY aa.created_at DESC, aa.asset_id DESC
+    ");
+    $avAssets = $stmt->fetchAll();
+} catch (PDOException $e) {
+    $avAssetsError = 'Unable to load AV assets right now. Please try again later.';
+}
+
+function formatAssetId($id)
+{
+    return sprintf('AV-%05d', $id);
+}
+
+function formatStatusClass($status)
+{
+    $status = strtoupper(trim($status ?? ''));
+    $map = [
+        'AVAILABLE' => 'available',
+        'IN-USE' => 'in-use',
+        'MAINTENANCE' => 'maintenance',
+        'DISPOSED' => 'disposed',
+    ];
+    return $map[$status] ?? 'unknown';
+}
+
+function formatStatusLabel($status)
+{
+    $status = trim((string)$status);
+    return $status === '' ? 'Unknown' : ucwords(str_replace('-', ' ', $status));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -301,6 +340,13 @@ if (!isset($_SESSION['user_id'])) {
             color: #636e72;
         }
 
+        .data-message {
+            text-align: center;
+            padding: 20px;
+            color: #c0392b;
+            font-weight: 600;
+        }
+
         @media (max-width: 768px) {
             .page-header {
                 flex-direction: column;
@@ -371,15 +417,68 @@ if (!isset($_SESSION['user_id'])) {
                     </tr>
                 </thead>
                 <tbody id="assetsTableBody">
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <i class="fa-solid fa-tv"></i>
-                                <p>No assets found</p>
-                                <span>Start by adding your first AV equipment</span>
-                            </div>
-                        </td>
-                    </tr>
+                    <?php if ($avAssetsError) : ?>
+                        <tr>
+                            <td colspan="7">
+                                <div class="data-message"><?php echo htmlspecialchars($avAssetsError); ?></div>
+                            </td>
+                        </tr>
+                    <?php elseif (empty($avAssets)) : ?>
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-tv"></i>
+                                    <p>No assets found</p>
+                                    <span>Start by adding your first AV equipment</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else : ?>
+                        <?php foreach ($avAssets as $asset) : ?>
+                            <?php
+                                $statusClass = formatStatusClass($asset['status'] ?? '');
+                                $statusLabel = formatStatusLabel($asset['status'] ?? '');
+                                $class = trim((string)($asset['class'] ?? ''));
+                                $brand = trim((string)($asset['brand'] ?? ''));
+                                $model = trim((string)($asset['model'] ?? ''));
+                                $brandModel = trim($brand . ' ' . $model);
+                                if ($brandModel === '') {
+                                    $brandModel = '-';
+                                }
+                                $serial = trim((string)($asset['serial_num'] ?? ''));
+                                if ($serial === '') {
+                                    $serial = '-';
+                                }
+                                $location = trim((string)($asset['location'] ?? ''));
+                                if ($location === '') {
+                                    $location = '-';
+                                }
+                            ?>
+                            <tr>
+                                <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
+                                <td>
+                                    <span class="asset-type <?php echo htmlspecialchars(strtolower($class ?: 'other')); ?>">
+                                        <?php echo htmlspecialchars($class ?: 'Other'); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo htmlspecialchars($brandModel); ?></td>
+                                <td><?php echo htmlspecialchars($serial); ?></td>
+                                <td><?php echo htmlspecialchars($location); ?></td>
+                                <td>
+                                    <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>">
+                                        <?php echo htmlspecialchars($statusLabel); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-action" onclick="window.location.href='AVedit.php?id=<?php echo $asset['asset_id']; ?>'">
+                                            <i class="fa-solid fa-edit"></i> Edit
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

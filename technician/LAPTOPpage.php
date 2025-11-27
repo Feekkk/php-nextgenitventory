@@ -6,6 +6,45 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$laptopAssets = [];
+$laptopAssetsError = '';
+
+try {
+    $stmt = $pdo->query("
+        SELECT la.*, sl.staff_name AS assigned_to_name
+        FROM laptop_desktop_assets la
+        LEFT JOIN staff_list sl ON la.staff_id = sl.staff_id
+        ORDER BY la.created_at DESC, la.asset_id DESC
+    ");
+    $laptopAssets = $stmt->fetchAll();
+} catch (PDOException $e) {
+    $laptopAssetsError = 'Unable to load laptop/desktop assets right now. Please try again later.';
+}
+
+function formatAssetId($id)
+{
+    return sprintf('LAP-%05d', $id);
+}
+
+function formatStatusClass($status)
+{
+    $status = strtoupper(trim($status ?? ''));
+    $map = [
+        'AVAILABLE' => 'available',
+        'IN-USE' => 'in-use',
+        'MAINTENANCE' => 'maintenance',
+        'DISPOSED' => 'disposed',
+    ];
+    return $map[$status] ?? 'unknown';
+}
+
+function formatStatusLabel($status)
+{
+    $status = trim((string)$status);
+    return $status === '' ? 'Unknown' : ucwords(str_replace('-', ' ', $status));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -323,6 +362,13 @@ if (!isset($_SESSION['user_id'])) {
             color: #636e72;
         }
 
+        .data-message {
+            text-align: center;
+            padding: 20px;
+            color: #c0392b;
+            font-weight: 600;
+        }
+
         @media (max-width: 768px) {
             .page-header {
                 flex-direction: column;
@@ -399,15 +445,68 @@ if (!isset($_SESSION['user_id'])) {
                     </tr>
                 </thead>
                 <tbody id="assetsTableBody">
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <i class="fa-solid fa-laptop"></i>
-                                <p>No assets found</p>
-                                <span>Start by adding your first laptop or desktop asset</span>
-                            </div>
-                        </td>
-                    </tr>
+                    <?php if ($laptopAssetsError) : ?>
+                        <tr>
+                            <td colspan="7">
+                                <div class="data-message"><?php echo htmlspecialchars($laptopAssetsError); ?></div>
+                            </td>
+                        </tr>
+                    <?php elseif (empty($laptopAssets)) : ?>
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-laptop"></i>
+                                    <p>No assets found</p>
+                                    <span>Start by adding your first laptop or desktop asset</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else : ?>
+                        <?php foreach ($laptopAssets as $asset) : ?>
+                            <?php
+                                $statusClass = formatStatusClass($asset['status'] ?? '');
+                                $statusLabel = formatStatusLabel($asset['status'] ?? '');
+                                $category = trim((string)($asset['category'] ?? ''));
+                                $brand = trim((string)($asset['brand'] ?? ''));
+                                $model = trim((string)($asset['model'] ?? ''));
+                                $brandModel = trim($brand . ' ' . $model);
+                                if ($brandModel === '') {
+                                    $brandModel = '-';
+                                }
+                                $serial = trim((string)($asset['serial_num'] ?? ''));
+                                if ($serial === '') {
+                                    $serial = '-';
+                                }
+                                $assignedTo = trim((string)($asset['assigned_to_name'] ?? ''));
+                                if ($assignedTo === '') {
+                                    $assignedTo = '-';
+                                }
+                            ?>
+                            <tr>
+                                <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
+                                <td>
+                                    <span class="asset-type <?php echo htmlspecialchars(strtolower($category ?: 'other')); ?>">
+                                        <?php echo htmlspecialchars($category ?: 'Other'); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo htmlspecialchars($brandModel); ?></td>
+                                <td><?php echo htmlspecialchars($serial); ?></td>
+                                <td><?php echo htmlspecialchars($assignedTo); ?></td>
+                                <td>
+                                    <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>">
+                                        <?php echo htmlspecialchars($statusLabel); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-action" onclick="window.location.href='LAPTOPedit.php?id=<?php echo $asset['asset_id']; ?>'">
+                                            <i class="fa-solid fa-edit"></i> Edit
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
