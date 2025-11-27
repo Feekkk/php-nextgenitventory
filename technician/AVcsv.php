@@ -6,6 +6,182 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$errors = [];
+$successMessage = '';
+$skippedRows = [];
+$importedCount = 0;
+$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
+$requiredHeaders = ['class', 'brand', 'model', 'serial_num', 'status'];
+$optionalHeaders = ['location', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
+        $errors[] = 'Please upload a valid CSV file.';
+    } else {
+        $file = $_FILES['csvFile'];
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if ($extension !== 'csv') {
+            $errors[] = 'Only CSV files are supported.';
+        }
+
+        if ($file['size'] > 5 * 1024 * 1024) {
+            $errors[] = 'CSV file must be smaller than 5MB.';
+        }
+
+        if (empty($errors)) {
+            $handle = fopen($file['tmp_name'], 'r');
+
+            if ($handle === false) {
+                $errors[] = 'Unable to read the uploaded file.';
+            } else {
+                $normalize = function ($value) {
+                    return strtolower(str_replace([' ', '-'], '_', trim((string)$value)));
+                };
+
+                $headerRow = fgetcsv($handle);
+
+                if ($headerRow === false) {
+                    $errors[] = 'The CSV file is empty.';
+                } else {
+                    $headers = array_map($normalize, $headerRow);
+                    $availableColumns = array_unique(array_filter($headers));
+
+                    foreach ($requiredHeaders as $required) {
+                        if (!in_array($required, $availableColumns, true)) {
+                            $errors[] = "Missing required column: {$required}";
+                        }
+                    }
+                }
+
+                if (empty($errors)) {
+                    try {
+                        $pdo->beginTransaction();
+                        $lineNumber = 2;
+                        $insertStmt = $pdo->prepare("
+                            INSERT INTO av_assets (
+                                class, brand, model, serial_num, location, status,
+                                `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
+                                `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
+                            ) VALUES (
+                                :class, :brand, :model, :serial_num, :location, :status,
+                                :po_date, :po_num, :do_date, :do_num,
+                                :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
+                            )
+                        ");
+
+                        while (($row = fgetcsv($handle)) !== false) {
+                            $rawValues = array_map('trim', $row);
+                            if (count(array_filter($rawValues, fn($value) => $value !== '')) === 0) {
+                                $lineNumber++;
+                                continue;
+                            }
+
+                            $rowData = [
+                                'class' => '',
+                                'brand' => '',
+                                'model' => '',
+                                'serial_num' => '',
+                                'location' => '',
+                                'status' => '',
+                                'p.o_date' => '',
+                                'p.o_num' => '',
+                                'd.o_date' => '',
+                                'd.o_num' => '',
+                                'invoice_date' => '',
+                                'invoice_num' => '',
+                                'purchase_cost' => '',
+                                'remarks' => '',
+                            ];
+
+                            foreach ($headers as $index => $columnName) {
+                                if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
+                                    $rowData[$columnName] = trim($row[$index]);
+                                }
+                            }
+
+                            $rowErrors = [];
+
+                            foreach ($requiredHeaders as $requiredColumn) {
+                                if ($rowData[$requiredColumn] === '') {
+                                    $rowErrors[] = "{$requiredColumn} is required";
+                                }
+                            }
+
+                            if ($rowData['status'] !== '' && !in_array(strtoupper($rowData['status']), $allowedStatuses, true)) {
+                                $rowErrors[] = 'Invalid status value';
+                            }
+
+                            if ($rowData['p.o_date'] !== '') {
+                                $date = DateTime::createFromFormat('Y-m-d', $rowData['p.o_date']);
+                                if (!$date || $date->format('Y-m-d') !== $rowData['p.o_date']) {
+                                    $rowErrors[] = 'Invalid P.O. date format (use YYYY-MM-DD)';
+                                }
+                            }
+
+                            if ($rowData['invoice_date'] !== '') {
+                                $date = DateTime::createFromFormat('Y-m-d', $rowData['invoice_date']);
+                                if (!$date || $date->format('Y-m-d') !== $rowData['invoice_date']) {
+                                    $rowErrors[] = 'Invalid invoice date format (use YYYY-MM-DD)';
+                                }
+                            }
+
+                            if ($rowData['purchase_cost'] !== '' && !is_numeric($rowData['purchase_cost'])) {
+                                $rowErrors[] = 'Purchase cost must be a number';
+                            }
+
+                            if (!empty($rowErrors)) {
+                                $skippedRows[] = "Row {$lineNumber}: " . implode('; ', $rowErrors);
+                                $lineNumber++;
+                                continue;
+                            }
+
+                            $statusValue = strtoupper($rowData['status']);
+                            
+                            $poDate = $rowData['p.o_date'] ?: null;
+                            $invoiceDate = $rowData['invoice_date'] ?: null;
+                            $purchaseCost = $rowData['purchase_cost'] !== '' ? $rowData['purchase_cost'] : null;
+
+                            $insertStmt->execute([
+                                ':class' => $rowData['class'],
+                                ':brand' => $rowData['brand'],
+                                ':model' => $rowData['model'],
+                                ':serial_num' => $rowData['serial_num'],
+                                ':location' => $rowData['location'] ?: null,
+                                ':status' => $statusValue,
+                                ':po_date' => $poDate,
+                                ':po_num' => $rowData['p.o_num'] ?: null,
+                                ':do_date' => $rowData['d.o_date'] ?: null,
+                                ':do_num' => $rowData['d.o_num'] ?: null,
+                                ':invoice_date' => $invoiceDate,
+                                ':invoice_num' => $rowData['invoice_num'] ?: null,
+                                ':purchase_cost' => $purchaseCost,
+                                ':remarks' => $rowData['remarks'] ?: null,
+                                ':created_by' => $_SESSION['user_id'],
+                            ]);
+
+                            $importedCount++;
+                            $lineNumber++;
+                        }
+
+                        $pdo->commit();
+
+                        if ($importedCount > 0) {
+                            $successMessage = "Imported {$importedCount} asset(s) successfully.";
+                        }
+                    } catch (PDOException $e) {
+                        $pdo->rollBack();
+                        $errors[] = 'Unable to import CSV right now. Please try again.';
+                    }
+                }
+
+                fclose($handle);
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,10 +270,16 @@ if (!isset($_SESSION['user_id'])) {
             line-height: 1.6;
         }
 
+        .sample-table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 25px;
+        }
+
         .sample-table {
+            min-width: 600px;
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px;
             font-size: 0.9rem;
         }
 
@@ -107,6 +289,7 @@ if (!isset($_SESSION['user_id'])) {
             padding: 10px;
             text-align: left;
             background: #fff;
+            white-space: nowrap;
         }
 
         .sample-table th {
@@ -145,6 +328,45 @@ if (!isset($_SESSION['user_id'])) {
             background: #f1f2f6;
             color: #2d3436;
         }
+
+        .alert {
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .alert ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .alert-error {
+            background: rgba(192, 57, 43, 0.1);
+            border: 1px solid rgba(192, 57, 43, 0.2);
+            color: #c0392b;
+        }
+
+        .alert-success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+        }
+
+        .skipped-list {
+            margin-top: 15px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .skipped-list ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #c0392b;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -157,6 +379,31 @@ if (!isset($_SESSION['user_id'])) {
         </div>
 
         <div class="import-card">
+            <?php if (!empty($errors)) : ?>
+                <div class="alert alert-error">
+                    <ul>
+                        <?php foreach ($errors as $error) : ?>
+                            <li><?php echo htmlspecialchars($error); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php elseif ($successMessage) : ?>
+                <div class="alert alert-success">
+                    <?php echo htmlspecialchars($successMessage); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($skippedRows)) : ?>
+                <div class="skipped-list">
+                    <strong>Skipped rows</strong>
+                    <ul>
+                        <?php foreach ($skippedRows as $skipped) : ?>
+                            <li><?php echo htmlspecialchars($skipped); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
             <form class="import-form" method="POST" enctype="multipart/form-data">
                 <div class="upload-area">
                     <i class="fa-solid fa-file-csv"></i>
@@ -169,45 +416,62 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="guidelines">
                     <h3>Before uploading</h3>
                     <ul>
-                        <li>Use UTF-8 encoding and comma separators.</li>
-                        <li>Include a header row with the sample column names.</li>
-                        <li>Mandatory fields: Asset ID, Category, Brand, Model, Serial Number, Location.</li>
-                        <li>Dates should follow YYYY-MM-DD format.</li>
+                        <li>Ensure headers match the template (lowercase, underscores).</li>
+                        <li>Required columns: class, brand, model, serial_num, status.</li>
+                        <li>Optional columns: location, p.o_date, p.o_num, d.o_date, d.o_num, invoice_date, invoice_num, purchase_cost, remarks.</li>
+                        <li>Date columns (p.o_date, invoice_date) should be in YYYY-MM-DD format.</li>
+                        <li>Strip sensitive credentials from exports before uploading.</li>
                     </ul>
                 </div>
 
                 <div class="guidelines">
                     <h3>Column template</h3>
-                    <table class="sample-table">
-                        <thead>
-                            <tr>
-                                <th>asset_id</th>
-                                <th>category</th>
-                                <th>brand</th>
-                                <th>model</th>
-                                <th>serial_number</th>
-                                <th>location</th>
-                                <th>status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>AV-000123</td>
-                                <td>projector</td>
-                                <td>Epson</td>
-                                <td>EB-X06</td>
-                                <td>SN1234567</td>
-                                <td>Lecture Hall A</td>
-                                <td>available</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <small style="color:#636e72;">Add extra columns such as warranty_expiry, supplier, cost, notes if needed.</small>
+                    <div class="sample-table-wrapper">
+                        <table class="sample-table">
+                            <thead>
+                                <tr>
+                                    <th>class</th>
+                                    <th>brand</th>
+                                    <th>model</th>
+                                    <th>serial_num</th>
+                                    <th>location</th>
+                                    <th>status</th>
+                                    <th>p.o_date</th>
+                                    <th>p.o_num</th>
+                                    <th>d.o_date</th>
+                                    <th>d.o_num</th>
+                                    <th>invoice_date</th>
+                                    <th>invoice_num</th>
+                                    <th>purchase_cost</th>
+                                    <th>remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>projector</td>
+                                    <td>Epson</td>
+                                    <td>EB-X06</td>
+                                    <td>SN1234567</td>
+                                    <td>Lecture Hall A</td>
+                                    <td>AVAILABLE</td>
+                                    <td>2024-01-15</td>
+                                    <td>PO-2024-001</td>
+                                    <td>2024-01-20</td>
+                                    <td>DO-2024-001</td>
+                                    <td>2024-01-25</td>
+                                    <td>INV-2024-001</td>
+                                    <td>5000.00</td>
+                                    <td>Main projector for hall</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <small style="color:#636e72;">Use lowercase headers with underscores to match the schema.</small>
                 </div>
 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" disabled>Upload CSV</button>
+                    <button type="submit" class="btn btn-primary">Upload CSV</button>
                 </div>
             </form>
         </div>

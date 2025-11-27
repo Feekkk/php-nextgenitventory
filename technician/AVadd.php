@@ -6,6 +6,102 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$errors = [];
+$successMessage = '';
+$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
+$formData = [
+    'class' => '',
+    'brand' => '',
+    'model' => '',
+    'serial_num' => '',
+    'location' => '',
+    'status' => '',
+    'P.O_DATE' => '',
+    'P.O_NUM' => '',
+    'D.O_DATE' => '',
+    'D.O_NUM' => '',
+    'INVOICE_DATE' => '',
+    'INVOICE_NUM' => '',
+    'PURCHASE_COST' => '',
+    'remarks' => '',
+];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    foreach (array_keys($formData) as $field) {
+        $formData[$field] = trim($_POST[$field] ?? '');
+    }
+
+    if ($formData['class'] === '') {
+        $errors[] = 'Class is required.';
+    }
+
+    if ($formData['brand'] === '') {
+        $errors[] = 'Brand is required.';
+    }
+
+    if ($formData['model'] === '') {
+        $errors[] = 'Model is required.';
+    }
+
+    if ($formData['serial_num'] === '') {
+        $errors[] = 'Serial number is required.';
+    }
+
+    if ($formData['status'] === '' || !in_array($formData['status'], $allowedStatuses, true)) {
+        $errors[] = 'Select a valid status.';
+    }
+
+    if ($formData['PURCHASE_COST'] !== '' && !is_numeric($formData['PURCHASE_COST'])) {
+        $errors[] = 'Purchase cost must be a valid number.';
+    }
+
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO av_assets (
+                    class, brand, model, serial_num, location, status,
+                    `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
+                    `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
+                ) VALUES (
+                    :class, :brand, :model, :serial_num, :location, :status,
+                    :po_date, :po_num, :do_date, :do_num,
+                    :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
+                )
+            ");
+
+            $poDate = $formData['P.O_DATE'] ?: null;
+            $invoiceDate = $formData['INVOICE_DATE'] ?: null;
+            $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
+
+            $stmt->execute([
+                ':class' => $formData['class'],
+                ':brand' => $formData['brand'],
+                ':model' => $formData['model'],
+                ':serial_num' => $formData['serial_num'],
+                ':location' => $formData['location'] ?: null,
+                ':status' => $formData['status'],
+                ':po_date' => $poDate,
+                ':po_num' => $formData['P.O_NUM'] ?: null,
+                ':do_date' => $formData['D.O_DATE'] ?: null,
+                ':do_num' => $formData['D.O_NUM'] ?: null,
+                ':invoice_date' => $invoiceDate,
+                ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
+                ':purchase_cost' => $purchaseCost,
+                ':remarks' => $formData['remarks'] ?: null,
+                ':created_by' => $_SESSION['user_id'],
+            ]);
+
+            $successMessage = 'AV asset saved successfully.';
+            foreach (array_keys($formData) as $field) {
+                $formData[$field] = '';
+            }
+        } catch (PDOException $e) {
+            $errors[] = 'Unable to save asset right now. Please try again.';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -138,6 +234,30 @@ if (!isset($_SESSION['user_id'])) {
             background: #e3e6ed;
         }
 
+        .alert {
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .alert ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .alert-error {
+            background: rgba(192, 57, 43, 0.1);
+            border: 1px solid rgba(192, 57, 43, 0.2);
+            color: #c0392b;
+        }
+
+        .alert-success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -162,41 +282,51 @@ if (!isset($_SESSION['user_id'])) {
             <p>Register new audio-visual equipment such as projectors, displays, and sound systems.</p>
         </div>
 
-        <form class="av-form">
+        <?php if (!empty($errors)) : ?>
+            <div class="alert alert-error">
+                <ul>
+                    <?php foreach ($errors as $error) : ?>
+                        <li><?php echo htmlspecialchars($error); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php elseif ($successMessage) : ?>
+            <div class="alert alert-success">
+                <?php echo htmlspecialchars($successMessage); ?>
+            </div>
+        <?php endif; ?>
+
+        <form class="av-form" method="POST" autocomplete="off">
             <div class="form-section">
                 <h3 class="form-section-title">Asset Information</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="assetId">Asset ID</label>
-                        <input type="text" id="assetId" name="assetId" placeholder="e.g., AV-000123">
-                    </div>
-                    <div class="form-group">
-                        <label for="category">Category</label>
-                        <select id="category" name="category">
-                            <option value="">Select category</option>
-                            <option value="projector">Projector</option>
-                            <option value="display">Display / TV</option>
-                            <option value="speaker">Speaker</option>
-                            <option value="microphone">Microphone</option>
-                            <option value="video-conference">Video Conference</option>
-                            <option value="other">Other</option>
+                        <label for="class">Class <span style="color:#c0392b;">*</span></label>
+                        <select id="class" name="class" required>
+                            <option value="">Select class</option>
+                            <option value="Microphone" <?php echo $formData['class'] === 'Microphone' ? 'selected' : ''; ?>>Microphone</option>
+                            <option value="P.A System" <?php echo $formData['class'] === 'P.A System' ? 'selected' : ''; ?>>P.A System</option>
+                            <option value="Portable P.A" <?php echo $formData['class'] === 'Portable P.A' ? 'selected' : ''; ?>>Portable P.A</option>
+                            <option value="Projector" <?php echo $formData['class'] === 'Projector' ? 'selected' : ''; ?>>Projector</option>
+                            <option value="Projector Screen (Motorized)" <?php echo $formData['class'] === 'Projector Screen (Motorized)' ? 'selected' : ''; ?>>Projector Screen (Motorized)</option>
+                            <option value="Speaker" <?php echo $formData['class'] === 'Speaker' ? 'selected' : ''; ?>>Speaker</option>
+                            <option value="Speaker X1" <?php echo $formData['class'] === 'Speaker X1' ? 'selected' : ''; ?>>Speaker X1</option>
+                            <option value="Speaker X2" <?php echo $formData['class'] === 'Speaker X2' ? 'selected' : ''; ?>>Speaker X2</option>
+                            <option value="Wireless Mic (Body Pack)" <?php echo $formData['class'] === 'Wireless Mic (Body Pack)' ? 'selected' : ''; ?>>Wireless Mic (Body Pack)</option>
+                            <option value="Wireless Mic (Handheld)" <?php echo $formData['class'] === 'Wireless Mic (Handheld)' ? 'selected' : ''; ?>>Wireless Mic (Handheld)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="brand">Brand</label>
-                        <input type="text" id="brand" name="brand" placeholder="e.g., Epson">
+                        <label for="brand">Brand <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="brand" name="brand" placeholder="e.g., Epson" value="<?php echo htmlspecialchars($formData['brand']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="model">Model</label>
-                        <input type="text" id="model" name="model" placeholder="e.g., EB-X06">
+                        <label for="model">Model <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="model" name="model" placeholder="e.g., EB-X06" value="<?php echo htmlspecialchars($formData['model']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="serialNumber">Serial Number</label>
-                        <input type="text" id="serialNumber" name="serialNumber" placeholder="Enter serial number">
-                    </div>
-                    <div class="form-group">
-                        <label for="assetTag">Asset Tag</label>
-                        <input type="text" id="assetTag" name="assetTag" placeholder="Enter asset tag">
+                        <label for="serial_num">Serial Number <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="serial_num" name="serial_num" placeholder="Enter serial number" value="<?php echo htmlspecialchars($formData['serial_num']); ?>" required>
                     </div>
                 </div>
             </div>
@@ -206,39 +336,52 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="location">Location</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., Lecture Hall A, Block 3">
+                        <input type="text" id="location" name="location" placeholder="e.g., Lecture Hall A, Block 3" value="<?php echo htmlspecialchars($formData['location']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="assignedTo">Assigned To / Department</label>
-                        <input type="text" id="assignedTo" name="assignedTo" placeholder="e.g., AV Department">
-                    </div>
-                    <div class="form-group">
-                        <label for="purchaseDate">Purchase Date</label>
-                        <input type="date" id="purchaseDate" name="purchaseDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="warrantyExpiry">Warranty Expiry</label>
-                        <input type="date" id="warrantyExpiry" name="warrantyExpiry">
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Status</label>
-                        <select id="status" name="status">
+                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
+                        <select id="status" name="status" required>
                             <option value="">Select status</option>
-                            <option value="available">Available</option>
-                            <option value="in-use">In Use</option>
-                            <option value="maintenance">Under Maintenance</option>
-                            <option value="disposed">Disposed</option>
+                            <?php foreach ($allowedStatuses as $status) : ?>
+                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
+                                    <?php echo ucwords(str_replace('-', ' ', strtolower($status))); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Purchase Information</h3>
+                <div class="form-grid">
                     <div class="form-group">
-                        <label for="condition">Condition</label>
-                        <select id="condition" name="condition">
-                            <option value="">Select condition</option>
-                            <option value="excellent">Excellent</option>
-                            <option value="good">Good</option>
-                            <option value="fair">Fair</option>
-                            <option value="needs-repair">Needs Repair</option>
-                        </select>
+                        <label for="P.O_DATE">P.O. Date</label>
+                        <input type="date" id="P.O_DATE" name="P.O_DATE" value="<?php echo htmlspecialchars($formData['P.O_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="P.O_NUM">P.O. Number</label>
+                        <input type="text" id="P.O_NUM" name="P.O_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['P.O_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="D.O_DATE">D.O. Date</label>
+                        <input type="text" id="D.O_DATE" name="D.O_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['D.O_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="D.O_NUM">D.O. Number</label>
+                        <input type="text" id="D.O_NUM" name="D.O_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['D.O_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="INVOICE_DATE">Invoice Date</label>
+                        <input type="date" id="INVOICE_DATE" name="INVOICE_DATE" value="<?php echo htmlspecialchars($formData['INVOICE_DATE']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="INVOICE_NUM">Invoice Number</label>
+                        <input type="text" id="INVOICE_NUM" name="INVOICE_NUM" placeholder="Enter invoice number" value="<?php echo htmlspecialchars($formData['INVOICE_NUM']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="PURCHASE_COST">Purchase Cost (MYR)</label>
+                        <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>">
                     </div>
                 </div>
             </div>
@@ -246,22 +389,9 @@ if (!isset($_SESSION['user_id'])) {
             <div class="form-section">
                 <h3 class="form-section-title">Additional Information</h3>
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="supplier">Supplier / Vendor</label>
-                        <input type="text" id="supplier" name="supplier" placeholder="Enter supplier name">
-                    </div>
-                    <div class="form-group">
-                        <label for="cost">Purchase Cost (MYR)</label>
-                        <input type="number" step="0.01" id="cost" name="cost" placeholder="Enter cost">
-                    </div>
                     <div class="form-group" style="grid-column: 1 / -1;">
-                        <label for="notes">Notes</label>
-                        <textarea id="notes" name="notes" placeholder="Add any remarks, installation details, accessories, etc."></textarea>
-                    </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label for="attachments">Attachments</label>
-                        <input type="file" id="attachments" name="attachments" multiple>
-                        <small style="color: #636e72;">You can upload photos, invoices, or warranty documents (optional).</small>
+                        <label for="remarks">Remarks</label>
+                        <textarea id="remarks" name="remarks" placeholder="Add any remarks, installation details, accessories, etc."><?php echo htmlspecialchars($formData['remarks']); ?></textarea>
                     </div>
                 </div>
             </div>
