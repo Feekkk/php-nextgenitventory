@@ -14,7 +14,56 @@ $skippedRows = [];
 $importedCount = 0;
 $allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
 $requiredHeaders = ['serial', 'model', 'brand', 'status'];
-$optionalHeaders = ['mac_add', 'ip_add', 'building', 'level', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
+$headerMap = [
+    'assetid' => 'asset_id',
+    'serial' => 'serial',
+    'model' => 'model',
+    'brand' => 'brand',
+    'macaddress' => 'mac_add',
+    'macadd' => 'mac_add',
+    'ipaddress' => 'ip_add',
+    'ipadd' => 'ip_add',
+    'building' => 'building',
+    'level' => 'level',
+    'status' => 'status',
+    'remarks' => 'remarks',
+    'podate' => 'p.o_date',
+    'ponumber' => 'p.o_num',
+    'p0number' => 'p.o_num',
+    'ponum' => 'p.o_num',
+    'dodate' => 'd.o_date',
+    'dono' => 'd.o_num',
+    'donumber' => 'd.o_num',
+    'invoicedate' => 'invoice_date',
+    'invoiceno' => 'invoice_num',
+    'purchasecost' => 'purchase_cost'
+];
+
+if (!function_exists('detectCsvDelimiter')) {
+    function detectCsvDelimiter(string $line): string
+    {
+        $delimiters = [',', ';', "\t", '|'];
+        $best = ',';
+        $max = 0;
+        foreach ($delimiters as $delimiter) {
+            $count = substr_count($line, $delimiter);
+            if ($count > $max) {
+                $best = $delimiter;
+                $max = $count;
+            }
+        }
+        return $best;
+    }
+}
+
+if (!function_exists('normalizeHeaderKey')) {
+    function normalizeHeaderKey(string $header): string
+    {
+        $header = preg_replace('/^\xEF\xBB\xBF/', '', $header);
+        $header = strtolower(trim($header));
+        return preg_replace('/[^a-z0-9]/', '', $header);
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
@@ -37,21 +86,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($handle === false) {
                 $errors[] = 'Unable to read the uploaded file.';
             } else {
-                $normalize = function ($value) {
-                    return strtolower(str_replace([' ', '-'], '_', trim((string)$value)));
-                };
-
-                $headerRow = fgetcsv($handle);
-
-                if ($headerRow === false) {
+                $firstLine = fgets($handle);
+                if ($firstLine === false) {
                     $errors[] = 'The CSV file is empty.';
                 } else {
-                    $headers = array_map($normalize, $headerRow);
-                    $availableColumns = array_unique(array_filter($headers));
+                    $delimiter = detectCsvDelimiter($firstLine);
+                    rewind($handle);
+                    $headerRow = fgetcsv($handle, 0, $delimiter);
 
-                    foreach ($requiredHeaders as $required) {
-                        if (!in_array($required, $availableColumns, true)) {
-                            $errors[] = "Missing required column: {$required}";
+                    if ($headerRow === false) {
+                        $errors[] = 'Unable to read CSV headers.';
+                    } else {
+                        $headers = [];
+                        foreach ($headerRow as $index => $header) {
+                            $normalized = normalizeHeaderKey($header);
+                            $headers[$index] = $headerMap[$normalized] ?? '';
+                        }
+
+                        $availableColumns = array_unique(array_filter($headers));
+                        foreach ($requiredHeaders as $required) {
+                            if (!in_array($required, $availableColumns, true)) {
+                                $errors[] = "Missing required column: " . strtoupper($required);
+                            }
                         }
                     }
                 }
@@ -69,12 +125,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ) VALUES (
                                 :serial, :model, :brand, :mac_add, :ip_add,
                                 :building, :level, :status, :po_date, :po_num,
-                                :do_date, :do_num, :invoice_date, :invoice_num,
+                                :do_date, :do_num, :invoice_date,  :invoice_num,
                                 :purchase_cost, :remarks, :created_by
                             )
                         ");
 
-                        while (($row = fgetcsv($handle)) !== false) {
+                        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
                             $rawValues = array_map('trim', $row);
                             if (count(array_filter($rawValues, fn($value) => $value !== '')) === 0) {
                                 $lineNumber++;
@@ -82,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             $rowData = [
+                                'asset_id' => '',
                                 'serial' => '',
                                 'model' => '',
                                 'brand' => '',
@@ -435,10 +492,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="guidelines">
                     <h3>Before uploading</h3>
                     <ul>
-                        <li>Ensure headers match the template (lowercase, underscores).</li>
-                        <li>Required columns: serial, model, brand, status.</li>
-                        <li>Optional columns: mac_add, ip_add, building, level, p.o_date, p.o_num, d.o_date, d.o_num, invoice_date, invoice_num, purchase_cost, remarks.</li>
-                        <li>Date columns (p.o_date, invoice_date) should be in YYYY-MM-DD format.</li>
+                        <li>Ensure the header row matches the template exactly (e.g., "ASSET ID", "MAC ADDRESS").</li>
+                        <li>Required columns: SERIAL, MODEL, BRAND, STATUS.</li>
+                        <li>Optional columns: ASSET ID, MAC ADDRESS, IP ADDRESS, BUILDING, LEVEL, REMARKS, P.O DATE, P.0 NUMBER, D.O DATE, D.O NO, INVOICE DATE, INVOICE NO, PURCHASE COST.</li>
+                        <li>Date columns (P.O DATE, D.O DATE, INVOICE DATE) should use YYYY-MM-DD format.</li>
                         <li>Strip sensitive credentials from exports before uploading.</li>
                     </ul>
                 </div>
@@ -449,26 +506,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <table class="sample-table">
                             <thead>
                                 <tr>
-                                    <th>serial</th>
-                                    <th>model</th>
-                                    <th>brand</th>
-                                    <th>mac_add</th>
-                                    <th>ip_add</th>
-                                    <th>building</th>
-                                    <th>level</th>
-                                    <th>status</th>
-                                    <th>p.o_date</th>
-                                    <th>p.o_num</th>
-                                    <th>d.o_date</th>
-                                    <th>d.o_num</th>
-                                    <th>invoice_date</th>
-                                    <th>invoice_num</th>
-                                    <th>purchase_cost</th>
-                                    <th>remarks</th>
+                                    <th>ASSET ID</th>
+                                    <th>SERIAL</th>
+                                    <th>MODEL</th>
+                                    <th>BRAND</th>
+                                    <th>MAC ADDRESS</th>
+                                    <th>IP ADDRESS</th>
+                                    <th>BUILDING</th>
+                                    <th>LEVEL</th>
+                                    <th>STATUS</th>
+                                    <th>REMARKS</th>
+                                    <th>P.O DATE</th>
+                                    <th>P.0 NUMBER</th>
+                                    <th>D.O DATE</th>
+                                    <th>D.O NO</th>
+                                    <th>INVOICE DATE</th>
+                                    <th>INVOICE NO</th>
+                                    <th>PURCHASE COST</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
+                                    <td>1001</td>
                                     <td>SN4452331</td>
                                     <td>Catalyst 9300</td>
                                     <td>Cisco</td>
@@ -477,6 +536,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>Data Center</td>
                                     <td>Level 2</td>
                                     <td>AVAILABLE</td>
+                                    <td>Core switch for lab</td>
                                     <td>2024-01-15</td>
                                     <td>PO-2024-001</td>
                                     <td>2024-01-20</td>
@@ -484,12 +544,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>2024-01-25</td>
                                     <td>INV-2024-001</td>
                                     <td>15000.00</td>
-                                    <td>Core switch for lab</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <small style="color:#636e72;">Use lowercase headers with underscores to match the schema.</small>
+                    <small style="color:#636e72;">Headers can be uppercase with spaces as shown; the importer will map them to the correct fields.</small>
                 </div>
 
                 <div class="form-actions">
