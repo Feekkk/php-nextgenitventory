@@ -17,14 +17,33 @@ function getClientIP() {
     return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 }
 
-function logLoginAttempt($pdo, $user_id, $staff_id, $email, $status, $failure_reason = null) {
+function verifyPassword($inputPassword, $storedPassword) {
+    if (empty($inputPassword) || empty($storedPassword)) {
+        return false;
+    }
+    
+    $inputPassword = (string)$inputPassword;
+    $storedPassword = (string)$storedPassword;
+    
+    if (password_verify($inputPassword, $storedPassword)) {
+        return true;
+    }
+    
+    if ($inputPassword === $storedPassword) {
+        return true;
+    }
+    
+    return false;
+}
+
+function logLoginAttempt($pdo, $user_id, $tech_id, $email, $status, $failure_reason = null) {
     try {
         $ip_address = getClientIP();
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
         $session_id = session_id();
         
-        $stmt = $pdo->prepare("INSERT INTO login_audit (user_id, staff_id, email, ip_address, user_agent, login_status, failure_reason, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $staff_id, $email, $ip_address, $user_agent, $status, $failure_reason, $session_id]);
+        $stmt = $pdo->prepare("INSERT INTO login_audit (user_id, tech_id, email, ip_address, user_agent, login_status, failure_reason, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $tech_id, $email, $ip_address, $user_agent, $status, $failure_reason, $session_id]);
     } catch (PDOException $e) {
         error_log("Failed to log login attempt: " . $e->getMessage());
     }
@@ -44,55 +63,61 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
+    $user_type = trim($_POST['user_type'] ?? '');
     $remember = isset($_POST['remember']);
     
-    if (empty($email) || empty($password)) {
-        $error = 'Please enter both email and password.';
+    if (empty($email) || empty($password) || empty($user_type)) {
+        $error = 'Please enter email, password, and select user type.';
         if (!empty($email)) {
             try {
                 $pdo = getDBConnection();
-                logLoginAttempt($pdo, null, null, $email, 'failed', 'Empty email or password');
+                logLoginAttempt($pdo, null, null, $email, 'failed', 'Empty email, password, or user type');
             } catch (PDOException $e) {
             }
         }
     } else {
-        if ($email === 'admin@unikl.com' && $password === 'admin123') {
-            try {
-                $pdo = getDBConnection();
-                logLoginAttempt($pdo, null, 'ADMIN001', $email, 'success');
-            } catch (PDOException $e) {
-            }
+        try {
+            $pdo = getDBConnection();
             
-            $_SESSION['user_id'] = 'admin';
-            $_SESSION['staff_id'] = 'ADMIN001';
-            $_SESSION['full_name'] = 'Administrator';
-            $_SESSION['email'] = 'admin@unikl.com';
-            $_SESSION['role'] = 'admin';
-            
-            if ($remember) {
-                setcookie('remember_token', base64_encode('admin'), time() + (86400 * 30), '/');
-            }
-            
-            header('Location: ../admin/Dashboard.php');
-            exit;
-        } else {
-            try {
-                $pdo = getDBConnection();
-                
-                $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, password, role, status FROM technician WHERE email = ?");
+            if ($user_type === 'admin') {
+                $stmt = $pdo->prepare("SELECT id, staff_id, name, email, password FROM admin WHERE email = ?");
                 $stmt->execute([$email]);
                 $user = $stmt->fetch();
                 
-                if ($user && password_verify($password, $user['password'])) {
+                if ($user && verifyPassword($password, $user['password'])) {
+                    logLoginAttempt($pdo, null, $user['staff_id'], $email, 'success');
+                    
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['staff_id'] = $user['staff_id'];
+                    $_SESSION['full_name'] = $user['name'];
+                    $_SESSION['email'] = $user['email'];
+                    $_SESSION['role'] = 'admin';
+                    
+                    if ($remember) {
+                        setcookie('remember_token', base64_encode($user['id']), time() + (86400 * 30), '/');
+                    }
+                    
+                    header('Location: ../admin/Dashboard.php');
+                    exit;
+                } else {
+                    $error = 'Invalid email or password.';
+                    logLoginAttempt($pdo, null, null, $email, 'failed', 'Invalid email or password');
+                }
+            } else {
+                $stmt = $pdo->prepare("SELECT id, tech_id, tech_name, email, password, role, status FROM technician WHERE email = ?");
+                $stmt->execute([$email]);
+                $user = $stmt->fetch();
+                
+                if ($user && verifyPassword($password, $user['password'])) {
                     if ($user['status'] === 'inactive') {
                         $error = 'Your account is pending admin approval. Please wait for an administrator to activate your account before logging in.';
-                        logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'failed', 'Account inactive - pending approval');
+                        logLoginAttempt($pdo, $user['id'], $user['tech_id'], $email, 'failed', 'Account inactive - pending approval');
                     } else {
-                        logLoginAttempt($pdo, $user['id'], $user['staff_id'], $email, 'success');
+                        logLoginAttempt($pdo, $user['id'], $user['tech_id'], $email, 'success');
                         
                         $_SESSION['user_id'] = $user['id'];
-                        $_SESSION['staff_id'] = $user['staff_id'];
-                        $_SESSION['full_name'] = $user['full_name'];
+                        $_SESSION['staff_id'] = $user['tech_id'];
+                        $_SESSION['full_name'] = $user['tech_name'];
                         $_SESSION['email'] = $user['email'];
                         $_SESSION['role'] = $user['role'];
                         
@@ -100,20 +125,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             setcookie('remember_token', base64_encode($user['id']), time() + (86400 * 30), '/');
                         }
                         
-                        header('Location: ../technician/dashboard.php');
+                        if ($user['role'] === 'admin') {
+                            header('Location: ../admin/Dashboard.php');
+                        } else {
+                            header('Location: ../technician/dashboard.php');
+                        }
                         exit;
                     }
                 } else {
                     $error = 'Invalid email or password.';
                     logLoginAttempt($pdo, null, null, $email, 'failed', 'Invalid email or password');
                 }
-            } catch (PDOException $e) {
-                $error = 'Login failed. Please try again.';
-                try {
-                    $pdo = getDBConnection();
-                    logLoginAttempt($pdo, null, null, $email, 'failed', 'Database error');
-                } catch (PDOException $logError) {
-                }
+            }
+        } catch (PDOException $e) {
+            $error = 'Login failed. Please try again.';
+            try {
+                $pdo = getDBConnection();
+                logLoginAttempt($pdo, null, null, $email, 'failed', 'Database error');
+            } catch (PDOException $logError) {
             }
         }
     }
@@ -165,6 +194,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .back-home-btn i {
             font-size: 0.9rem;
         }
+
+        .input-wrapper select {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: #ffffff;
+            color: #2d3436;
+            font-family: 'Inter', sans-serif;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232d3436' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        .input-wrapper select:focus {
+            outline: none;
+            border-color: #1a1a2e;
+            box-shadow: 0 0 0 3px rgba(26, 26, 46, 0.1);
+        }
+
+        .input-wrapper select option {
+            padding: 8px;
+        }
     </style>
 </head>
 <body>
@@ -192,6 +248,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form class="auth-form" method="POST" action="">
+                <div class="form-group">
+                    <label for="user_type">User Type</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user-tag input-icon"></i>
+                        <select id="user_type" name="user_type" required>
+                            <option value="">Select user type</option>
+                            <option value="admin" <?php echo (isset($_POST['user_type']) && $_POST['user_type'] === 'admin') ? 'selected' : ''; ?>>Admin</option>
+                            <option value="technician" <?php echo (isset($_POST['user_type']) && $_POST['user_type'] === 'technician') ? 'selected' : ''; ?>>Technician</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="email">Email address</label>
                     <div class="input-wrapper">
