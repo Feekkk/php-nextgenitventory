@@ -129,7 +129,6 @@ CREATE TABLE IF NOT EXISTS `net_assets` (
     INDEX `idx_mac_add` (`mac_add`),
     INDEX `idx_ip_add` (`ip_add`),
     INDEX `idx_status` (`status`),
-    INDEX `idx_status` (`status`),
     INDEX `idx_building_level` (`building`, `level`),
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -193,7 +192,7 @@ CREATE TABLE IF NOT EXISTS `laptop_desktop_assets` (
     `remarks` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`asset_id`),
-    FOREIGN KEY (`staff_id`) REFERENCES `staff`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (`staff_id`) REFERENCES `staff_list`(`staff_id`) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX `idx_serial_num` (`serial_num`),
     INDEX `idx_brand` (`brand`),
     INDEX `idx_model` (`model`),
@@ -205,5 +204,5 @@ CREATE TABLE IF NOT EXISTS `laptop_desktop_assets` (
     INDEX `idx_memory` (`memory`),
     INDEX `idx_os` (`os`),
     INDEX `idx_storage` (`storage`),
-    INDEX `idx_gpu` (`gpu`),
+    INDEX `idx_gpu` (`gpu`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
