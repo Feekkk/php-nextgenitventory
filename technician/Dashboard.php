@@ -6,6 +6,29 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+
+$totalAssets = 0;
+$laptopCount = 0;
+$avCount = 0;
+$netCount = 0;
+
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM laptop_desktop_assets");
+    $laptopCount = $stmt->fetch()['count'] ?? 0;
+    
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM av_assets");
+    $avCount = $stmt->fetch()['count'] ?? 0;
+    
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM net_assets");
+    $netCount = $stmt->fetch()['count'] ?? 0;
+    
+    $totalAssets = $laptopCount + $avCount + $netCount;
+    
+} catch (PDOException $e) {
+    error_log('Dashboard stats error: ' . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -206,19 +229,19 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="stats-grid">
                     <div class="stat-box">
                         <span class="stat-title">Total Assets</span>
-                        <span class="stat-value">--</span>
+                        <span class="stat-value"><?php echo number_format($totalAssets); ?></span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-title">Pending Issues</span>
-                        <span class="stat-value">--</span>
+                        <span class="stat-title">Laptop/Desktop</span>
+                        <span class="stat-value"><?php echo number_format($laptopCount); ?></span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-title">Resolved Today</span>
-                        <span class="stat-value">--</span>
+                        <span class="stat-title">Audio Visual</span>
+                        <span class="stat-value"><?php echo number_format($avCount); ?></span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-title">Open Requests</span>
-                        <span class="stat-value">--</span>
+                        <span class="stat-title">Network</span>
+                        <span class="stat-value"><?php echo number_format($netCount); ?></span>
                     </div>
                 </div>
             </div>
