@@ -38,7 +38,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Unable to read the uploaded file.';
             } else {
                 $normalize = function ($value) {
-                    return strtolower(str_replace([' ', '-'], '_', trim((string)$value)));
+                    $value = trim((string)$value);
+                    $value = strtolower(str_replace([' ', '-'], '_', $value));
+                    $value = str_replace(['(', ')'], '', $value);
+                    
+                    $columnMapping = [
+                        'asset_tag' => 'asset_id',
+                        'serial_number' => 'serial_num',
+                        'employer_id' => 'staff_id',
+                        'operating_system_os' => 'os',
+                        'warranty_expires' => 'warranty_expiry',
+                        'p.0_number' => 'p.o_num',
+                        'p.o_number' => 'p.o_num',
+                        'd.o_no' => 'd.o_num',
+                        'd.o_number' => 'd.o_num',
+                        'invoice_no' => 'invoice_num',
+                        'invoice_number' => 'invoice_num',
+                        'acquisition_type' => 'acquisition_type',
+                    ];
+                    
+                    if (isset($columnMapping[$value])) {
+                        return $columnMapping[$value];
+                    }
+                    
+                    return $value;
                 };
 
                 $headerRow = fgetcsv($handle);
@@ -62,12 +85,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $lineNumber = 2;
                         $insertStmt = $pdo->prepare("
                             INSERT INTO laptop_desktop_assets (
-                                serial_num, brand, model, acquisition_type, category, status, staff_id,
+                                asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
                                 processor, memory, os, storage, gpu, warranty_expiry, part_number,
                                 supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
                                 `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, department, cost, remarks
                             ) VALUES (
-                                :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
+                                :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
                                 :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                                 :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
                                 :invoice_date, :invoice_num, :purchase_cost, :department, :cost, :remarks
@@ -82,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             $rowData = [
+                                'asset_id' => '',
                                 'serial_num' => '',
                                 'brand' => '',
                                 'model' => '',
@@ -169,6 +193,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $rowErrors[] = 'Staff ID must be a number';
                             }
 
+                            if ($rowData['asset_id'] !== '' && !is_numeric($rowData['asset_id'])) {
+                                $rowErrors[] = 'Asset ID must be a number';
+                            }
+
                             if (!empty($rowErrors)) {
                                 $skippedRows[] = "Row {$lineNumber}: " . implode('; ', $rowErrors);
                                 $lineNumber++;
@@ -177,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $statusValue = strtoupper($rowData['status']);
                             
+                            $assetId = $rowData['asset_id'] !== '' ? (int)$rowData['asset_id'] : null;
                             $poDate = $rowData['p.o_date'] ?: null;
                             $doDate = $rowData['d.o_date'] ?: null;
                             $invoiceDate = $rowData['invoice_date'] ?: null;
@@ -186,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $staffId = $rowData['staff_id'] !== '' ? $rowData['staff_id'] : null;
 
                             $insertStmt->execute([
+                                ':asset_id' => $assetId,
                                 ':serial_num' => $rowData['serial_num'],
                                 ':brand' => $rowData['brand'],
                                 ':model' => $rowData['model'],
@@ -469,11 +499,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="guidelines">
                     <h3>Before uploading</h3>
                     <ul>
-                        <li>Ensure headers match the template (lowercase, underscores).</li>
-                        <li>Required columns: serial_num, brand, model, status.</li>
-                        <li>Optional columns: acquisition_type, category, staff_id, processor, memory, os, storage, gpu, warranty_expiry, part_number, supplier, period, activity_log, p.o_date, p.o_num, d.o_date, d.o_num, invoice_date, invoice_num, purchase_cost, department, cost, remarks.</li>
-                        <li>Date columns (p.o_date, d.o_date, invoice_date, warranty_expiry) should be in YYYY-MM-DD format.</li>
-                        <li>Strip sensitive credentials from exports before uploading.</li>
+                        <li>CSV headers will be automatically normalized (spaces/hyphens to underscores, case-insensitive).</li>
+                        <li>Required columns: Serial Number, Brand, Model, Status.</li>
+                        <li>Optional columns: Asset Tag, ACQUISITION TYPE, Category, Employer ID, P.O Date, P.0 Number, D.O Date, D.O No, Invoice Date, Invoice No, Purchase Cost, Processor, Memory, Operating System (OS), Storage, Warranty Expires, Part Number, Supplier, Period, Activity Log.</li>
+                        <li>Date columns (P.O Date, D.O Date, Invoice Date, Warranty Expires) should be in YYYY-MM-DD format.</li>
+                        <li>Asset Tag column maps to asset_id (must be numeric if provided).</li>
                     </ul>
                 </div>
 
@@ -483,51 +513,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <table class="sample-table">
                             <thead>
                                 <tr>
-                                    <th>serial_num</th>
-                                    <th>brand</th>
-                                    <th>model</th>
-                                    <th>category</th>
-                                    <th>status</th>
-                                    <th>staff_id</th>
-                                    <th>processor</th>
-                                    <th>memory</th>
-                                    <th>os</th>
-                                    <th>storage</th>
-                                    <th>gpu</th>
-                                    <th>department</th>
-                                    <th>p.o_date</th>
-                                    <th>p.o_num</th>
-                                    <th>invoice_date</th>
-                                    <th>invoice_num</th>
-                                    <th>purchase_cost</th>
-                                    <th>cost</th>
+                                    <th>Asset Tag</th>
+                                    <th>Serial Number</th>
+                                    <th>Brand</th>
+                                    <th>Model</th>
+                                    <th>ACQUISITION TYPE</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Employer ID</th>
+                                    <th>P.O Date</th>
+                                    <th>P.0 Number</th>
+                                    <th>D.O Date</th>
+                                    <th>D.O No</th>
+                                    <th>Invoice Date</th>
+                                    <th>Invoice No</th>
+                                    <th>Purchase Cost</th>
+                                    <th>Processor</th>
+                                    <th>Memory</th>
+                                    <th>Operating System (OS)</th>
+                                    <th>Storage</th>
+                                    <th>Warranty Expires</th>
+                                    <th>Part Number</th>
+                                    <th>Supplier</th>
+                                    <th>Period</th>
+                                    <th>Activity Log</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
+                                    <td>AT-001</td>
                                     <td>SN8745632</td>
                                     <td>Dell</td>
                                     <td>Latitude 7430</td>
+                                    <td>Purchase</td>
                                     <td>Laptop</td>
                                     <td>AVAILABLE</td>
                                     <td>1</td>
+                                    <td>2024-01-15</td>
+                                    <td>PO-2024-001</td>
+                                    <td>2024-01-20</td>
+                                    <td>DO-2024-001</td>
+                                    <td>2024-01-25</td>
+                                    <td>INV-2024-001</td>
+                                    <td>3500.00</td>
                                     <td>Intel Core i7-1185G7</td>
                                     <td>16GB DDR4</td>
                                     <td>Windows 11 Pro</td>
                                     <td>512GB NVMe SSD</td>
-                                    <td>Intel Iris Xe</td>
-                                    <td>IT Support</td>
-                                    <td>2024-01-15</td>
-                                    <td>PO-2024-001</td>
-                                    <td>2024-01-25</td>
-                                    <td>INV-2024-001</td>
-                                    <td>3500.00</td>
-                                    <td>3500.00</td>
+                                    <td>2026-01-15</td>
+                                    <td>PN-12345</td>
+                                    <td>Dell Inc</td>
+                                    <td>Q1 2024</td>
+                                    <td>Initial setup</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <small style="color:#636e72;">Use lowercase headers with underscores to match the schema.</small>
+                    <small style="color:#636e72;">Column names are case-insensitive and will be automatically normalized. Asset Tag column is optional and will be ignored.</small>
                 </div>
 
                 <div class="form-actions">
