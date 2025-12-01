@@ -12,6 +12,7 @@ $errors = [];
 $successMessage = '';
 $allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
 $formData = [
+    'asset_id' => '',
     'serial_num' => '',
     'brand' => '',
     'model' => '',
@@ -74,22 +75,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Staff ID must be a valid number.';
     }
 
+    if ($formData['asset_id'] !== '' && !is_numeric($formData['asset_id'])) {
+        $errors[] = 'Asset ID must be a valid number.';
+    }
+
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
                 INSERT INTO laptop_desktop_assets (
-                    serial_num, brand, model, acquisition_type, category, status, staff_id,
+                    asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
                     processor, memory, os, storage, gpu, warranty_expiry, part_number,
                     supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
                     `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, department, cost, remarks
                 ) VALUES (
-                    :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
+                    :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
                     :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                     :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
                     :invoice_date, :invoice_num, :purchase_cost, :department, :cost, :remarks
                 )
             ");
 
+            $assetId = $formData['asset_id'] !== '' ? (int)$formData['asset_id'] : null;
             $poDate = $formData['P.O_DATE'] ?: null;
             $doDate = $formData['D.O_DATE'] ?: null;
             $invoiceDate = $formData['INVOICE_DATE'] ?: null;
@@ -99,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $staffId = $formData['staff_id'] !== '' ? $formData['staff_id'] : null;
 
             $stmt->execute([
+                ':asset_id' => $assetId,
                 ':serial_num' => $formData['serial_num'],
                 ':brand' => $formData['brand'],
                 ':model' => $formData['model'],
@@ -335,6 +342,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-section">
                 <h3 class="form-section-title">Asset Information</h3>
                 <div class="form-grid">
+                    <div class="form-group">
+                        <label for="asset_id">Asset ID</label>
+                        <input type="number" id="asset_id" name="asset_id" placeholder="Auto-generated if left empty" value="<?php echo htmlspecialchars($formData['asset_id']); ?>">
+                    </div>
                     <div class="form-group">
                         <label for="serial_num">Serial Number <span style="color:#c0392b;">*</span></label>
                         <input type="text" id="serial_num" name="serial_num" placeholder="Enter serial number" value="<?php echo htmlspecialchars($formData['serial_num']); ?>" required>
