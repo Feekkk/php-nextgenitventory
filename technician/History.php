@@ -7,6 +7,23 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+
+$pdo = getDBConnection();
+$assetTrails = [];
+
+try {
+    $stmt = $pdo->prepare("
+        SELECT at.*, tech.tech_name, tech.tech_id AS technician_code
+        FROM asset_trails at
+        LEFT JOIN technician tech ON at.changed_by = tech.id
+        ORDER BY at.created_at DESC
+        LIMIT 200
+    ");
+    $stmt->execute();
+    $assetTrails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('Failed to load asset trails: ' . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -267,88 +284,75 @@ if (!isset($_SESSION['user_id'])) {
 
         <div class="timeline-card">
             <div class="timeline" id="historyTimeline">
-                <div class="timeline-item" data-module="handover" data-action="handover" data-date="2025-01-16">
-                    <div class="timeline-badge"><i class="fa-solid fa-handshake"></i></div>
-                    <div class="timeline-content">
-                        <div>
-                            <div class="timeline-title">Handover created for LT-000245</div>
-                            <div class="timeline-meta">2025-01-16 10:45 · by Farhan Z.</div>
-                            <div class="timeline-details">
-                                <span class="tag handover">Handover</span>
-                                Assigned to Nur Aisyah (Academic Affairs). Expected return 2025-02-16.
+                <?php if (empty($assetTrails)) : ?>
+                    <div class="timeline-item">
+                        <div class="timeline-content">
+                            <div>
+                                <div class="timeline-title">No asset activity yet</div>
+                                <div class="timeline-meta">Activity will appear here when assets are created or updated.</div>
                             </div>
                         </div>
-                        <div class="timeline-actions">
-                            <button class="btn-action"><i class="fa-solid fa-eye"></i> View</button>
-                            <button class="btn-action"><i class="fa-solid fa-file-arrow-down"></i> Export</button>
-                        </div>
                     </div>
-                </div>
-                <div class="timeline-item" data-module="network" data-action="update" data-date="2025-01-15">
-                    <div class="timeline-badge"><i class="fa-solid fa-plug"></i></div>
-                    <div class="timeline-content">
-                        <div>
-                            <div class="timeline-title">NET-000122 firmware updated</div>
-                            <div class="timeline-meta">2025-01-15 18:20 · by Amin R.</div>
-                            <div class="timeline-details">
-                                <span class="tag update">Update</span>
-                                Firmware 17.5.3 → 17.6.2, IP 10.10.10.24, status remains "In Use".
+                <?php else : ?>
+                    <?php foreach ($assetTrails as $trail) :
+                        $module = 'laptop';
+                        if ($trail['asset_type'] === 'av') {
+                            $module = 'av';
+                        } elseif ($trail['asset_type'] === 'network') {
+                            $module = 'network';
+                        }
+
+                        $rawAction = strtoupper($trail['action_type']);
+                        $actionForFilter = strtolower($rawAction);
+                        if (in_array($rawAction, ['STATUS_CHANGE', 'ASSIGNMENT_CHANGE', 'LOCATION_CHANGE'], true)) {
+                            $actionForFilter = 'update';
+                        }
+
+                        $tagClass = 'update';
+                        if ($rawAction === 'CREATE') {
+                            $tagClass = 'create';
+                        } elseif ($rawAction === 'DELETE') {
+                            $tagClass = 'delete';
+                        }
+
+                        $iconClass = 'fa-box';
+                        if ($trail['asset_type'] === 'av') {
+                            $iconClass = 'fa-tv';
+                        } elseif ($trail['asset_type'] === 'network') {
+                            $iconClass = 'fa-plug';
+                        }
+
+                        $when = $trail['created_at'] ?? null;
+                        $dateAttr = $when ? date('Y-m-d', strtotime($when)) : '';
+                        $whenLabel = $when ? date('Y-m-d H:i', strtotime($when)) : 'Unknown time';
+                        $who = $trail['tech_name'] ?? 'Unknown user';
+                        $assetIdLabel = strtoupper($trail['asset_type']) . ' #' . $trail['asset_id'];
+                        $description = $trail['description'] ?: ($trail['field_name'] ? ($trail['field_name'] . ' changed') : '');
+                    ?>
+                        <div class="timeline-item"
+                             data-module="<?php echo htmlspecialchars($module); ?>"
+                             data-action="<?php echo htmlspecialchars($actionForFilter); ?>"
+                             data-date="<?php echo htmlspecialchars($dateAttr); ?>">
+                            <div class="timeline-badge"><i class="fa-solid <?php echo htmlspecialchars($iconClass); ?>"></i></div>
+                            <div class="timeline-content">
+                                <div>
+                                    <div class="timeline-title">
+                                        <?php echo htmlspecialchars($assetIdLabel); ?> - <?php echo htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $rawAction)))); ?>
+                                    </div>
+                                    <div class="timeline-meta">
+                                        <?php echo htmlspecialchars($whenLabel); ?> · by <?php echo htmlspecialchars($who); ?>
+                                    </div>
+                                    <div class="timeline-details">
+                                        <span class="tag <?php echo htmlspecialchars($tagClass); ?>">
+                                            <?php echo htmlspecialchars(ucwords(strtolower(str_replace('_', ' ', $rawAction)))); ?>
+                                        </span>
+                                        <?php echo htmlspecialchars($description ?: 'No additional details.'); ?>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="timeline-actions">
-                            <button class="btn-action"><i class="fa-solid fa-clipboard-list"></i> Diff</button>
-                            <button class="btn-action"><i class="fa-solid fa-eye"></i> View</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item" data-module="profile" data-action="update" data-date="2025-01-14">
-                    <div class="timeline-badge"><i class="fa-solid fa-user-gear"></i></div>
-                    <div class="timeline-content">
-                        <div>
-                            <div class="timeline-title">Profile updated: Siti N.</div>
-                            <div class="timeline-meta">2025-01-14 09:05 · by Siti N.</div>
-                            <div class="timeline-details">
-                                <span class="tag update">Update</span>
-                                Changed phone number and office location.
-                            </div>
-                        </div>
-                        <div class="timeline-actions">
-                            <button class="btn-action"><i class="fa-solid fa-eye"></i> View</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item" data-module="av" data-action="create" data-date="2025-01-12">
-                    <div class="timeline-badge"><i class="fa-solid fa-tv"></i></div>
-                    <div class="timeline-content">
-                        <div>
-                            <div class="timeline-title">AV-000345 registered</div>
-                            <div class="timeline-meta">2025-01-12 11:30 · by Nur F.</div>
-                            <div class="timeline-details">
-                                <span class="tag create">Create</span>
-                                New Epson EB-PU1008 projector installed at Lecture Hall C.
-                            </div>
-                        </div>
-                        <div class="timeline-actions">
-                            <button class="btn-action"><i class="fa-solid fa-eye"></i> View</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="timeline-item" data-module="laptop" data-action="delete" data-date="2025-01-10">
-                    <div class="timeline-badge"><i class="fa-solid fa-trash"></i></div>
-                    <div class="timeline-content">
-                        <div>
-                            <div class="timeline-title">LT-000011 disposal record</div>
-                            <div class="timeline-meta">2025-01-10 15:50 · by System</div>
-                            <div class="timeline-details">
-                                <span class="tag delete">Disposal</span>
-                                Auto archival after disposal certificate uploaded.
-                            </div>
-                        </div>
-                        <div class="timeline-actions">
-                            <button class="btn-action"><i class="fa-solid fa-file-arrow-down"></i> Certificate</button>
-                        </div>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>

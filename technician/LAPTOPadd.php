@@ -148,6 +148,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':remarks' => $formData['remarks'] ?: null,
             ]);
 
+            // Asset trail: record asset creation
+            try {
+                $newAssetId = $assetId ?? (int)$pdo->lastInsertId();
+                $trailStmt = $pdo->prepare("
+                    INSERT INTO asset_trails (
+                        asset_type, asset_id, action_type, changed_by,
+                        field_name, old_value, new_value, description,
+                        ip_address, user_agent
+                    ) VALUES (
+                        'laptop_desktop', :asset_id, 'CREATE', :changed_by,
+                        NULL, NULL, NULL, :description,
+                        :ip_address, :user_agent
+                    )
+                ");
+                $trailStmt->execute([
+                    ':asset_id' => $newAssetId,
+                    ':changed_by' => $_SESSION['user_id'] ?? null,
+                    ':description' => 'Created laptop/desktop asset with serial ' . $formData['serial_num'],
+                    ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                ]);
+            } catch (PDOException $e) {
+                error_log('Failed to write laptop asset trail: ' . $e->getMessage());
+            }
+
             $successMessage = 'Laptop/Desktop asset saved successfully.';
             foreach (array_keys($formData) as $field) {
                 $formData[$field] = '';
