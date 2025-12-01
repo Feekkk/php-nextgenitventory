@@ -12,7 +12,7 @@ $errors = [];
 $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
-$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST'];
 $requiredHeaders = ['class', 'brand', 'model', 'serial_num', 'status'];
 $optionalHeaders = ['location', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
 

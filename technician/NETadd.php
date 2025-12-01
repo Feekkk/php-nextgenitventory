@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getDBConnection();
 $errors = [];
 $successMessage = '';
-$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST'];
 $formData = [
     'serial' => '',
     'brand' => '',
