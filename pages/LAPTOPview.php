@@ -41,10 +41,13 @@ function formatAssetId($id) {
 function formatStatusClass($status) {
     $status = strtoupper(trim($status ?? ''));
     $map = [
-        'AVAILABLE' => 'available',
-        'IN-USE' => 'in-use',
-        'MAINTENANCE' => 'maintenance',
-        'DISPOSED' => 'disposed',
+        'DEPLOY' => 'available',
+        'FAULTY' => 'maintenance',
+        'DISPOSE' => 'disposed',
+        'RESERVED' => 'in-use',
+        'UNDER MAINTENANCE' => 'maintenance',
+        'NON-ACTIVE' => 'disposed',
+        'LOST' => 'disposed',
     ];
     return $map[$status] ?? 'unknown';
 }
@@ -474,6 +477,18 @@ function formatCurrency($amount) {
                                 <?php echo htmlspecialchars($asset['assigned_to_name'] ?: '-'); ?>
                             </div>
                         </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Assignment Type</div>
+                            <div class="detail-value <?php echo empty($asset['assignment_type']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['assignment_type'] ?: '-'); ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Location</div>
+                            <div class="detail-value <?php echo empty($asset['location']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['location'] ?: '-'); ?>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="detail-section">
@@ -536,12 +551,6 @@ function formatCurrency($amount) {
                                 <?php echo htmlspecialchars($asset['period'] ?: '-'); ?>
                             </div>
                         </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Department</div>
-                            <div class="detail-value <?php echo empty($asset['department']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['department'] ?: '-'); ?>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="detail-section">
@@ -586,12 +595,6 @@ function formatCurrency($amount) {
                             <div class="detail-label">Purchase Cost</div>
                             <div class="detail-value <?php echo empty($asset['PURCHASE_COST']) ? 'empty' : ''; ?>">
                                 <?php echo formatCurrency($asset['PURCHASE_COST']); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Cost</div>
-                            <div class="detail-value <?php echo empty($asset['cost']) ? 'empty' : ''; ?>">
-                                <?php echo formatCurrency($asset['cost']); ?>
                             </div>
                         </div>
                     </div>
