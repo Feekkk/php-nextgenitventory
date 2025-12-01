@@ -14,7 +14,7 @@ $skippedRows = [];
 $importedCount = 0;
 $allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
 $requiredHeaders = ['serial_num', 'brand', 'model', 'status'];
-$optionalHeaders = ['acquisition_type', 'category', 'staff_id', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'department', 'cost', 'remarks'];
+$optionalHeaders = ['acquisition_type', 'category', 'staff_id', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'cost', 'remarks'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
@@ -88,12 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
                                 processor, memory, os, storage, gpu, warranty_expiry, part_number,
                                 supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
-                                `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, department, cost, remarks
+                                `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                             ) VALUES (
                                 :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
                                 :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                                 :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
-                                :invoice_date, :invoice_num, :purchase_cost, :department, :cost, :remarks
+                                :invoice_date, :invoice_num, :purchase_cost, :remarks
                             )
                         ");
 
@@ -130,8 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'invoice_date' => '',
                                 'invoice_num' => '',
                                 'purchase_cost' => '',
-                                'department' => '',
-                                'cost' => '',
                                 'remarks' => '',
                             ];
 
@@ -185,10 +183,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $rowErrors[] = 'Purchase cost must be a number';
                             }
 
-                            if ($rowData['cost'] !== '' && !is_numeric($rowData['cost'])) {
-                                $rowErrors[] = 'Cost must be a number';
-                            }
-
                             if ($rowData['staff_id'] !== '' && !is_numeric($rowData['staff_id'])) {
                                 $rowErrors[] = 'Staff ID must be a number';
                             }
@@ -211,7 +205,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $invoiceDate = $rowData['invoice_date'] ?: null;
                             $warrantyExpiry = $rowData['warranty_expiry'] ?: null;
                             $purchaseCost = $rowData['purchase_cost'] !== '' ? $rowData['purchase_cost'] : null;
-                            $cost = $rowData['cost'] !== '' ? $rowData['cost'] : null;
                             $staffId = $rowData['staff_id'] !== '' ? $rowData['staff_id'] : null;
 
                             $insertStmt->execute([
@@ -240,8 +233,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':invoice_date' => $invoiceDate,
                                 ':invoice_num' => $rowData['invoice_num'] ?: null,
                                 ':purchase_cost' => $purchaseCost,
-                                ':department' => $rowData['department'] ?: null,
-                                ':cost' => $cost,
                                 ':remarks' => $rowData['remarks'] ?: null,
                             ]);
 

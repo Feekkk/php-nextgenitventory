@@ -37,8 +37,6 @@ $formData = [
     'INVOICE_DATE' => '',
     'INVOICE_NUM' => '',
     'PURCHASE_COST' => '',
-    'department' => '',
-    'cost' => '',
     'remarks' => '',
 ];
 
@@ -67,10 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Purchase cost must be a valid number.';
     }
 
-    if ($formData['cost'] !== '' && !is_numeric($formData['cost'])) {
-        $errors[] = 'Cost must be a valid number.';
-    }
-
     if ($formData['staff_id'] !== '' && !is_numeric($formData['staff_id'])) {
         $errors[] = 'Staff ID must be a valid number.';
     }
@@ -86,12 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
                     processor, memory, os, storage, gpu, warranty_expiry, part_number,
                     supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
-                    `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, department, cost, remarks
+                    `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                 ) VALUES (
                     :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
                     :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                     :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
-                    :invoice_date, :invoice_num, :purchase_cost, :department, :cost, :remarks
+                    :invoice_date, :invoice_num, :purchase_cost, :remarks
                 )
             ");
 
@@ -101,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $invoiceDate = $formData['INVOICE_DATE'] ?: null;
             $warrantyExpiry = $formData['warranty_expiry'] ?: null;
             $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
-            $cost = $formData['cost'] !== '' ? $formData['cost'] : null;
             $staffId = $formData['staff_id'] !== '' ? $formData['staff_id'] : null;
 
             $stmt->execute([
@@ -130,8 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':invoice_date' => $invoiceDate,
                 ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
                 ':purchase_cost' => $purchaseCost,
-                ':department' => $formData['department'] ?: null,
-                ':cost' => $cost,
                 ':remarks' => $formData['remarks'] ?: null,
             ]);
 
@@ -411,10 +402,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" value="<?php echo htmlspecialchars($formData['staff_id']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="department">Department</label>
-                        <input type="text" id="department" name="department" placeholder="e.g., IT Support" value="<?php echo htmlspecialchars($formData['department']); ?>">
-                    </div>
-                    <div class="form-group">
                         <label for="warranty_expiry">Warranty Expiry</label>
                         <input type="date" id="warranty_expiry" name="warranty_expiry" value="<?php echo htmlspecialchars($formData['warranty_expiry']); ?>">
                     </div>
@@ -470,10 +457,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="PURCHASE_COST">Purchase Cost (MYR)</label>
                         <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter purchase cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="cost">Cost (MYR)</label>
-                        <input type="number" step="0.01" id="cost" name="cost" placeholder="Enter cost" value="<?php echo htmlspecialchars($formData['cost']); ?>">
                     </div>
                 </div>
             </div>
