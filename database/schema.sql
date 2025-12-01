@@ -207,3 +207,29 @@ CREATE TABLE IF NOT EXISTS `laptop_desktop_assets` (
     INDEX `idx_storage` (`storage`),
     INDEX `idx_gpu` (`gpu`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Trails Table
+CREATE TABLE IF NOT EXISTS `asset_trails` (
+    `trail_id` INT(11) NOT NULL AUTO_INCREMENT,
+    `asset_type` ENUM('laptop_desktop', 'av', 'network') NOT NULL,
+    `asset_id` INT(11) NOT NULL,
+    `action_type` ENUM('CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'ASSIGNMENT_CHANGE', 'LOCATION_CHANGE') NOT NULL,
+    `changed_by` INT(11) DEFAULT NULL,
+    `tech_id` VARCHAR(100) DEFAULT NULL,
+    `field_name` VARCHAR(100) DEFAULT NULL,
+    `old_value` TEXT DEFAULT NULL,
+    `new_value` TEXT DEFAULT NULL,
+    `description` TEXT DEFAULT NULL,
+    `ip_address` VARCHAR(45) DEFAULT NULL,
+    `user_agent` TEXT DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`trail_id`),
+    INDEX `idx_asset_type` (`asset_type`),
+    INDEX `idx_asset_id` (`asset_id`),
+    INDEX `idx_action_type` (`action_type`),
+    INDEX `idx_changed_by` (`changed_by`),
+    INDEX `idx_tech_id` (`tech_id`),
+    INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_asset_composite` (`asset_type`, `asset_id`),
+    FOREIGN KEY (`changed_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
