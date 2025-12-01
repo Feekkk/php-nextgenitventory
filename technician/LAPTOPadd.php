@@ -10,7 +10,17 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getDBConnection();
 $errors = [];
 $successMessage = '';
-$allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST'];
+$staffName = '';
+
+if (isset($_GET['staff_id']) && is_numeric($_GET['staff_id'])) {
+    $stmt = $pdo->prepare("SELECT staff_name FROM staff_list WHERE staff_id = ?");
+    $stmt->execute([$_GET['staff_id']]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    header('Content-Type: application/json');
+    echo json_encode(['staff_name' => $result ? $result['staff_name'] : '']);
+    exit;
+}
 $formData = [
     'asset_id' => '',
     'serial_num' => '',
@@ -134,9 +144,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach (array_keys($formData) as $field) {
                 $formData[$field] = '';
             }
+            $staffName = '';
         } catch (PDOException $e) {
             $errors[] = 'Unable to save asset right now. Please try again.';
         }
+    }
+}
+
+if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
+    $stmt = $pdo->prepare("SELECT staff_name FROM staff_list WHERE staff_id = ?");
+    $stmt->execute([$formData['staff_id']]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($result) {
+        $staffName = $result['staff_name'];
     }
 }
 ?>
@@ -357,13 +377,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="category">Category</label>
                         <select id="category" name="category">
                             <option value="">Select category</option>
-                            <option value="Laptop" <?php echo $formData['category'] === 'Laptop' ? 'selected' : ''; ?>>Laptop</option>
-                            <option value="Desktop AIO" <?php echo $formData['category'] === 'Desktop AIO' ? 'selected' : ''; ?>>Desktop AIO</option>
+                            <option value="DESKTOP AIO" <?php echo $formData['category'] === 'DESKTOP AIO' ? 'selected' : ''; ?>>DESKTOP AIO</option>
+                            <option value="DESKTOP AIO-SHARING" <?php echo $formData['category'] === 'DESKTOP AIO-SHARING' ? 'selected' : ''; ?>>DESKTOP AIO-SHARING</option>
+                            <option value="NOTEBOOK" <?php echo $formData['category'] === 'NOTEBOOK' ? 'selected' : ''; ?>>NOTEBOOK</option>
+                            <option value="NOTEBOOK-STANDBY" <?php echo $formData['category'] === 'NOTEBOOK-STANDBY' ? 'selected' : ''; ?>>NOTEBOOK-STANDBY</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="acquisition_type">Acquisition Type</label>
-                        <input type="text" id="acquisition_type" name="acquisition_type" placeholder="e.g., Purchase, Lease" value="<?php echo htmlspecialchars($formData['acquisition_type']); ?>">
+                        <select id="acquisition_type" name="acquisition_type">
+                            <option value="">Select acquisition type</option>
+                            <option value="OWNERSHIP" <?php echo $formData['acquisition_type'] === 'OWNERSHIP' ? 'selected' : ''; ?>>OWNERSHIP</option>
+                            <option value="LEASE" <?php echo $formData['acquisition_type'] === 'LEASE' ? 'selected' : ''; ?>>LEASE</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="part_number">Part Number</label>
@@ -406,8 +432,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" value="<?php echo htmlspecialchars($formData['staff_id']); ?>">
                     </div>
                     <div class="form-group">
+                        <label for="staff_name">Staff Name</label>
+                        <input type="text" id="staff_name" name="staff_name" placeholder="Auto-filled from Staff ID" value="<?php echo htmlspecialchars($staffName); ?>" readonly style="background-color: #f5f5f5; cursor: not-allowed;">
+                    </div>
+                    <div class="form-group">
                         <label for="assignment_type">Assignment Type</label>
-                        <input type="text" id="assignment_type" name="assignment_type" placeholder="e.g., Permanent, Temporary" value="<?php echo htmlspecialchars($formData['assignment_type']); ?>">
+                        <select id="assignment_type" name="assignment_type">
+                            <option value="">Select assignment type</option>
+                            <option value="ACADEMIC" <?php echo $formData['assignment_type'] === 'ACADEMIC' ? 'selected' : ''; ?>>ACADEMIC</option>
+                            <option value="SERVICES" <?php echo $formData['assignment_type'] === 'SERVICES' ? 'selected' : ''; ?>>SERVICES</option>
+                            <option value="FACILITIES" <?php echo $formData['assignment_type'] === 'FACILITIES' ? 'selected' : ''; ?>>FACILITIES</option>
+                            <option value="LOST" <?php echo $formData['assignment_type'] === 'LOST' ? 'selected' : ''; ?>>LOST</option>
+                            <option value="OTHERS" <?php echo $formData['assignment_type'] === 'OTHERS' ? 'selected' : ''; ?>>OTHERS</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="location">Location</label>
@@ -423,7 +460,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="">Select status</option>
                             <?php foreach ($allowedStatuses as $status) : ?>
                                 <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
-                                    <?php echo ucwords(str_replace('-', ' ', strtolower($status))); ?>
+                                    <?php echo htmlspecialchars($status); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -497,5 +534,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <footer>
         <?php include_once("../components/Footer.php"); ?>
     </footer>
+
+    <script>
+        document.getElementById('staff_id').addEventListener('input', function() {
+            const staffId = this.value.trim();
+            const staffNameField = document.getElementById('staff_name');
+            
+            if (staffId === '') {
+                staffNameField.value = '';
+                return;
+            }
+            
+            if (!/^\d+$/.test(staffId)) {
+                return;
+            }
+            
+            fetch('?staff_id=' + encodeURIComponent(staffId))
+                .then(response => response.json())
+                .then(data => {
+                    staffNameField.value = data.staff_name || '';
+                })
+                .catch(error => {
+                    console.error('Error fetching staff name:', error);
+                    staffNameField.value = '';
+                });
+        });
+        
+        const staffIdField = document.getElementById('staff_id');
+        if (staffIdField.value) {
+            staffIdField.dispatchEvent(new Event('input'));
+        }
+    </script>
 </body>
 </html>
