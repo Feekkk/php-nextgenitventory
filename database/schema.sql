@@ -171,6 +171,8 @@ CREATE TABLE IF NOT EXISTS `laptop_desktop_assets` (
     `category` VARCHAR(100) DEFAULT NULL,
     `status` VARCHAR(50) DEFAULT NULL,
     `staff_id` INT(11) DEFAULT NULL,
+    `assignment_type` VARCHAR(100) DEFAULT NULL,
+    `location` VARCHAR(100) DEFAULT NULL,
     `processor` VARCHAR(100) DEFAULT NULL,
     `memory` VARCHAR(100) DEFAULT NULL,
     `os` VARCHAR(100) DEFAULT NULL,

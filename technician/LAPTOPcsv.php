@@ -14,7 +14,7 @@ $skippedRows = [];
 $importedCount = 0;
 $allowedStatuses = ['AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE', 'DISPOSED'];
 $requiredHeaders = ['serial_num', 'brand', 'model', 'status'];
-$optionalHeaders = ['acquisition_type', 'category', 'staff_id', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'cost', 'remarks'];
+$optionalHeaders = ['acquisition_type', 'category', 'staff_id', 'assignment_type', 'location', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
@@ -46,6 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'asset_tag' => 'asset_id',
                         'serial_number' => 'serial_num',
                         'employer_id' => 'staff_id',
+                        'assignment_type' => 'assignment_type',
+                        'location' => 'location',
+                        'operating_system' => 'os',
                         'operating_system_os' => 'os',
                         'warranty_expires' => 'warranty_expiry',
                         'p.0_number' => 'p.o_num',
@@ -86,12 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insertStmt = $pdo->prepare("
                             INSERT INTO laptop_desktop_assets (
                                 asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
-                                processor, memory, os, storage, gpu, warranty_expiry, part_number,
+                                assignment_type, location, processor, memory, os, storage, gpu, warranty_expiry, part_number,
                                 supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
                                 `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                             ) VALUES (
                                 :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
-                                :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
+                                :assignment_type, :location, :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                                 :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
                                 :invoice_date, :invoice_num, :purchase_cost, :remarks
                             )
@@ -113,6 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'category' => '',
                                 'status' => '',
                                 'staff_id' => '',
+                                'assignment_type' => '',
+                                'location' => '',
                                 'processor' => '',
                                 'memory' => '',
                                 'os' => '',
@@ -216,6 +221,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':category' => $rowData['category'] ?: null,
                                 ':status' => $statusValue,
                                 ':staff_id' => $staffId,
+                                ':assignment_type' => $rowData['assignment_type'] ?: null,
+                                ':location' => $rowData['location'] ?: null,
                                 ':processor' => $rowData['processor'] ?: null,
                                 ':memory' => $rowData['memory'] ?: null,
                                 ':os' => $rowData['os'] ?: null,
@@ -492,7 +499,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <ul>
                         <li>CSV headers will be automatically normalized (spaces/hyphens to underscores, case-insensitive).</li>
                         <li>Required columns: Serial Number, Brand, Model, Status.</li>
-                        <li>Optional columns: Asset Tag, ACQUISITION TYPE, Category, Employer ID, P.O Date, P.0 Number, D.O Date, D.O No, Invoice Date, Invoice No, Purchase Cost, Processor, Memory, Operating System (OS), Storage, Warranty Expires, Part Number, Supplier, Period, Activity Log.</li>
+                        <li>Optional columns: Asset Tag, ACQUISITION TYPE, Category, Employer ID, Assignment Type, Location, P.O Date, P.O Number, D.O Number, Invoice Date, Invoice Number, Purchase Cost, Processor, Memory, Operating System, Storage, Warranty Expires, Part Number, Supplier, Period, Activity Log.</li>
                         <li>Date columns (P.O Date, D.O Date, Invoice Date, Warranty Expires) should be in YYYY-MM-DD format.</li>
                         <li>Asset Tag column maps to asset_id (must be numeric if provided).</li>
                     </ul>
@@ -512,16 +519,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <th>Category</th>
                                     <th>Status</th>
                                     <th>Employer ID</th>
+                                    <th>Assignment Type</th>
+                                    <th>Location</th>
                                     <th>P.O Date</th>
-                                    <th>P.0 Number</th>
-                                    <th>D.O Date</th>
-                                    <th>D.O No</th>
+                                    <th>P.O Number</th>
+                                    <th>D.O Number</th>
                                     <th>Invoice Date</th>
                                     <th>Invoice No</th>
                                     <th>Purchase Cost</th>
                                     <th>Processor</th>
                                     <th>Memory</th>
-                                    <th>Operating System (OS)</th>
+                                    <th>Operating System</th>
                                     <th>Storage</th>
                                     <th>Warranty Expires</th>
                                     <th>Part Number</th>
@@ -540,9 +548,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>Laptop</td>
                                     <td>AVAILABLE</td>
                                     <td>1</td>
+                                    <td>Permanent</td>
+                                    <td>Building A, Level 2</td>
                                     <td>2024-01-15</td>
                                     <td>PO-2024-001</td>
-                                    <td>2024-01-20</td>
                                     <td>DO-2024-001</td>
                                     <td>2024-01-25</td>
                                     <td>INV-2024-001</td>

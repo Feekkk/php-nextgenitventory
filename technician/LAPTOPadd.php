@@ -20,6 +20,8 @@ $formData = [
     'category' => '',
     'status' => '',
     'staff_id' => '',
+    'assignment_type' => '',
+    'location' => '',
     'processor' => '',
     'memory' => '',
     'os' => '',
@@ -78,12 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("
                 INSERT INTO laptop_desktop_assets (
                     asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
-                    processor, memory, os, storage, gpu, warranty_expiry, part_number,
+                    assignment_type, location, processor, memory, os, storage, gpu, warranty_expiry, part_number,
                     supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
                     `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                 ) VALUES (
                     :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
-                    :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
+                    :assignment_type, :location, :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                     :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
                     :invoice_date, :invoice_num, :purchase_cost, :remarks
                 )
@@ -106,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':category' => $formData['category'] ?: null,
                 ':status' => $formData['status'],
                 ':staff_id' => $staffId,
+                ':assignment_type' => $formData['assignment_type'] ?: null,
+                ':location' => $formData['location'] ?: null,
                 ':processor' => $formData['processor'] ?: null,
                 ':memory' => $formData['memory'] ?: null,
                 ':os' => $formData['os'] ?: null,
@@ -400,6 +404,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="staff_id">Staff ID</label>
                         <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" value="<?php echo htmlspecialchars($formData['staff_id']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="assignment_type">Assignment Type</label>
+                        <input type="text" id="assignment_type" name="assignment_type" placeholder="e.g., Permanent, Temporary" value="<?php echo htmlspecialchars($formData['assignment_type']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" placeholder="e.g., Building A, Level 2" value="<?php echo htmlspecialchars($formData['location']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="warranty_expiry">Warranty Expiry</label>
