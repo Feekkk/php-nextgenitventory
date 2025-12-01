@@ -85,6 +85,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Asset ID must be a valid number.';
     }
 
+    if ($formData['staff_id'] !== '' && is_numeric($formData['staff_id'])) {
+        $stmt = $pdo->prepare("SELECT staff_id FROM staff_list WHERE staff_id = ?");
+        $stmt->execute([$formData['staff_id']]);
+        if (!$stmt->fetch()) {
+            $errors[] = 'Staff ID does not exist in the system. Please enter a valid Staff ID.';
+        }
+    }
+
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
@@ -102,12 +110,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
 
             $assetId = $formData['asset_id'] !== '' ? (int)$formData['asset_id'] : null;
-            $poDate = $formData['P.O_DATE'] ?: null;
-            $doDate = $formData['D.O_DATE'] ?: null;
-            $invoiceDate = $formData['INVOICE_DATE'] ?: null;
-            $warrantyExpiry = $formData['warranty_expiry'] ?: null;
-            $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
-            $staffId = $formData['staff_id'] !== '' ? $formData['staff_id'] : null;
+            $poDate = $formData['P.O_DATE'] !== '' ? $formData['P.O_DATE'] : null;
+            $doDate = $formData['D.O_DATE'] !== '' ? $formData['D.O_DATE'] : null;
+            $invoiceDate = $formData['INVOICE_DATE'] !== '' ? $formData['INVOICE_DATE'] : null;
+            $warrantyExpiry = $formData['warranty_expiry'] !== '' ? $formData['warranty_expiry'] : null;
+            $purchaseCost = $formData['PURCHASE_COST'] !== '' ? (float)$formData['PURCHASE_COST'] : null;
+            $staffId = $formData['staff_id'] !== '' ? (int)$formData['staff_id'] : null;
 
             $stmt->execute([
                 ':asset_id' => $assetId,
@@ -146,7 +154,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $staffName = '';
         } catch (PDOException $e) {
+            error_log('LAPTOPadd.php INSERT Error: ' . $e->getMessage());
             $errors[] = 'Unable to save asset right now. Please try again.';
+            $errors[] = 'Error: ' . $e->getMessage();
         }
     }
 }
