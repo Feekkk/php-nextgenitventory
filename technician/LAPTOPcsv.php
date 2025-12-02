@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             INSERT INTO laptop_desktop_assets (
                                 asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
                                 assignment_type, location, processor, memory, os, storage, gpu, warranty_expiry, part_number,
-                                supplier, period, activity_log, `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
+                                supplier, period, activity_log, `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                                 `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                             ) VALUES (
                                 :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,

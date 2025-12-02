@@ -363,10 +363,10 @@ inventory/
 The system supports flexible header naming. Common variations are automatically mapped:
 
 - `SERIAL_NUMBER`, `SERIAL_NUM` → `serial_num`
-- `PO_DATE`, `P.O_DATE` → `p.o_date`
-- `PO_NUMBER`, `PO_NUM`, `P.O_NUM` → `p.o_num`
-- `DO_DATE`, `D.O_DATE` → `d.o_date`
-- `DO_NO`, `D.O_NUM` → `d.o_num`
+- `PO_DATE` → `po_date`
+- `PO_NUMBER`, `PO_NUM` → `po_num`
+- `DO_DATE` → `do_date`
+- `DO_NO`, `DO_NUM` → `do_num`
 - `INVOICE_DATE` → `invoice_date`
 - `INVOICE_NO`, `INVOICE_NUM` → `invoice_num`
 

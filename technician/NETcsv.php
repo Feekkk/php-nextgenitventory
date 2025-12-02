@@ -119,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insertStmt = $pdo->prepare("
                             INSERT INTO net_assets (
                                 serial, model, brand, mac_add, ip_add,
-                                building, level, status, `P.O_DATE`, `P.O_NUM`,
-                                `D.O_DATE`, `D.O_NUM`, `INVOICE_DATE`, `INVOICE_NUM`,
+                                building, level, status, `PO_DATE`, `PO_NUM`,
+                                `DO_DATE`, `DO_NUM`, `INVOICE_DATE`, `INVOICE_NUM`,
                                 `PURCHASE_COST`, remarks, created_by
                             ) VALUES (
                                 :serial, :model, :brand, :mac_add, :ip_add,

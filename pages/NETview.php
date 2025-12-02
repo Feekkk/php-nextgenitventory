@@ -479,26 +479,26 @@ function formatCurrency($amount) {
                         <h3 class="section-title">Purchase Information</h3>
                         <div class="detail-item">
                             <div class="detail-label">P.O. Date</div>
-                            <div class="detail-value <?php echo empty($asset['P.O_DATE']) ? 'empty' : ''; ?>">
-                                <?php echo formatDate($asset['P.O_DATE']); ?>
+                            <div class="detail-value <?php echo empty($asset['PO_DATE']) ? 'empty' : ''; ?>">
+                                <?php echo formatDate($asset['PO_DATE']); ?>
                             </div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">P.O. Number</div>
-                            <div class="detail-value <?php echo empty($asset['P.O_NUM']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['P.O_NUM'] ?: '-'); ?>
+                            <div class="detail-value <?php echo empty($asset['PO_NUM']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['PO_NUM'] ?: '-'); ?>
                             </div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">D.O. Date</div>
-                            <div class="detail-value <?php echo empty($asset['D.O_DATE']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['D.O_DATE'] ?: '-'); ?>
+                            <div class="detail-value <?php echo empty($asset['DO_DATE']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['DO_DATE'] ?: '-'); ?>
                             </div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">D.O. Number</div>
-                            <div class="detail-value <?php echo empty($asset['D.O_NUM']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['D.O_NUM'] ?: '-'); ?>
+                            <div class="detail-value <?php echo empty($asset['DO_NUM']) ? 'empty' : ''; ?>">
+                                <?php echo htmlspecialchars($asset['DO_NUM'] ?: '-'); ?>
                             </div>
                         </div>
                         <div class="detail-item">

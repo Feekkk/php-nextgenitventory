@@ -18,10 +18,10 @@ $formData = [
     'serial_num' => '',
     'location' => '',
     'status' => '',
-    'P.O_DATE' => '',
-    'P.O_NUM' => '',
-    'D.O_DATE' => '',
-    'D.O_NUM' => '',
+    'PO_DATE' => '',
+    'PO_NUM' => '',
+    'DO_DATE' => '',
+    'DO_NUM' => '',
     'INVOICE_DATE' => '',
     'INVOICE_NUM' => '',
     'PURCHASE_COST' => '',
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("
                 INSERT INTO av_assets (
                     class, brand, model, serial_num, location, status,
-                    `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
+                    `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                     `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
                 ) VALUES (
                     :class, :brand, :model, :serial_num, :location, :status,
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )
             ");
 
-            $poDate = $formData['P.O_DATE'] ?: null;
+            $poDate = $formData['PO_DATE'] ?: null;
             $invoiceDate = $formData['INVOICE_DATE'] ?: null;
             $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
 
@@ -83,9 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':location' => $formData['location'] ?: null,
                 ':status' => $formData['status'],
                 ':po_date' => $poDate,
-                ':po_num' => $formData['P.O_NUM'] ?: null,
-                ':do_date' => $formData['D.O_DATE'] ?: null,
-                ':do_num' => $formData['D.O_NUM'] ?: null,
+                ':po_num' => $formData['PO_NUM'] ?: null,
+                ':do_date' => $formData['DO_DATE'] ?: null,
+                ':do_num' => $formData['DO_NUM'] ?: null,
                 ':invoice_date' => $invoiceDate,
                 ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
                 ':purchase_cost' => $purchaseCost,
@@ -381,20 +381,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h3 class="form-section-title">Purchase Information</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="P.O_DATE">P.O. Date</label>
-                        <input type="date" id="P.O_DATE" name="P.O_DATE" value="<?php echo htmlspecialchars($formData['P.O_DATE']); ?>">
+                        <label for="PO_DATE">P.O. Date</label>
+                        <input type="date" id="PO_DATE" name="PO_DATE" value="<?php echo htmlspecialchars($formData['PO_DATE']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="P.O_NUM">P.O. Number</label>
-                        <input type="text" id="P.O_NUM" name="P.O_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['P.O_NUM']); ?>">
+                        <label for="PO_NUM">P.O. Number</label>
+                        <input type="text" id="PO_NUM" name="PO_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['PO_NUM']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="D.O_DATE">D.O. Date</label>
-                        <input type="text" id="D.O_DATE" name="D.O_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['D.O_DATE']); ?>">
+                        <label for="DO_DATE">D.O. Date</label>
+                        <input type="text" id="DO_DATE" name="DO_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="D.O_NUM">D.O. Number</label>
-                        <input type="text" id="D.O_NUM" name="D.O_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['D.O_NUM']); ?>">
+                        <label for="DO_NUM">D.O. Number</label>
+                        <input type="text" id="DO_NUM" name="DO_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['DO_NUM']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="INVOICE_DATE">Invoice Date</label>

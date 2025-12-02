@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $insertStmt = $pdo->prepare("
                             INSERT INTO av_assets (
                                 class, brand, model, serial_num, location, status,
-                                `P.O_DATE`, `P.O_NUM`, `D.O_DATE`, `D.O_NUM`,
+                                `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                                 `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
                             ) VALUES (
                                 :class, :brand, :model, :serial_num, :location, :status,
