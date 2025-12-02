@@ -150,6 +150,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 :invoice_date, :invoice_num, :purchase_cost, :remarks
                             )
                         ");
+                        $trailStmt = $pdo->prepare("
+                            INSERT INTO asset_trails (
+                                asset_type, asset_id, action_type, changed_by,
+                                field_name, old_value, new_value, description,
+                                ip_address, user_agent
+                            ) VALUES (
+                                'laptop_desktop', :asset_id, 'CREATE', :changed_by,
+                                NULL, NULL, NULL, :description,
+                                :ip_address, :user_agent
+                            )
+                        ");
 
                         while (($row = fgetcsv($handle)) !== false) {
                             $rawValues = array_map('trim', $row);
@@ -332,6 +343,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':invoice_num' => $rowData['invoice_num'] ?: null,
                                 ':purchase_cost' => $purchaseCost,
                                 ':remarks' => $rowData['remarks'] ?: null,
+                            ]);
+
+                            $newAssetId = $assetId ?? (int)$pdo->lastInsertId();
+                            $trailStmt->execute([
+                                ':asset_id' => $newAssetId,
+                                ':changed_by' => $_SESSION['user_id'],
+                                ':description' => 'Created laptop/desktop asset via CSV import: ' . $rowData['brand'] . ' ' . $rowData['model'] . ' (Serial: ' . $rowData['serial_num'] . ')',
+                                ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                                ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
                             ]);
 
                             $importedCount++;
