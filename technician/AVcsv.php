@@ -12,9 +12,41 @@ $errors = [];
 $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
-$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'AVAILABLE', 'UNAVAILABLE'];
 $requiredHeaders = ['class', 'brand', 'model', 'serial_num', 'status'];
 $optionalHeaders = ['location', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
+$headerMap = [
+    'asset_id' => 'asset_id',
+    'class' => 'class',
+    'brand' => 'brand',
+    'model' => 'model',
+    'serial_number' => 'serial_num',
+    'serial_num' => 'serial_num',
+    'location' => 'location',
+    'remarks' => 'remarks',
+    'status' => 'status',
+    'po_date' => 'p.o_date',
+    'p.o_date' => 'p.o_date',
+    'po_number' => 'p.o_num',
+    'p.o_num' => 'p.o_num',
+    'do_date' => 'd.o_date',
+    'd.o_date' => 'd.o_date',
+    'do_no' => 'd.o_num',
+    'd.o_num' => 'd.o_num',
+    'invoice_date' => 'invoice_date',
+    'invoice_no' => 'invoice_num',
+    'invoice_num' => 'invoice_num',
+    'purchase_cost' => 'purchase_cost'
+];
+
+if (!function_exists('normalizeHeaderKey')) {
+    function normalizeHeaderKey(string $header): string
+    {
+        $header = preg_replace('/^\xEF\xBB\xBF/', '', $header);
+        $header = strtolower(trim($header));
+        return str_replace([' ', '-'], '_', $header);
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
@@ -37,16 +69,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($handle === false) {
                 $errors[] = 'Unable to read the uploaded file.';
             } else {
-                $normalize = function ($value) {
-                    return strtolower(str_replace([' ', '-'], '_', trim((string)$value)));
-                };
-
                 $headerRow = fgetcsv($handle);
 
                 if ($headerRow === false) {
                     $errors[] = 'The CSV file is empty.';
                 } else {
-                    $headers = array_map($normalize, $headerRow);
+                    $headers = [];
+                    foreach ($headerRow as $index => $header) {
+                        $normalized = normalizeHeaderKey($header);
+                        $headers[$index] = $headerMap[$normalized] ?? '';
+                    }
                     $availableColumns = array_unique(array_filter($headers));
 
                     foreach ($requiredHeaders as $required) {
@@ -98,7 +130,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             foreach ($headers as $index => $columnName) {
                                 if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
-                                    $rowData[$columnName] = trim($row[$index]);
+                                    $value = $row[$index];
+                                    if ($columnName === 'status') {
+                                        $value = preg_replace('/[\x00-\x1F\x7F-\x9F]/u', '', $value);
+                                        $value = str_replace(["\xEF\xBB\xBF", "\xC2\xA0"], '', $value);
+                                    }
+                                    $rowData[$columnName] = trim($value);
                                 }
                             }
 
@@ -110,8 +147,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
-                            if ($rowData['status'] !== '' && !in_array(strtoupper($rowData['status']), $allowedStatuses, true)) {
-                                $rowErrors[] = 'Invalid status value';
+                            if ($rowData['status'] !== '') {
+                                $normalizedStatus = strtoupper(trim($rowData['status']));
+                                $normalizedStatus = preg_replace('/\s+/', ' ', $normalizedStatus);
+                                $normalizedStatus = trim($normalizedStatus);
+                                if (!in_array($normalizedStatus, $allowedStatuses, true)) {
+                                    $rowErrors[] = 'Invalid status value';
+                                } else {
+                                    $rowData['status'] = $normalizedStatus;
+                                }
                             }
 
                             if ($rowData['p.o_date'] !== '') {
@@ -138,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 continue;
                             }
 
-                            $statusValue = strtoupper($rowData['status']);
+                            $statusValue = $rowData['status'];
                             
                             $poDate = $rowData['p.o_date'] ?: null;
                             $invoiceDate = $rowData['invoice_date'] ?: null;
@@ -416,10 +460,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="guidelines">
                     <h3>Before uploading</h3>
                     <ul>
-                        <li>Ensure headers match the template (lowercase, underscores).</li>
-                        <li>Required columns: class, brand, model, serial_num, status.</li>
-                        <li>Optional columns: location, p.o_date, p.o_num, d.o_date, d.o_num, invoice_date, invoice_num, purchase_cost, remarks.</li>
-                        <li>Date columns (p.o_date, invoice_date) should be in YYYY-MM-DD format.</li>
+                        <li>Ensure the header row matches the template exactly (e.g., "ASSET_ID", "SERIAL_NUMBER").</li>
+                        <li>Required columns: CLASS, BRAND, MODEL, SERIAL_NUMBER, STATUS.</li>
+                        <li>Optional columns: ASSET_ID, LOCATION, REMARKS, PO_DATE, PO_NUMBER, DO_DATE, DO_NO, INVOICE_DATE, INVOICE_NO, PURCHASE_COST.</li>
+                        <li>Valid STATUS values: DEPLOY, FAULTY, DISPOSE, RESERVED, UNDER MAINTENANCE, NON-ACTIVE, LOST, AVAILABLE, UNAVAILABLE.</li>
+                        <li>Date columns (PO_DATE, DO_DATE, INVOICE_DATE) should use YYYY-MM-DD format.</li>
                         <li>Strip sensitive credentials from exports before uploading.</li>
                     </ul>
                 </div>
@@ -430,30 +475,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <table class="sample-table">
                             <thead>
                                 <tr>
-                                    <th>class</th>
-                                    <th>brand</th>
-                                    <th>model</th>
-                                    <th>serial_num</th>
-                                    <th>location</th>
-                                    <th>status</th>
-                                    <th>p.o_date</th>
-                                    <th>p.o_num</th>
-                                    <th>d.o_date</th>
-                                    <th>d.o_num</th>
-                                    <th>invoice_date</th>
-                                    <th>invoice_num</th>
-                                    <th>purchase_cost</th>
-                                    <th>remarks</th>
+                                    <th>ASSET_ID</th>
+                                    <th>CLASS</th>
+                                    <th>BRAND</th>
+                                    <th>MODEL</th>
+                                    <th>SERIAL_NUMBER</th>
+                                    <th>LOCATION</th>
+                                    <th>REMARKS</th>
+                                    <th>STATUS</th>
+                                    <th>PO_DATE</th>
+                                    <th>PO_NUMBER</th>
+                                    <th>DO_DATE</th>
+                                    <th>DO_NO</th>
+                                    <th>INVOICE_DATE</th>
+                                    <th>INVOICE_NO</th>
+                                    <th>PURCHASE_COST</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
+                                    <td>1001</td>
                                     <td>projector</td>
                                     <td>Epson</td>
                                     <td>EB-X06</td>
                                     <td>SN1234567</td>
                                     <td>Lecture Hall A</td>
-                                    <td>AVAILABLE</td>
+                                    <td>Main projector for hall</td>
+                                    <td>DEPLOY</td>
                                     <td>2024-01-15</td>
                                     <td>PO-2024-001</td>
                                     <td>2024-01-20</td>
@@ -461,12 +509,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>2024-01-25</td>
                                     <td>INV-2024-001</td>
                                     <td>5000.00</td>
-                                    <td>Main projector for hall</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <small style="color:#636e72;">Use lowercase headers with underscores to match the schema.</small>
+                    <small style="color:#636e72;">Headers can be uppercase with underscores as shown; the importer will map them to the correct fields.</small>
                 </div>
 
                 <div class="form-actions">
