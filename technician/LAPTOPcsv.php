@@ -12,8 +12,32 @@ $errors = [];
 $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
-$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'AVAILABLE', 'UNAVAILABLE'];
 $requiredHeaders = ['serial_num', 'brand', 'model', 'status'];
+
+if (!function_exists('convertExcelDate')) {
+    function convertExcelDate($value) {
+        if (empty($value) || !is_numeric($value)) {
+            return $value;
+        }
+        $numValue = (float)$value;
+        if ($numValue < 1 || $numValue > 1000000) {
+            return $value;
+        }
+        try {
+            $excelEpoch = new DateTime('1899-12-30');
+            $days = (int)$numValue;
+            $excelEpoch->modify("+{$days} days");
+            $result = $excelEpoch->format('Y-m-d');
+            if ($excelEpoch->format('Y') < 1900 || $excelEpoch->format('Y') > 2100) {
+                return $value;
+            }
+            return $result;
+        } catch (Exception $e) {
+            return $value;
+        }
+    }
+}
 $optionalHeaders = ['acquisition_type', 'category', 'staff_id', 'assignment_type', 'location', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,20 +68,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $columnMapping = [
                         'asset_tag' => 'asset_id',
+                        'asset_id' => 'asset_id',
                         'serial_number' => 'serial_num',
+                        'serial_num' => 'serial_num',
                         'employer_id' => 'staff_id',
+                        'staff_id' => 'staff_id',
                         'assignment_type' => 'assignment_type',
                         'location' => 'location',
                         'operating_system' => 'os',
                         'operating_system_os' => 'os',
+                        'os' => 'os',
                         'warranty_expires' => 'warranty_expiry',
+                        'warranty' => 'warranty_expiry',
+                        'warranty_expiry' => 'warranty_expiry',
                         'p.0_number' => 'p.o_num',
                         'p.o_number' => 'p.o_num',
+                        'p.o_num' => 'p.o_num',
+                        'po_number' => 'p.o_num',
+                        'po_num' => 'p.o_num',
                         'd.o_no' => 'd.o_num',
                         'd.o_number' => 'd.o_num',
+                        'd.o_num' => 'd.o_num',
+                        'do_number' => 'd.o_num',
+                        'do_no' => 'd.o_num',
                         'invoice_no' => 'invoice_num',
                         'invoice_number' => 'invoice_num',
+                        'invoice_num' => 'invoice_num',
                         'acquisition_type' => 'acquisition_type',
+                        'categories' => 'category',
+                        'category' => 'category',
+                        'part_no' => 'part_number',
+                        'part_number' => 'part_number',
                     ];
                     
                     if (isset($columnMapping[$value])) {
@@ -74,10 +115,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $headers = array_map($normalize, $headerRow);
                     $availableColumns = array_unique(array_filter($headers));
+                    $originalHeaders = $headerRow;
 
+                    $headerDisplayNames = [
+                        'serial_num' => 'Serial Number (or SERIAL_NUMBER)',
+                        'brand' => 'Brand',
+                        'model' => 'Model',
+                        'status' => 'Status'
+                    ];
+                    
                     foreach ($requiredHeaders as $required) {
                         if (!in_array($required, $availableColumns, true)) {
-                            $errors[] = "Missing required column: {$required}";
+                            $displayName = $headerDisplayNames[$required] ?? $required;
+                            $foundColumns = implode(', ', array_filter($originalHeaders, fn($h) => !empty(trim($h))));
+                            $errors[] = "Missing required column: {$displayName}. Your CSV has: {$foundColumns}";
                         }
                     }
                 }
@@ -140,60 +191,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             foreach ($headers as $index => $columnName) {
                                 if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
-                                    $rowData[$columnName] = trim($row[$index]);
+                                    $value = trim($row[$index]);
+                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry']) && is_numeric($value) && $value > 0) {
+                                        $value = convertExcelDate($value);
+                                    }
+                                    if ($columnName === 'status') {
+                                        $value = preg_replace('/[\x00-\x1F\x7F-\x9F]/u', '', $value);
+                                        $value = str_replace(["\xEF\xBB\xBF", "\xC2\xA0"], '', $value);
+                                    }
+                                    $rowData[$columnName] = $value;
                                 }
                             }
 
                             $rowErrors = [];
 
+                            $columnDisplayNames = [
+                                'serial_num' => 'Serial Number',
+                                'brand' => 'Brand',
+                                'model' => 'Model',
+                                'status' => 'Status',
+                                'staff_id' => 'Staff ID',
+                                'asset_id' => 'Asset ID',
+                                'p.o_date' => 'P.O. Date',
+                                'd.o_date' => 'D.O. Date',
+                                'invoice_date' => 'Invoice Date',
+                                'warranty_expiry' => 'Warranty Expiry',
+                                'purchase_cost' => 'Purchase Cost'
+                            ];
+
                             foreach ($requiredHeaders as $requiredColumn) {
                                 if ($rowData[$requiredColumn] === '') {
-                                    $rowErrors[] = "{$requiredColumn} is required";
+                                    $displayName = $columnDisplayNames[$requiredColumn] ?? $requiredColumn;
+                                    $rowErrors[] = "Missing required field: {$displayName}";
                                 }
                             }
 
-                            if ($rowData['status'] !== '' && !in_array(strtoupper($rowData['status']), $allowedStatuses, true)) {
-                                $rowErrors[] = 'Invalid status value';
+                            if ($rowData['status'] !== '') {
+                                $normalizedStatus = strtoupper(trim($rowData['status']));
+                                $normalizedStatus = preg_replace('/\s+/', ' ', $normalizedStatus);
+                                $normalizedStatus = trim($normalizedStatus);
+                                if (!in_array($normalizedStatus, $allowedStatuses, true)) {
+                                    $validStatuses = implode(', ', $allowedStatuses);
+                                    $rowErrors[] = "Invalid Status value: '{$rowData['status']}'. Valid values are: {$validStatuses}";
+                                } else {
+                                    $rowData['status'] = $normalizedStatus;
+                                }
                             }
 
                             if ($rowData['p.o_date'] !== '') {
                                 $date = DateTime::createFromFormat('Y-m-d', $rowData['p.o_date']);
                                 if (!$date || $date->format('Y-m-d') !== $rowData['p.o_date']) {
-                                    $rowErrors[] = 'Invalid P.O. date format (use YYYY-MM-DD)';
+                                    $rowErrors[] = "Invalid P.O. Date format: '{$rowData['p.o_date']}'. Expected format: YYYY-MM-DD (e.g., 2024-01-15)";
                                 }
                             }
 
                             if ($rowData['d.o_date'] !== '') {
                                 $date = DateTime::createFromFormat('Y-m-d', $rowData['d.o_date']);
                                 if (!$date || $date->format('Y-m-d') !== $rowData['d.o_date']) {
-                                    $rowErrors[] = 'Invalid D.O. date format (use YYYY-MM-DD)';
+                                    $rowErrors[] = "Invalid D.O. Date format: '{$rowData['d.o_date']}'. Expected format: YYYY-MM-DD (e.g., 2024-01-20)";
                                 }
                             }
 
                             if ($rowData['invoice_date'] !== '') {
                                 $date = DateTime::createFromFormat('Y-m-d', $rowData['invoice_date']);
                                 if (!$date || $date->format('Y-m-d') !== $rowData['invoice_date']) {
-                                    $rowErrors[] = 'Invalid invoice date format (use YYYY-MM-DD)';
+                                    $rowErrors[] = "Invalid Invoice Date format: '{$rowData['invoice_date']}'. Expected format: YYYY-MM-DD (e.g., 2024-01-25)";
                                 }
                             }
 
                             if ($rowData['warranty_expiry'] !== '') {
                                 $date = DateTime::createFromFormat('Y-m-d', $rowData['warranty_expiry']);
                                 if (!$date || $date->format('Y-m-d') !== $rowData['warranty_expiry']) {
-                                    $rowErrors[] = 'Invalid warranty expiry date format (use YYYY-MM-DD)';
+                                    $rowErrors[] = "Invalid Warranty Expiry format: '{$rowData['warranty_expiry']}'. Expected format: YYYY-MM-DD (e.g., 2026-01-15)";
                                 }
                             }
 
                             if ($rowData['purchase_cost'] !== '' && !is_numeric($rowData['purchase_cost'])) {
-                                $rowErrors[] = 'Purchase cost must be a number';
+                                $rowErrors[] = "Invalid Purchase Cost: '{$rowData['purchase_cost']}'. Must be a number (e.g., 1200.50)";
                             }
 
-                            if ($rowData['staff_id'] !== '' && !is_numeric($rowData['staff_id'])) {
-                                $rowErrors[] = 'Staff ID must be a number';
+                            if ($rowData['staff_id'] !== '') {
+                                if (!is_numeric($rowData['staff_id'])) {
+                                    $rowErrors[] = "Invalid Staff ID: '{$rowData['staff_id']}'. Must be a number";
+                                } else {
+                                    $checkStaffStmt = $pdo->prepare("SELECT COUNT(*) FROM staff_list WHERE staff_id = ?");
+                                    $checkStaffStmt->execute([(int)$rowData['staff_id']]);
+                                    $staffExists = $checkStaffStmt->fetchColumn();
+                                    if ($staffExists == 0) {
+                                        $rowErrors[] = "Staff ID '{$rowData['staff_id']}' does not exist in the staff list. Please add this staff member first or leave Staff ID empty";
+                                    }
+                                }
                             }
 
                             if ($rowData['asset_id'] !== '' && !is_numeric($rowData['asset_id'])) {
-                                $rowErrors[] = 'Asset ID must be a number';
+                                $rowErrors[] = "Invalid Asset ID: '{$rowData['asset_id']}'. Must be a number (or leave empty for auto-generation)";
                             }
 
                             if (!empty($rowErrors)) {
@@ -202,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 continue;
                             }
 
-                            $statusValue = strtoupper($rowData['status']);
+                            $statusValue = $rowData['status'];
                             
                             $assetId = $rowData['asset_id'] !== '' ? (int)$rowData['asset_id'] : null;
                             $poDate = $rowData['p.o_date'] ?: null;
@@ -254,7 +345,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     } catch (PDOException $e) {
                         $pdo->rollBack();
-                        $errors[] = 'Unable to import CSV right now. Please try again.';
+                        error_log('LAPTOP CSV Import Error: ' . $e->getMessage());
+                        
+                        $errorMessage = 'Unable to import CSV. ';
+                        if (strpos($e->getMessage(), '1452') !== false && strpos($e->getMessage(), 'staff_id') !== false) {
+                            $errorMessage .= 'One or more Staff IDs in your CSV do not exist in the staff list. ';
+                            $errorMessage .= 'Please check the skipped rows below for details, or add the missing staff members first.';
+                        } elseif (strpos($e->getMessage(), '1062') !== false) {
+                            $errorMessage .= 'Duplicate entry detected. This may be due to duplicate Serial Numbers or Asset IDs. ';
+                            $errorMessage .= 'Please check your CSV for duplicates.';
+                        } elseif (strpos($e->getMessage(), '1451') !== false) {
+                            $errorMessage .= 'Referenced record not found. Please check that all referenced IDs exist in the system.';
+                        } else {
+                            $errorMessage .= 'Database error: ' . htmlspecialchars($e->getMessage());
+                        }
+                        
+                        $errors[] = $errorMessage;
                     }
                 }
 
@@ -462,26 +568,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="import-card">
             <?php if (!empty($errors)) : ?>
                 <div class="alert alert-error">
+                    <strong style="display: block; margin-bottom: 10px;">
+                        <i class="fa-solid fa-exclamation-triangle"></i> Import Errors
+                    </strong>
                     <ul>
                         <?php foreach ($errors as $error) : ?>
                             <li><?php echo htmlspecialchars($error); ?></li>
                         <?php endforeach; ?>
                     </ul>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(192, 57, 43, 0.2); font-size: 0.9rem;">
+                        <strong>What to do:</strong> Fix the issues above and try importing again. Check that all required columns are present and data formats are correct.
+                    </div>
                 </div>
             <?php elseif ($successMessage) : ?>
                 <div class="alert alert-success">
+                    <strong style="display: block; margin-bottom: 5px;">
+                        <i class="fa-solid fa-check-circle"></i> Success!
+                    </strong>
                     <?php echo htmlspecialchars($successMessage); ?>
                 </div>
             <?php endif; ?>
 
             <?php if (!empty($skippedRows)) : ?>
                 <div class="skipped-list">
-                    <strong>Skipped rows</strong>
+                    <strong style="display: block; margin-bottom: 10px; color: #c0392b;">
+                        <i class="fa-solid fa-exclamation-circle"></i> Skipped Rows (<?php echo count($skippedRows); ?>)
+                    </strong>
+                    <p style="margin-bottom: 10px; color: #636e72; font-size: 0.9rem;">
+                        The following rows were skipped due to validation errors. Please fix these issues in your CSV and re-import.
+                    </p>
                     <ul>
                         <?php foreach ($skippedRows as $skipped) : ?>
                             <li><?php echo htmlspecialchars($skipped); ?></li>
                         <?php endforeach; ?>
                     </ul>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(0, 0, 0, 0.1); font-size: 0.85rem; color: #636e72;">
+                        <strong>Common fixes:</strong>
+                        <ul style="margin-top: 5px; padding-left: 20px;">
+                            <li>Staff ID errors: Add the staff member to the staff list first, or leave Staff ID empty</li>
+                            <li>Date errors: Use YYYY-MM-DD format (e.g., 2024-01-15)</li>
+                            <li>Status errors: Use one of the valid status values shown in the template</li>
+                            <li>Numeric errors: Ensure Purchase Cost and Staff ID are numbers only</li>
+                        </ul>
+                    </div>
                 </div>
             <?php endif; ?>
 
