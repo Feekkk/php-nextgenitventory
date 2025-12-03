@@ -329,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="class">Category <span style="color:#c0392b;">*</span></label>
                         <select id="class" name="class" required>
-                            <option value="">Select class</option>
+                            <option value="">Select Category</option>
                             <option value="Microphone" <?php echo $formData['class'] === 'Microphone' ? 'selected' : ''; ?>>Microphone</option>
                             <option value="P.A System" <?php echo $formData['class'] === 'P.A System' ? 'selected' : ''; ?>>P.A System</option>
                             <option value="Portable P.A" <?php echo $formData['class'] === 'Portable P.A' ? 'selected' : ''; ?>>Portable P.A</option>
