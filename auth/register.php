@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo = getDBConnection();
             
-            $stmt = $pdo->prepare("SELECT id FROM technician WHERE staff_id = ? OR email = ?");
+            $stmt = $pdo->prepare("SELECT id FROM technician WHERE tech_id = ? OR email = ?");
             $stmt->execute([$staff_id, $email]);
             if ($stmt->fetch()) {
                 $error = 'Staff ID or Email already exists.';
@@ -33,12 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $role = 'technician';
                 $status = 'inactive';
                 
-                $stmt = $pdo->prepare("INSERT INTO technician (staff_id, full_name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO technician (tech_id, tech_name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$staff_id, $full_name, $email, $hashedPassword, $role, $status]);
                 
                 $success = 'Registration successful! Your account is pending admin approval. You will be able to login once an administrator activates your account.';
             }
         } catch (PDOException $e) {
+            error_log('Registration Error: ' . $e->getMessage());
             $error = 'Registration failed. Please try again.';
         }
     }
