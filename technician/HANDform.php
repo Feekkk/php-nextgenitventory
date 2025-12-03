@@ -8,6 +8,108 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $pdo = getDBConnection();
+$error = '';
+$success = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $staff_id = trim($_POST['staff_id'] ?? '');
+    $handover_date = trim($_POST['handoverDate'] ?? '');
+    $handover_location = trim($_POST['handoverLocation'] ?? '');
+    $assetSelect = trim($_POST['assetSelect'] ?? '');
+    $asset_type = trim($_POST['assetType'] ?? '');
+    $asset_id = trim($_POST['assetId'] ?? '');
+    $accessories = trim($_POST['accessories'] ?? '');
+    $condition_agreement = isset($_POST['conditionAgreement']) ? 1 : 0;
+    $handover_notes = trim($_POST['handoverNotes'] ?? '');
+    $digital_signoff = trim($_POST['signOff'] ?? '');
+
+    if (empty($staff_id) || empty($handover_date) || empty($handover_location) || 
+        empty($assetSelect) || empty($asset_type) || empty($asset_id) || 
+        !$condition_agreement || empty($digital_signoff)) {
+        $error = 'All required fields must be filled.';
+    } elseif (!is_numeric($staff_id)) {
+        $error = 'Invalid Staff ID.';
+    } elseif (!is_numeric($asset_id)) {
+        $error = 'Invalid Asset ID.';
+    } else {
+        try {
+            $stmt = $pdo->prepare("SELECT staff_id FROM staff_list WHERE staff_id = ?");
+            $stmt->execute([$staff_id]);
+            if (!$stmt->fetch()) {
+                $error = 'Staff ID does not exist.';
+            } else {
+                $pdo->beginTransaction();
+
+                $insertStmt = $pdo->prepare("
+                    INSERT INTO handover (
+                        staff_id, asset_type, asset_id, accessories,
+                        handover_date, handover_location, condition_agreement,
+                        handover_notes, digital_signoff, created_by
+                    ) VALUES (
+                        :staff_id, :asset_type, :asset_id, :accessories,
+                        :handover_date, :handover_location, :condition_agreement,
+                        :handover_notes, :digital_signoff, :created_by
+                    )
+                ");
+                
+                $insertStmt->execute([
+                    ':staff_id' => (int)$staff_id,
+                    ':asset_type' => $asset_type,
+                    ':asset_id' => (int)$asset_id,
+                    ':accessories' => $accessories ?: null,
+                    ':handover_date' => $handover_date,
+                    ':handover_location' => $handover_location,
+                    ':condition_agreement' => $condition_agreement,
+                    ':handover_notes' => $handover_notes ?: null,
+                    ':digital_signoff' => $digital_signoff,
+                    ':created_by' => $_SESSION['user_id']
+                ]);
+
+                $handover_id = $pdo->lastInsertId();
+
+                if ($asset_type === 'laptop_desktop') {
+                    $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = 'DEPLOY', staff_id = ? WHERE asset_id = ?");
+                } else {
+                    $updateStmt = $pdo->prepare("UPDATE av_assets SET status = 'DEPLOY' WHERE asset_id = ?");
+                }
+                
+                if ($asset_type === 'laptop_desktop') {
+                    $updateStmt->execute([(int)$staff_id, (int)$asset_id]);
+                } else {
+                    $updateStmt->execute([(int)$asset_id]);
+                }
+
+                $trailStmt = $pdo->prepare("
+                    INSERT INTO asset_trails (
+                        asset_type, asset_id, action_type, changed_by,
+                        field_name, old_value, new_value, description,
+                        ip_address, user_agent
+                    ) VALUES (
+                        :asset_type, :asset_id, 'ASSIGNMENT_CHANGE', :changed_by,
+                        'status', 'HANDOVER', 'DEPLOY', :description,
+                        :ip_address, :user_agent
+                    )
+                ");
+                
+                $trailStmt->execute([
+                    ':asset_type' => $asset_type,
+                    ':asset_id' => (int)$asset_id,
+                    ':changed_by' => $_SESSION['user_id'],
+                    ':description' => "Asset handover completed. Handover ID: {$handover_id}, Staff ID: {$staff_id}",
+                    ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                    ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                ]);
+
+                $pdo->commit();
+                $success = 'Handover form submitted successfully!';
+            }
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            error_log('Handover form submission error: ' . $e->getMessage());
+            $error = 'Failed to submit handover form. Please try again.';
+        }
+    }
+}
 
 if (isset($_GET['action'])) {
     header('Content-Type: application/json');
@@ -28,17 +130,26 @@ if (isset($_GET['action'])) {
     if ($_GET['action'] === 'get_assets') {
         $assets = [];
         
-        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, 'laptop_desktop' as asset_type FROM laptop_desktop_assets WHERE status = 'HANDOVER' ORDER BY asset_id");
+        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, category, 'laptop_desktop' as asset_type FROM laptop_desktop_assets WHERE status = 'HANDOVER' ORDER BY category ASC, asset_id ASC");
         $laptopAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($laptopAssets as $asset) {
             $assets[] = $asset;
         }
         
-        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, 'av' as asset_type FROM av_assets WHERE status = 'HANDOVER' ORDER BY asset_id");
+        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, class as category, 'av' as asset_type FROM av_assets WHERE status = 'HANDOVER' ORDER BY class ASC, asset_id ASC");
         $avAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($avAssets as $asset) {
             $assets[] = $asset;
         }
+
+        usort($assets, function ($a, $b) {
+            $catA = strtolower($a['category'] ?? '');
+            $catB = strtolower($b['category'] ?? '');
+            if ($catA === $catB) {
+                return ($a['asset_id'] ?? 0) <=> ($b['asset_id'] ?? 0);
+            }
+            return $catA <=> $catB;
+        });
         
         echo json_encode($assets);
         exit;
@@ -463,7 +574,21 @@ if (isset($_GET['action'])) {
             <p>Document the transfer of equipment between personnel or departments. All fields are captured for traceability.</p>
         </div>
 
-        <form class="handover-form" id="handoverForm">
+        <?php if ($error): ?>
+            <div class="alert alert-error" style="background: rgba(214, 48, 49, 0.1); color: #d63031; padding: 14px 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(214, 48, 49, 0.2); display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span><?php echo htmlspecialchars($error); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($success): ?>
+            <div class="alert alert-success" style="background: rgba(0, 184, 148, 0.1); color: #00b894; padding: 14px 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid rgba(0, 184, 148, 0.2); display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-circle-check"></i>
+                <span><?php echo htmlspecialchars($success); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <form class="handover-form" id="handoverForm" method="POST" action="">
             <div class="step-indicator">
                 <div class="progress-bar" id="progressBar"></div>
                 <div class="step-item active" data-step="1">
@@ -515,7 +640,7 @@ if (isset($_GET['action'])) {
                             <input type="date" id="handoverDate" name="handoverDate" required>
                         </div>
                         <div class="form-group">
-                            <label for="handoverLocation">Location</label>
+                            <label for="handoverLocation">Handover Location</label>
                             <input type="text" id="handoverLocation" name="handoverLocation" placeholder="e.g., IT Support Office, Block B" required>
                         </div>
                     </div>
@@ -716,8 +841,6 @@ if (isset($_GET['action'])) {
             }
 
             document.getElementById('handoverForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
                 const step3Form = document.getElementById('step3');
                 const requiredFields = step3Form.querySelectorAll('[required]');
                 let isValid = true;
@@ -732,8 +855,8 @@ if (isset($_GET['action'])) {
                     }
                 });
 
-                if (isValid) {
-                    alert('Form submitted successfully!');
+                if (!isValid) {
+                    e.preventDefault();
                 }
             });
 
@@ -830,7 +953,8 @@ if (isset($_GET['action'])) {
                     assets.forEach(asset => {
                         const option = document.createElement('option');
                         option.value = asset.asset_id + '|' + asset.asset_type;
-                        option.textContent = `${asset.asset_type === 'laptop_desktop' ? 'Laptop/Desktop' : 'AV'} - ${asset.brand} ${asset.model} (ID: ${asset.asset_id}, Serial: ${asset.serial_num})`;
+                        const categoryLabel = asset.category || (asset.asset_type === 'laptop_desktop' ? 'Laptop/Desktop' : 'AV');
+                        option.textContent = `${categoryLabel} - ${asset.brand} ${asset.model} (ID: ${asset.asset_id}, Serial: ${asset.serial_num})`;
                         assetSelect.appendChild(option);
                     });
                 })
