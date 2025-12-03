@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 require_once '../database/config.php';
@@ -6,6 +5,63 @@ require_once '../database/config.php';
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../auth/login.php');
     exit;
+}
+
+$pdo = getDBConnection();
+
+if (isset($_GET['action'])) {
+    header('Content-Type: application/json');
+    
+    if ($_GET['action'] === 'get_staff') {
+        $staff_id = $_GET['staff_id'] ?? '';
+        if (is_numeric($staff_id)) {
+            $stmt = $pdo->prepare("SELECT staff_id, staff_name, email, phone, faculty FROM staff_list WHERE staff_id = ?");
+            $stmt->execute([$staff_id]);
+            $staff = $stmt->fetch(PDO::FETCH_ASSOC);
+            echo json_encode($staff ?: ['error' => 'Staff not found']);
+        } else {
+            echo json_encode(['error' => 'Invalid staff ID']);
+        }
+        exit;
+    }
+    
+    if ($_GET['action'] === 'get_assets') {
+        $assets = [];
+        
+        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, 'laptop_desktop' as asset_type FROM laptop_desktop_assets WHERE status = 'HANDOVER' ORDER BY asset_id");
+        $laptopAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($laptopAssets as $asset) {
+            $assets[] = $asset;
+        }
+        
+        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, 'av' as asset_type FROM av_assets WHERE status = 'HANDOVER' ORDER BY asset_id");
+        $avAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($avAssets as $asset) {
+            $assets[] = $asset;
+        }
+        
+        echo json_encode($assets);
+        exit;
+    }
+    
+    if ($_GET['action'] === 'get_asset_details') {
+        $asset_id = $_GET['asset_id'] ?? '';
+        $asset_type = $_GET['asset_type'] ?? '';
+        
+        if (is_numeric($asset_id) && in_array($asset_type, ['laptop_desktop', 'av'])) {
+            if ($asset_type === 'laptop_desktop') {
+                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, category FROM laptop_desktop_assets WHERE asset_id = ? AND status = 'HANDOVER'");
+            } else {
+                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, class as category FROM av_assets WHERE asset_id = ? AND status = 'HANDOVER'");
+            }
+            $stmt->execute([$asset_id]);
+            $asset = $stmt->fetch(PDO::FETCH_ASSOC);
+            echo json_encode($asset ?: ['error' => 'Asset not found']);
+        } else {
+            echo json_encode(['error' => 'Invalid parameters']);
+        }
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -210,6 +266,132 @@ if (!isset($_SESSION['user_id'])) {
             margin: 0;
         }
 
+        .terms-link {
+            color: #1a1a2e;
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .terms-link:hover {
+            color: #6c5ce7;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: #ffffff;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #1a1a2e;
+        }
+
+        .close-modal {
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #636e72;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #2d3436;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: #2d3436;
+        }
+
+        .modal-body p {
+            margin-bottom: 15px;
+        }
+
+        .modal-body ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .modal-body li {
+            margin-bottom: 10px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-modal {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-modal-primary {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        .btn-modal-primary:hover {
+            background: #0f0f1a;
+            box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+        }
+
+        .btn-modal-secondary {
+            background: #f8f9fa;
+            color: #2d3436;
+        }
+
+        .btn-modal-secondary:hover {
+            background: #e9ecef;
+        }
+
         .form-actions {
             display: flex;
             gap: 15px;
@@ -303,24 +485,24 @@ if (!isset($_SESSION['user_id'])) {
                     <h3 class="form-section-title">Recipient Information</h3>
                     <div class="form-grid">
                         <div class="form-group">
+                            <label for="staff_id">Staff ID <span style="color:#c0392b;">*</span></label>
+                            <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" required>
+                        </div>
+                        <div class="form-group">
                             <label for="handoverTo">Received By</label>
-                            <input type="text" id="handoverTo" name="handoverTo" placeholder="Recipient name" required>
+                            <input type="text" id="handoverTo" name="handoverTo" placeholder="Auto-filled from Staff ID" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="unitDepartment">Unit / Department</label>
-                            <input type="text" id="unitDepartment" name="unitDepartment" placeholder="e.g., Academic Affairs" required>
+                            <input type="text" id="unitDepartment" name="unitDepartment" placeholder="Auto-filled from Staff ID" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="contactNumber">Contact Number</label>
-                            <input type="text" id="contactNumber" name="contactNumber" placeholder="e.g., +60 12-345 6789" required>
+                            <input type="text" id="contactNumber" name="contactNumber" placeholder="Auto-filled from Staff ID" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="email">Email</label>
-                            <input type="email" id="email" name="email" placeholder="e.g., user@unikl.edu.my" required>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="usagePurpose">Purpose / Justification</label>
-                            <textarea id="usagePurpose" name="usagePurpose" placeholder="Describe how the asset will be used" required></textarea>
+                            <input type="email" id="email" name="email" placeholder="Auto-filled from Staff ID" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                     </div>
                 </div>
@@ -328,10 +510,6 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="form-section">
                     <h3 class="form-section-title">Handover Information</h3>
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label for="handoverBy">Handover By (Technician)</label>
-                            <input type="text" id="handoverBy" name="handoverBy" placeholder="Technician full name" required>
-                        </div>
                         <div class="form-group">
                             <label for="handoverDate">Handover Date</label>
                             <input type="date" id="handoverDate" name="handoverDate" required>
@@ -349,30 +527,31 @@ if (!isset($_SESSION['user_id'])) {
                     <h3 class="form-section-title">Asset Details</h3>
                     <div class="form-grid">
                         <div class="form-group">
+                            <label for="assetSelect">Select Asset <span style="color:#c0392b;">*</span></label>
+                            <select id="assetSelect" name="assetSelect" required>
+                                <option value="">Select an asset with HANDOVER status</option>
+                            </select>
+                            <input type="hidden" id="assetType" name="assetType" value="">
+                        </div>
+                        <div class="form-group">
                             <label for="assetId">Asset ID</label>
-                            <input type="text" id="assetId" name="assetId" placeholder="e.g., LT-004512" required>
+                            <input type="text" id="assetId" name="assetId" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="assetCategory">Category</label>
-                            <select id="assetCategory" name="assetCategory" required>
-                                <option value="">Select category</option>
-                                <option value="laptop">Laptop/Desktop</option>
-                                <option value="av">Audio/Visual</option>
-                                <option value="network">Network</option>
-                                <option value="peripheral">Peripheral</option>
-                            </select>
+                            <input type="text" id="assetCategory" name="assetCategory" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="assetBrand">Brand</label>
-                            <input type="text" id="assetBrand" name="assetBrand" placeholder="e.g., Dell" required>
+                            <input type="text" id="assetBrand" name="assetBrand" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="assetModel">Model</label>
-                            <input type="text" id="assetModel" name="assetModel" placeholder="e.g., Latitude 5440" required>
+                            <input type="text" id="assetModel" name="assetModel" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="serialNumber">Serial Number</label>
-                            <input type="text" id="serialNumber" name="serialNumber" placeholder="Enter serial number" required>
+                            <input type="text" id="serialNumber" name="serialNumber" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
                         </div>
                         <div class="form-group">
                             <label for="accessories">Included Accessories</label>
@@ -381,25 +560,7 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="form-section">
-                    <h3 class="form-section-title">Handover Type</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="handoverType">Handover Type</label>
-                            <select id="handoverType" name="handoverType" required>
-                                <option value="">Select type</option>
-                                <option value="loan">Loan</option>
-                                <option value="permanent">Permanent Assignment</option>
-                                <option value="replacement">Replacement</option>
-                                <option value="temporary">Temporary</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="expectedReturn">Expected Return Date</label>
-                            <input type="date" id="expectedReturn" name="expectedReturn">
-                        </div>
-                    </div>
-                </div>
+
             </div>
 
             <div class="form-step" id="step3">
@@ -408,14 +569,8 @@ if (!isset($_SESSION['user_id'])) {
                     <div class="form-grid">
                         <div class="form-group" style="grid-column: 1 / -1;">
                             <div class="checkbox-group">
-                                <input type="checkbox" id="conditionAgreement" name="conditionAgreement" required>
-                                <label for="conditionAgreement">Recipient confirms asset condition is acceptable and agrees to report any issues immediately.</label>
-                            </div>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="policyAgreement" name="policyAgreement" required>
-                                <label for="policyAgreement">Recipient agrees to abide by UniKL IT asset usage policies and return the asset when requested.</label>
+                                <input type="checkbox" id="conditionAgreement" name="conditionAgreement" required disabled>
+                                <label for="conditionAgreement">Recipient confirms asset condition is acceptable and agrees to report any issues immediately. <a href="#" class="terms-link" onclick="event.preventDefault(); openTermsModal();">Terms & Conditions</a></label>
                             </div>
                         </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
@@ -441,6 +596,53 @@ if (!isset($_SESSION['user_id'])) {
                 </div>
             </div>
         </form>
+
+        <div id="termsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Terms & Conditions</h3>
+                    <button class="close-modal" onclick="closeTermsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 25px;">
+                        <h4 style="color: #1a1a2e; font-size: 1.1rem; margin-bottom: 15px;">UNIVERSITI KUALA LUMPUR ROYAL COLLEGE OF MEDICINE PERAK (UNIKL RCMP)</h4>
+                        <p style="font-weight: 600; margin-bottom: 15px; color: #1a1a2e;">Software Policy Regarding the Use of Computer Software</p>
+                        <ol style="padding-left: 20px; margin-bottom: 20px;">
+                            <li style="margin-bottom: 10px;">UNIKL RCMP licenses the use of computer software from a variety of outside companies. UNIKL RCMP does not own this software or its related documentation, and unless authorized by the software developers, does not have the right to reproduce it, even for back-up purposes, unless explicitly allowed by the software owner. (eg: Microsoft, Adobe and etc).</li>
+                            <li style="margin-bottom: 10px;">UNIKL RCMP employees shall use the software only in accordance with the license agreements and will not install unauthorized copies of the commercial software.</li>
+                            <li style="margin-bottom: 10px;">UNIKL RCMP employees shall not download or upload unauthorized software over the Internet.</li>
+                            <li style="margin-bottom: 10px;">UNIKL RCMP employees learning of any misuse of software or company IT equipment (which includes vandalism of the certificate of authenticity sticker on the PC casing chassis, PC monitors, CD media etc) which could be detrimental to the business of the company shall notify their immediate supervisor.</li>
+                            <li style="margin-bottom: 10px;">Under the Copyright Act 1987, offenders can be fined from RM2,000 to RM20,000 for each infringing copy and/or face imprisonment of up to 5 years. UNIKL RCMP does not condone the illegal duplication of software. UNIKL RCMP employees who make, acquire, or use authorized copies of computer software shall be disciplined as appropriate under the circumstances. Such discipline action may include termination.</li>
+                            <li style="margin-bottom: 10px;">Any doubts concerning whether any employee may copy/duplicate or use a given software program should be raised with the immediate supervisor before proceeding.</li>
+                        </ol>
+                    </div>
+
+                    <div style="margin-bottom: 25px; padding-top: 20px; border-top: 2px solid rgba(0, 0, 0, 0.1);">
+                        <p style="font-weight: 600; margin-bottom: 15px; color: #1a1a2e;">Please comply with the following company's requirements:</p>
+                        <p style="margin-bottom: 20px; color: #2d3436;"><strong>ASSET ID: <span id="modalAssetId" style="color: #1a1a2e;">-</span></strong></p>
+                        <ol style="padding-left: 20px; margin-bottom: 20px;">
+                            <li style="margin-bottom: 10px;">To comply with Company Notebook/Desktop Usage Policy. (Please refer to <a href="http://it.rcmp.unikl.edu.my" target="_blank">it.rcmp.unikl.edu.my</a>)</li>
+                            <li style="margin-bottom: 10px;">To use this Notebook/Desktop for working purposes only.</li>
+                            <li style="margin-bottom: 10px;">To use for teaching purposes and use at appropriate place only. (If related)</li>
+                            <li style="margin-bottom: 10px;">Installation of any unauthorized/illegal software into this Notebook/Desktop is strictly prohibited.</li>
+                            <li style="margin-bottom: 10px;">Any request for repair due to mechanical defect must be forwarded to the IT Department by filling in the requisition form and subject to approval by the management.</li>
+                            <li style="margin-bottom: 10px;">The user is responsible for repairing or replacement cost of the damage or loss due to negligence or intentional misconduct.</li>
+                        </ol>
+                    </div>
+
+                    <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid rgba(0, 0, 0, 0.1);">
+                        <p style="font-weight: 600; margin-bottom: 15px; color: #1a1a2e;">Liability Statement:</p>
+                        <p style="font-style: italic; color: #2d3436; background: rgba(26, 26, 46, 0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #1a1a2e;">
+                            'I, <strong id="modalStaffName" style="color: #1a1a2e;">[staff name]</strong> agree to pay all costs associated with damage to the above peripherals or its associated peripheral equipment. I also agree to pay for replacement cost of the equipment should it be lost or stolen.'
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal btn-modal-secondary" onclick="closeTermsModal()">Close</button>
+                    <button type="button" class="btn-modal btn-modal-primary" onclick="acceptTerms()">I Understood</button>
+                </div>
+            </div>
+        </div>
 
         <script>
             let currentStep = 1;
@@ -536,6 +738,150 @@ if (!isset($_SESSION['user_id'])) {
             });
 
             document.getElementById('handoverDate').valueAsDate = new Date();
+
+            function openTermsModal() {
+                const assetIdField = document.getElementById('assetId');
+                const handoverToField = document.getElementById('handoverTo');
+                const modalAssetId = document.getElementById('modalAssetId');
+                const modalStaffName = document.getElementById('modalStaffName');
+                
+                modalAssetId.textContent = assetIdField.value || '-';
+                modalStaffName.textContent = handoverToField.value || '[staff name]';
+                document.getElementById('termsModal').style.display = 'block';
+            }
+
+            function closeTermsModal() {
+                document.getElementById('termsModal').style.display = 'none';
+            }
+
+            function acceptTerms() {
+                document.getElementById('conditionAgreement').checked = true;
+                document.getElementById('conditionAgreement').disabled = false;
+                closeTermsModal();
+            }
+
+            window.onclick = function(event) {
+                const modal = document.getElementById('termsModal');
+                if (event.target == modal) {
+                    closeTermsModal();
+                }
+            }
+
+            const staffIdField = document.getElementById('staff_id');
+            const handoverToField = document.getElementById('handoverTo');
+            const unitDepartmentField = document.getElementById('unitDepartment');
+            const contactNumberField = document.getElementById('contactNumber');
+            const emailField = document.getElementById('email');
+
+            let staffFetchTimeout;
+            staffIdField.addEventListener('input', function() {
+                const staffId = this.value.trim();
+                
+                clearTimeout(staffFetchTimeout);
+                
+                if (staffId === '') {
+                    handoverToField.value = '';
+                    unitDepartmentField.value = '';
+                    contactNumberField.value = '';
+                    emailField.value = '';
+                    return;
+                }
+                
+                if (!/^\d+$/.test(staffId)) {
+                    return;
+                }
+                
+                staffFetchTimeout = setTimeout(() => {
+                    fetch('?action=get_staff&staff_id=' + encodeURIComponent(staffId))
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                handoverToField.value = '';
+                                unitDepartmentField.value = '';
+                                contactNumberField.value = '';
+                                emailField.value = '';
+                            } else {
+                                handoverToField.value = data.staff_name || '';
+                                unitDepartmentField.value = data.faculty || '';
+                                contactNumberField.value = data.phone || '';
+                                emailField.value = data.email || '';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching staff:', error);
+                            handoverToField.value = '';
+                            unitDepartmentField.value = '';
+                            contactNumberField.value = '';
+                            emailField.value = '';
+                        });
+                }, 500);
+            });
+
+            const assetSelect = document.getElementById('assetSelect');
+            const assetIdField = document.getElementById('assetId');
+            const assetCategoryField = document.getElementById('assetCategory');
+            const assetBrandField = document.getElementById('assetBrand');
+            const assetModelField = document.getElementById('assetModel');
+            const serialNumberField = document.getElementById('serialNumber');
+
+            fetch('?action=get_assets')
+                .then(response => response.json())
+                .then(assets => {
+                    assets.forEach(asset => {
+                        const option = document.createElement('option');
+                        option.value = asset.asset_id + '|' + asset.asset_type;
+                        option.textContent = `${asset.asset_type === 'laptop_desktop' ? 'Laptop/Desktop' : 'AV'} - ${asset.brand} ${asset.model} (ID: ${asset.asset_id}, Serial: ${asset.serial_num})`;
+                        assetSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching assets:', error);
+                });
+
+            assetSelect.addEventListener('change', function() {
+                const value = this.value;
+                const assetTypeField = document.getElementById('assetType');
+                
+                if (!value) {
+                    assetIdField.value = '';
+                    assetCategoryField.value = '';
+                    assetBrandField.value = '';
+                    assetModelField.value = '';
+                    serialNumberField.value = '';
+                    assetTypeField.value = '';
+                    return;
+                }
+                
+                const [assetId, assetType] = value.split('|');
+                assetTypeField.value = assetType;
+                
+                fetch('?action=get_asset_details&asset_id=' + encodeURIComponent(assetId) + '&asset_type=' + encodeURIComponent(assetType))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            alert('Asset not found');
+                            assetIdField.value = '';
+                            assetCategoryField.value = '';
+                            assetBrandField.value = '';
+                            assetModelField.value = '';
+                            serialNumberField.value = '';
+                            assetTypeField.value = '';
+                        } else {
+                            assetIdField.value = data.asset_id || '';
+                            assetCategoryField.value = data.category || '';
+                            assetBrandField.value = data.brand || '';
+                            assetModelField.value = data.model || '';
+                            serialNumberField.value = data.serial_num || '';
+                            const modalAssetId = document.getElementById('modalAssetId');
+                            if (modalAssetId) {
+                                modalAssetId.textContent = data.asset_id || '-';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching asset details:', error);
+                    });
+            });
         </script>
     </div>
 
