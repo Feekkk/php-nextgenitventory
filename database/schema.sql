@@ -233,3 +233,35 @@ CREATE TABLE IF NOT EXISTS `asset_trails` (
     INDEX `idx_asset_composite` (`asset_type`, `asset_id`),
     FOREIGN KEY (`changed_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Handover Table
+CREATE TABLE IF NOT EXISTS `handover` (
+    `handover_id` INT(11) NOT NULL AUTO_INCREMENT,
+    `staff_id` INT(11) NOT NULL,
+    `asset_type` ENUM('laptop_desktop', 'av', 'network') NOT NULL,
+    `asset_id` INT(11) NOT NULL,
+    `accessories` TEXT DEFAULT NULL,
+    `handover_date` DATE NOT NULL,
+    `handover_location` VARCHAR(255) DEFAULT NULL,
+    `condition_agreement` BOOLEAN DEFAULT FALSE,
+    `handover_notes` TEXT DEFAULT NULL,
+    `digital_signoff` VARCHAR(100) DEFAULT NULL,
+    `status` ENUM('active', 'returned', 'completed') DEFAULT 'active',
+    `return_date` DATE DEFAULT NULL,
+    `returned_by` INT(11) DEFAULT NULL,
+    `created_by` INT(11) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`handover_id`),
+    INDEX `idx_staff_id` (`staff_id`),
+    INDEX `idx_asset_type` (`asset_type`),
+    INDEX `idx_asset_id` (`asset_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_handover_date` (`handover_date`),
+    INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_returned_by` (`returned_by`),
+    INDEX `idx_asset_composite` (`asset_type`, `asset_id`),
+    FOREIGN KEY (`staff_id`) REFERENCES `staff_list`(`staff_id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (`returned_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
