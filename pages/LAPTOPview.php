@@ -458,12 +458,6 @@ function formatCurrency($amount) {
                             </div>
                         </div>
                         <div class="detail-item">
-                            <div class="detail-label">Acquisition Type</div>
-                            <div class="detail-value <?php echo empty($asset['acquisition_type']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['acquisition_type'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
                             <div class="detail-label">Status</div>
                             <div class="detail-value">
                                 <span class="status-badge <?php echo htmlspecialchars(formatStatusClass($asset['status'] ?? '')); ?>">

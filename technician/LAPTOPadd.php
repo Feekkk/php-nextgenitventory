@@ -26,7 +26,6 @@ $formData = [
     'serial_num' => '',
     'brand' => '',
     'model' => '',
-    'acquisition_type' => '',
     'category' => '',
     'status' => '',
     'staff_id' => '',
@@ -97,12 +96,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare("
                 INSERT INTO laptop_desktop_assets (
-                    asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
+                    asset_id, serial_num, brand, model, category, status, staff_id,
                     assignment_type, location, processor, memory, os, storage, gpu, warranty_expiry, part_number,
                     supplier, period, activity_log, `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                     `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                 ) VALUES (
-                    :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
+                    :asset_id, :serial_num, :brand, :model, :category, :status, :staff_id,
                     :assignment_type, :location, :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                     :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
                     :invoice_date, :invoice_num, :purchase_cost, :remarks
@@ -122,7 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':serial_num' => $formData['serial_num'],
                 ':brand' => $formData['brand'],
                 ':model' => $formData['model'],
-                ':acquisition_type' => $formData['acquisition_type'] ?: null,
                 ':category' => $formData['category'] ?: null,
                 ':status' => $formData['status'],
                 ':staff_id' => $staffId,
@@ -417,14 +415,6 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
                             <option value="DESKTOP AIO-SHARING" <?php echo $formData['category'] === 'DESKTOP AIO-SHARING' ? 'selected' : ''; ?>>DESKTOP AIO-SHARING</option>
                             <option value="NOTEBOOK" <?php echo $formData['category'] === 'NOTEBOOK' ? 'selected' : ''; ?>>NOTEBOOK</option>
                             <option value="NOTEBOOK-STANDBY" <?php echo $formData['category'] === 'NOTEBOOK-STANDBY' ? 'selected' : ''; ?>>NOTEBOOK-STANDBY</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="acquisition_type">Acquisition Type</label>
-                        <select id="acquisition_type" name="acquisition_type">
-                            <option value="">Select acquisition type</option>
-                            <option value="OWNERSHIP" <?php echo $formData['acquisition_type'] === 'OWNERSHIP' ? 'selected' : ''; ?>>OWNERSHIP</option>
-                            <option value="LEASE" <?php echo $formData['acquisition_type'] === 'LEASE' ? 'selected' : ''; ?>>LEASE</option>
                         </select>
                     </div>
                     <div class="form-group">
