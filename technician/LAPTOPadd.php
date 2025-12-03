@@ -72,7 +72,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Select a valid status.';
     }
 
-    if ($formData['PURCHASE_COST'] !== '' && !is_numeric($formData['PURCHASE_COST'])) {
+    if ($formData['PO_DATE'] === '') {
+        $errors[] = 'P.O. Date is required.';
+    }
+
+    if ($formData['PO_NUM'] === '') {
+        $errors[] = 'P.O. Number is required.';
+    }
+
+    if ($formData['DO_DATE'] === '') {
+        $errors[] = 'D.O. Date is required.';
+    }
+
+    if ($formData['DO_NUM'] === '') {
+        $errors[] = 'D.O. Number is required.';
+    }
+
+    if ($formData['INVOICE_DATE'] === '') {
+        $errors[] = 'Invoice Date is required.';
+    }
+
+    if ($formData['INVOICE_NUM'] === '') {
+        $errors[] = 'Invoice Number is required.';
+    }
+
+    if ($formData['PURCHASE_COST'] === '') {
+        $errors[] = 'Purchase Cost is required.';
+    } elseif (!is_numeric($formData['PURCHASE_COST'])) {
         $errors[] = 'Purchase cost must be a valid number.';
     }
 
@@ -109,11 +135,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
 
             $assetId = $formData['asset_id'] !== '' ? (int)$formData['asset_id'] : null;
-            $poDate = $formData['PO_DATE'] !== '' ? $formData['PO_DATE'] : null;
-            $doDate = $formData['DO_DATE'] !== '' ? $formData['DO_DATE'] : null;
-            $invoiceDate = $formData['INVOICE_DATE'] !== '' ? $formData['INVOICE_DATE'] : null;
+            $poDate = $formData['PO_DATE'];
+            $doDate = $formData['DO_DATE'];
+            $invoiceDate = $formData['INVOICE_DATE'];
             $warrantyExpiry = $formData['warranty_expiry'] !== '' ? $formData['warranty_expiry'] : null;
-            $purchaseCost = $formData['PURCHASE_COST'] !== '' ? (float)$formData['PURCHASE_COST'] : null;
+            $purchaseCost = (float)$formData['PURCHASE_COST'];
             $staffId = $formData['staff_id'] !== '' ? (int)$formData['staff_id'] : null;
 
             $stmt->execute([
@@ -137,11 +163,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':period' => $formData['period'] ?: null,
                 ':activity_log' => $formData['activity_log'] ?: null,
                 ':po_date' => $poDate,
-                ':po_num' => $formData['PO_NUM'] ?: null,
+                ':po_num' => $formData['PO_NUM'],
                 ':do_date' => $doDate,
-                ':do_num' => $formData['DO_NUM'] ?: null,
+                ':do_num' => $formData['DO_NUM'],
                 ':invoice_date' => $invoiceDate,
-                ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
+                ':invoice_num' => $formData['INVOICE_NUM'],
                 ':purchase_cost' => $purchaseCost,
                 ':remarks' => $formData['remarks'] ?: null,
             ]);
@@ -503,35 +529,35 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
             </div>
 
             <div class="form-section">
-                <h3 class="form-section-title">Purchase Information</h3>
+                <h3 class="form-section-title">Purchase Information <span style="color:#c0392b; font-size: 0.9rem; font-weight: 400;">(All fields required)</span></h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="PO_DATE">P.O. Date</label>
-                        <input type="date" id="PO_DATE" name="PO_DATE" value="<?php echo htmlspecialchars($formData['PO_DATE']); ?>">
+                        <label for="PO_DATE">P.O. Date <span style="color:#c0392b;">*</span></label>
+                        <input type="date" id="PO_DATE" name="PO_DATE" value="<?php echo htmlspecialchars($formData['PO_DATE']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="PO_NUM">P.O. Number</label>
-                        <input type="text" id="PO_NUM" name="PO_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['PO_NUM']); ?>">
+                        <label for="PO_NUM">P.O. Number <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="PO_NUM" name="PO_NUM" placeholder="Enter P.O. number" value="<?php echo htmlspecialchars($formData['PO_NUM']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="DO_DATE">D.O. Date</label>
-                        <input type="date" id="DO_DATE" name="DO_DATE" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>">
+                        <label for="DO_DATE">D.O. Date <span style="color:#c0392b;">*</span></label>
+                        <input type="date" id="DO_DATE" name="DO_DATE" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="DO_NUM">D.O. Number</label>
-                        <input type="text" id="DO_NUM" name="DO_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['DO_NUM']); ?>">
+                        <label for="DO_NUM">D.O. Number <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="DO_NUM" name="DO_NUM" placeholder="Enter D.O. number" value="<?php echo htmlspecialchars($formData['DO_NUM']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="INVOICE_DATE">Invoice Date</label>
-                        <input type="date" id="INVOICE_DATE" name="INVOICE_DATE" value="<?php echo htmlspecialchars($formData['INVOICE_DATE']); ?>">
+                        <label for="INVOICE_DATE">Invoice Date <span style="color:#c0392b;">*</span></label>
+                        <input type="date" id="INVOICE_DATE" name="INVOICE_DATE" value="<?php echo htmlspecialchars($formData['INVOICE_DATE']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="INVOICE_NUM">Invoice Number</label>
-                        <input type="text" id="INVOICE_NUM" name="INVOICE_NUM" placeholder="Enter invoice number" value="<?php echo htmlspecialchars($formData['INVOICE_NUM']); ?>">
+                        <label for="INVOICE_NUM">Invoice Number <span style="color:#c0392b;">*</span></label>
+                        <input type="text" id="INVOICE_NUM" name="INVOICE_NUM" placeholder="Enter invoice number" value="<?php echo htmlspecialchars($formData['INVOICE_NUM']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="PURCHASE_COST">Purchase Cost (MYR)</label>
-                        <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter purchase cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>">
+                        <label for="PURCHASE_COST">Purchase Cost (MYR) <span style="color:#c0392b;">*</span></label>
+                        <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter purchase cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>" required>
                     </div>
                 </div>
             </div>
