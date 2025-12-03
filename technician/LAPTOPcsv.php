@@ -38,7 +38,7 @@ if (!function_exists('convertExcelDate')) {
         }
     }
 }
-$optionalHeaders = ['acquisition_type', 'category', 'staff_id', 'assignment_type', 'location', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
+$optionalHeaders = ['category', 'staff_id', 'assignment_type', 'location', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_FILES['csvFile']) || $_FILES['csvFile']['error'] !== UPLOAD_ERR_OK) {
@@ -94,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'invoice_no' => 'invoice_num',
                         'invoice_number' => 'invoice_num',
                         'invoice_num' => 'invoice_num',
-                        'acquisition_type' => 'acquisition_type',
                         'categories' => 'category',
                         'category' => 'category',
                         'part_no' => 'part_number',
@@ -139,12 +138,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $lineNumber = 2;
                         $insertStmt = $pdo->prepare("
                             INSERT INTO laptop_desktop_assets (
-                                asset_id, serial_num, brand, model, acquisition_type, category, status, staff_id,
+                                asset_id, serial_num, brand, model, category, status, staff_id,
                                 assignment_type, location, processor, memory, os, storage, gpu, warranty_expiry, part_number,
                                 supplier, period, activity_log, `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                                 `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks
                             ) VALUES (
-                                :asset_id, :serial_num, :brand, :model, :acquisition_type, :category, :status, :staff_id,
+                                :asset_id, :serial_num, :brand, :model, :category, :status, :staff_id,
                                 :assignment_type, :location, :processor, :memory, :os, :storage, :gpu, :warranty_expiry, :part_number,
                                 :supplier, :period, :activity_log, :po_date, :po_num, :do_date, :do_num,
                                 :invoice_date, :invoice_num, :purchase_cost, :remarks
@@ -174,7 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'serial_num' => '',
                                 'brand' => '',
                                 'model' => '',
-                                'acquisition_type' => '',
                                 'category' => '',
                                 'status' => '',
                                 'staff_id' => '',
@@ -319,7 +317,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':serial_num' => $rowData['serial_num'],
                                 ':brand' => $rowData['brand'],
                                 ':model' => $rowData['model'],
-                                ':acquisition_type' => $rowData['acquisition_type'] ?: null,
                                 ':category' => $rowData['category'] ?: null,
                                 ':status' => $statusValue,
                                 ':staff_id' => $staffId,
@@ -649,7 +646,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <ul>
                         <li>CSV headers will be automatically normalized (spaces/hyphens to underscores, case-insensitive).</li>
                         <li>Required columns: Serial Number, Brand, Model, Status.</li>
-                        <li>Optional columns: Asset Tag, ACQUISITION TYPE, Category, Employer ID, Assignment Type, Location, P.O Date, P.O Number, D.O Number, Invoice Date, Invoice Number, Purchase Cost, Processor, Memory, Operating System, Storage, Warranty Expires, Part Number, Supplier, Period, Activity Log.</li>
+                        <li>Optional columns: Asset Tag, Category, Employer ID, Assignment Type, Location, P.O Date, P.O Number, D.O Number, Invoice Date, Invoice Number, Purchase Cost, Processor, Memory, Operating System, Storage, Warranty Expires, Part Number, Supplier, Period, Activity Log.</li>
                         <li>Date columns (P.O Date, D.O Date, Invoice Date, Warranty Expires) should be in YYYY-MM-DD format.</li>
                         <li>Asset Tag column maps to asset_id (must be numeric if provided).</li>
                     </ul>
@@ -665,7 +662,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <th>Serial Number</th>
                                     <th>Brand</th>
                                     <th>Model</th>
-                                    <th>ACQUISITION TYPE</th>
                                     <th>Category</th>
                                     <th>Status</th>
                                     <th>Employer ID</th>
@@ -694,7 +690,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>SN8745632</td>
                                     <td>Dell</td>
                                     <td>Latitude 7430</td>
-                                    <td>Purchase</td>
                                     <td>Laptop</td>
                                     <td>AVAILABLE</td>
                                     <td>1</td>
