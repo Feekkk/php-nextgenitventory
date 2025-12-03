@@ -327,19 +327,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h3 class="form-section-title">Asset Information</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="class">Class <span style="color:#c0392b;">*</span></label>
+                        <label for="class">Category <span style="color:#c0392b;">*</span></label>
                         <select id="class" name="class" required>
                             <option value="">Select class</option>
                             <option value="Microphone" <?php echo $formData['class'] === 'Microphone' ? 'selected' : ''; ?>>Microphone</option>
                             <option value="P.A System" <?php echo $formData['class'] === 'P.A System' ? 'selected' : ''; ?>>P.A System</option>
                             <option value="Portable P.A" <?php echo $formData['class'] === 'Portable P.A' ? 'selected' : ''; ?>>Portable P.A</option>
                             <option value="Projector" <?php echo $formData['class'] === 'Projector' ? 'selected' : ''; ?>>Projector</option>
-                            <option value="Projector Screen (Motorized)" <?php echo $formData['class'] === 'Projector Screen (Motorized)' ? 'selected' : ''; ?>>Projector Screen (Motorized)</option>
                             <option value="Speaker" <?php echo $formData['class'] === 'Speaker' ? 'selected' : ''; ?>>Speaker</option>
-                            <option value="Speaker X1" <?php echo $formData['class'] === 'Speaker X1' ? 'selected' : ''; ?>>Speaker X1</option>
-                            <option value="Speaker X2" <?php echo $formData['class'] === 'Speaker X2' ? 'selected' : ''; ?>>Speaker X2</option>
-                            <option value="Wireless Mic (Body Pack)" <?php echo $formData['class'] === 'Wireless Mic (Body Pack)' ? 'selected' : ''; ?>>Wireless Mic (Body Pack)</option>
-                            <option value="Wireless Mic (Handheld)" <?php echo $formData['class'] === 'Wireless Mic (Handheld)' ? 'selected' : ''; ?>>Wireless Mic (Handheld)</option>
+                            <option value="Wireless Mic" <?php echo $formData['class'] === 'Wireless Mic' ? 'selected' : ''; ?>>Wireless Mic</option>
                         </select>
                     </div>
                     <div class="form-group">
