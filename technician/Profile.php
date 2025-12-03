@@ -11,7 +11,7 @@ $pdo = getDBConnection();
 $error = '';
 $success = '';
 
-function logProfileAudit($pdo, $user_id, $staff_id, $email, $action_type, $fields_changed = [], $old_values = [], $new_values = []) {
+function logProfileAudit($pdo, $user_id, $tech_id, $email, $action_type, $fields_changed = [], $old_values = [], $new_values = []) {
     try {
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
@@ -21,15 +21,15 @@ function logProfileAudit($pdo, $user_id, $staff_id, $email, $action_type, $field
         $old_values_str = !empty($old_values) ? json_encode($old_values) : null;
         $new_values_str = !empty($new_values) ? json_encode($new_values) : null;
         
-        $stmt = $pdo->prepare("INSERT INTO profile_audit (user_id, staff_id, email, action_type, fields_changed, old_values, new_values, ip_address, user_agent, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $staff_id, $email, $action_type, $fields_changed_str, $old_values_str, $new_values_str, $ip_address, $user_agent, $session_id]);
+        $stmt = $pdo->prepare("INSERT INTO profile_audit (user_id, tech_id, email, action_type, fields_changed, old_values, new_values, ip_address, user_agent, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $tech_id, $email, $action_type, $fields_changed_str, $old_values_str, $new_values_str, $ip_address, $user_agent, $session_id]);
     } catch (PDOException $e) {
         error_log("Failed to log profile audit: " . $e->getMessage());
     }
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, tech_id, tech_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch();
     
@@ -38,6 +38,7 @@ try {
         exit;
     }
 } catch (PDOException $e) {
+    error_log('Failed to load user data: ' . $e->getMessage());
     $error = 'Failed to load user data.';
     $user = null;
 }
@@ -48,7 +49,7 @@ if (!file_exists($profile_dir)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $full_name = trim($_POST['full_name'] ?? '');
+    $tech_name = trim($_POST['full_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $currentPassword = $_POST['currentPassword'] ?? '';
@@ -56,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirmPassword = $_POST['confirmPassword'] ?? '';
     $profile_picture = $user['profile_picture'] ?? null;
     
-    if (empty($full_name) || empty($email)) {
+    if (empty($tech_name) || empty($email)) {
         $error = 'Full Name and Email are required.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Invalid email format.';
@@ -101,10 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_values = [];
                 $action_types = [];
                 
-                if ($full_name !== $user['full_name']) {
-                    $fields_changed[] = 'full_name';
-                    $old_values['full_name'] = $user['full_name'];
-                    $new_values['full_name'] = $full_name;
+                if ($tech_name !== $user['tech_name']) {
+                    $fields_changed[] = 'tech_name';
+                    $old_values['tech_name'] = $user['tech_name'];
+                    $new_values['tech_name'] = $tech_name;
                     $action_types[] = 'update_name';
                 }
                 
@@ -145,10 +146,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $error = 'New passwords do not match.';
                         } else {
                             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                            $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, phone = ?, password = ?, profile_picture = ? WHERE id = ?");
-                            $stmt->execute([$full_name, $email, $phone ?: null, $hashedPassword, $profile_picture, $_SESSION['user_id']]);
+                            $stmt = $pdo->prepare("UPDATE technician SET tech_name = ?, email = ?, phone = ?, password = ?, profile_picture = ? WHERE id = ?");
+                            $stmt->execute([$tech_name, $email, $phone ?: null, $hashedPassword, $profile_picture, $_SESSION['user_id']]);
                             
-                            $_SESSION['full_name'] = $full_name;
+                            $_SESSION['full_name'] = $tech_name;
                             $_SESSION['email'] = $email;
                             $success = 'Profile updated successfully!';
                             
@@ -160,35 +161,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if (!empty($action_types)) {
                                 $primary_action = in_array('change_password', $action_types) ? 'change_password' : 
                                                  (in_array('upload_picture', $action_types) ? 'upload_picture' : 'update_profile');
-                                logProfileAudit($pdo, $_SESSION['user_id'], $user['staff_id'], $email, $primary_action, $fields_changed, $old_values, $new_values);
+                                logProfileAudit($pdo, $_SESSION['user_id'], $user['tech_id'], $email, $primary_action, $fields_changed, $old_values, $new_values);
                             }
                             
                             header("refresh:1;url=Profile.php");
                         }
                     }
                 } else {
-                    $stmt = $pdo->prepare("UPDATE technician SET full_name = ?, email = ?, phone = ?, profile_picture = ? WHERE id = ?");
-                    $stmt->execute([$full_name, $email, $phone ?: null, $profile_picture, $_SESSION['user_id']]);
+                    $stmt = $pdo->prepare("UPDATE technician SET tech_name = ?, email = ?, phone = ?, profile_picture = ? WHERE id = ?");
+                    $stmt->execute([$tech_name, $email, $phone ?: null, $profile_picture, $_SESSION['user_id']]);
                     
-                    $_SESSION['full_name'] = $full_name;
+                    $_SESSION['full_name'] = $tech_name;
                     $_SESSION['email'] = $email;
                     $success = 'Profile updated successfully!';
                     
                     if (!empty($fields_changed)) {
                         $primary_action = in_array('upload_picture', $action_types) ? 'upload_picture' : 'update_profile';
-                        logProfileAudit($pdo, $_SESSION['user_id'], $user['staff_id'], $email, $primary_action, $fields_changed, $old_values, $new_values);
+                        logProfileAudit($pdo, $_SESSION['user_id'], $user['tech_id'], $email, $primary_action, $fields_changed, $old_values, $new_values);
                     }
                     
                     header("refresh:1;url=Profile.php");
                 }
                 
                 if ($success) {
-                    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
+                    $stmt = $pdo->prepare("SELECT id, tech_id, tech_name, email, phone, role, status, profile_picture, created_at FROM technician WHERE id = ?");
                     $stmt->execute([$_SESSION['user_id']]);
                     $user = $stmt->fetch();
                 }
             }
         } catch (PDOException $e) {
+            error_log('Failed to update profile: ' . $e->getMessage());
             $error = 'Failed to update profile. Please try again.';
         }
     }
@@ -567,17 +569,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php if (!empty($user['profile_picture']) && file_exists('../' . $user['profile_picture'])): ?>
                             <img src="../<?php echo htmlspecialchars($user['profile_picture']); ?>" alt="Profile Picture">
                         <?php else: ?>
-                            <div class="avatar-text"><?php echo strtoupper(substr($user['full_name'], 0, 1)); ?></div>
+                            <div class="avatar-text"><?php echo strtoupper(substr($user['tech_name'], 0, 1)); ?></div>
                         <?php endif; ?>
                     </div>
-                    <h2><?php echo htmlspecialchars($user['full_name']); ?></h2>
+                    <h2><?php echo htmlspecialchars($user['tech_name']); ?></h2>
                     <span class="role-badge <?php echo htmlspecialchars($user['role']); ?>">
                         <?php echo ucfirst(htmlspecialchars($user['role'])); ?>
                     </span>
                     <ul class="summary-list">
                         <li>
                             <i class="fa-solid fa-id-badge"></i>
-                            <span><?php echo htmlspecialchars($user['staff_id']); ?></span>
+                            <span><?php echo htmlspecialchars($user['tech_id']); ?></span>
                         </li>
                         <li>
                             <i class="fa-solid fa-envelope"></i>
@@ -633,11 +635,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="staff_id">Staff ID</label>
-                                <input type="text" id="staff_id" name="staff_id" value="<?php echo htmlspecialchars($user['staff_id']); ?>" disabled>
+                                <input type="text" id="staff_id" name="staff_id" value="<?php echo htmlspecialchars($user['tech_id']); ?>" disabled>
                             </div>
                             <div class="form-group">
                                 <label for="full_name">Full Name</label>
-                                <input type="text" id="full_name" name="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" required>
+                                <input type="text" id="full_name" name="full_name" value="<?php echo htmlspecialchars($user['tech_name']); ?>" required>
                             </div>
                             <div class="form-group">
                                 <label for="email">Email Address</label>
