@@ -103,17 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
                             )
                         ");
-                        $trailStmt = $pdo->prepare("
-                            INSERT INTO asset_trails (
-                                asset_type, asset_id, action_type, changed_by,
-                                field_name, old_value, new_value, description,
-                                ip_address, user_agent
-                            ) VALUES (
-                                'av', :asset_id, 'CREATE', :changed_by,
-                                NULL, NULL, NULL, :description,
-                                :ip_address, :user_agent
-                            )
-                        ");
+                        $importedAssetIds = [];
 
                         while (($row = fgetcsv($handle)) !== false) {
                             $rawValues = array_map('trim', $row);
@@ -218,13 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ]);
 
                             $newAssetId = (int)$pdo->lastInsertId();
-                            $trailStmt->execute([
-                                ':asset_id' => $newAssetId,
-                                ':changed_by' => $_SESSION['user_id'],
-                                ':description' => 'Created AV asset via CSV import: ' . $rowData['brand'] . ' ' . $rowData['model'] . ' (Serial: ' . $rowData['serial_num'] . ')',
-                                ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
-                                ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
-                            ]);
+                            $importedAssetIds[] = $newAssetId;
 
                             $importedCount++;
                             $lineNumber++;
@@ -234,6 +218,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         if ($importedCount > 0) {
                             $successMessage = "Imported {$importedCount} asset(s) successfully.";
+                            
+                            $firstAssetId = !empty($importedAssetIds) ? $importedAssetIds[0] : 0;
+                            $trailStmt = $pdo->prepare("
+                                INSERT INTO asset_trails (
+                                    asset_type, asset_id, action_type, changed_by,
+                                    field_name, old_value, new_value, description,
+                                    ip_address, user_agent
+                                ) VALUES (
+                                    'av', :asset_id, 'CREATE', :changed_by,
+                                    NULL, NULL, NULL, :description,
+                                    :ip_address, :user_agent
+                                )
+                            ");
+                            $trailStmt->execute([
+                                ':asset_id' => $firstAssetId,
+                                ':changed_by' => $_SESSION['user_id'],
+                                ':description' => "Bulk CSV import: Created {$importedCount} AV asset(s) via CSV import",
+                                ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                                ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                            ]);
                         }
                     } catch (PDOException $e) {
                         $pdo->rollBack();
