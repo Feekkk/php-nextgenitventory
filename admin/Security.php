@@ -114,7 +114,7 @@ try {
         $total_records = $count_stmt->fetch()['total'];
         $total_pages = ceil($total_records / $per_page);
         
-        $sql = "SELECT pa.*, t.full_name 
+        $sql = "SELECT pa.*, t.tech_name 
                 FROM profile_audit pa 
                 LEFT JOIN technician t ON pa.user_id = t.id 
                 $where_clause 
@@ -161,7 +161,7 @@ try {
         $total_records = $count_stmt->fetch()['total'];
         $total_pages = ceil($total_records / $per_page);
         
-        $sql = "SELECT la.*, t.full_name 
+        $sql = "SELECT la.*, t.tech_name 
                 FROM login_audit la 
                 LEFT JOIN technician t ON la.user_id = t.id 
                 $where_clause 
@@ -184,6 +184,7 @@ try {
     }
     
 } catch (PDOException $e) {
+    error_log('Failed to load audit logs: ' . $e->getMessage());
     $error = 'Failed to load audit logs.';
     $audit_logs = [];
     if ($audit_type === 'profile') {
@@ -732,9 +733,9 @@ try {
                             <?php foreach ($audit_logs as $log): ?>
                                 <tr>
                                     <td><?php echo date('Y-m-d H:i:s', strtotime($log['action_time'])); ?></td>
-                                    <td><?php echo htmlspecialchars($log['full_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['tech_name'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($log['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($log['staff_id'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['tech_id'] ?? 'N/A'); ?></td>
                                     <td>
                                         <span class="action-badge">
                                             <?php echo htmlspecialchars(str_replace('_', ' ', $log['action_type'])); ?>
@@ -776,9 +777,9 @@ try {
                             <?php foreach ($audit_logs as $log): ?>
                                 <tr>
                                     <td><?php echo date('Y-m-d H:i:s', strtotime($log['login_time'])); ?></td>
-                                    <td><?php echo htmlspecialchars($log['full_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['tech_name'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($log['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($log['staff_id'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($log['tech_id'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($log['ip_address'] ?? 'N/A'); ?></td>
                                     <td>
                                         <span class="status-badge <?php echo htmlspecialchars($log['login_status']); ?>">
