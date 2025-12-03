@@ -34,9 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 try {
-    $stmt = $pdo->query("SELECT id, staff_id, full_name, email, role, status, phone, profile_picture, created_at FROM technician ORDER BY created_at DESC");
+    $stmt = $pdo->query("SELECT id, tech_id, tech_name, email, role, status, phone, profile_picture, created_at FROM technician ORDER BY created_at DESC");
     $users = $stmt->fetchAll();
 } catch (PDOException $e) {
+    error_log('Failed to load users: ' . $e->getMessage());
     $error = 'Failed to load users.';
 }
 ?>
@@ -609,12 +610,12 @@ try {
                                 <?php if (!empty($user['profile_picture']) && file_exists('../' . $user['profile_picture'])): ?>
                                     <img src="../<?php echo htmlspecialchars($user['profile_picture']); ?>" alt="Profile Picture">
                                 <?php else: ?>
-                                    <div class="avatar-text"><?php echo strtoupper(substr($user['full_name'], 0, 1)); ?></div>
+                                    <div class="avatar-text"><?php echo strtoupper(substr($user['tech_name'], 0, 1)); ?></div>
                                 <?php endif; ?>
                             </div>
                             <div class="user-info-header">
-                                <div class="user-name-large"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                                <div class="user-staff-id"><?php echo htmlspecialchars($user['staff_id']); ?></div>
+                                <div class="user-name-large"><?php echo htmlspecialchars($user['tech_name']); ?></div>
+                                <div class="user-staff-id"><?php echo htmlspecialchars($user['tech_id']); ?></div>
                             </div>
                         </div>
                         
@@ -650,7 +651,7 @@ try {
                                     <span>Edit</span>
                                 </a>
                                 <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                    <button class="btn-action danger" onclick="confirmDelete(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['full_name']); ?>')" title="Delete">
+                                    <button class="btn-action danger" onclick="confirmDelete(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['tech_name']); ?>')" title="Delete">
                                         <i class="fa-solid fa-trash"></i>
                                         <span>Delete</span>
                                     </button>
