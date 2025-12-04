@@ -60,7 +60,6 @@ function formatStatusClass($status)
         'NON-ACTIVE' => 'non-active',
         'LOST' => 'lost',
         'UNAVAILABLE' => 'unavailable',
-        'HANDOVER' => 'handover',
     ];
     return $map[$status] ?? 'unknown';
 }
@@ -87,7 +86,6 @@ function formatStatusIcon($status)
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
         'UNAVAILABLE' => 'fa-circle-xmark',
-        'HANDOVER' => 'fa-hand-holding',
     ];
     return $iconMap[$status] ?? 'fa-circle-question';
 }
@@ -468,11 +466,6 @@ function formatStatusIcon($status)
         .status-badge.unavailable {
             background: rgba(214, 48, 49, 0.15);
             color: #d63031;
-        }
-
-        .status-badge.handover {
-            background: rgba(108, 92, 231, 0.15);
-            color: #6c5ce7;
         }
 
         .status-badge.unknown {

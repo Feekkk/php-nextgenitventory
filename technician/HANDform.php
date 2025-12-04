@@ -68,14 +68,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $handover_id = $pdo->lastInsertId();
 
                 if ($asset_type === 'laptop_desktop') {
+                    $oldStatusStmt = $pdo->prepare("SELECT status FROM laptop_desktop_assets WHERE asset_id = ?");
+                    $oldStatusStmt->execute([(int)$asset_id]);
+                    $oldStatus = $oldStatusStmt->fetchColumn();
+                    
                     $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = 'DEPLOY', staff_id = ? WHERE asset_id = ?");
-                } else {
-                    $updateStmt = $pdo->prepare("UPDATE av_assets SET status = 'DEPLOY' WHERE asset_id = ?");
-                }
-                
-                if ($asset_type === 'laptop_desktop') {
                     $updateStmt->execute([(int)$staff_id, (int)$asset_id]);
                 } else {
+                    $oldStatusStmt = $pdo->prepare("SELECT status FROM av_assets WHERE asset_id = ?");
+                    $oldStatusStmt->execute([(int)$asset_id]);
+                    $oldStatus = $oldStatusStmt->fetchColumn();
+                    
+                    $updateStmt = $pdo->prepare("UPDATE av_assets SET status = 'DEPLOY' WHERE asset_id = ?");
                     $updateStmt->execute([(int)$asset_id]);
                 }
 
@@ -86,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ip_address, user_agent
                     ) VALUES (
                         :asset_type, :asset_id, 'ASSIGNMENT_CHANGE', :changed_by,
-                        'status', 'HANDOVER', 'DEPLOY', :description,
+                        'status', :old_status, 'DEPLOY', :description,
                         :ip_address, :user_agent
                     )
                 ");
@@ -95,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':asset_type' => $asset_type,
                     ':asset_id' => (int)$asset_id,
                     ':changed_by' => $_SESSION['user_id'],
+                    ':old_status' => $oldStatus ?? 'UNKNOWN',
                     ':description' => "Asset handover completed. Handover ID: {$handover_id}, Staff ID: {$staff_id}",
                     ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
                     ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
@@ -246,13 +251,13 @@ if (isset($_GET['action'])) {
     if ($_GET['action'] === 'get_assets') {
         $assets = [];
         
-        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, category, 'laptop_desktop' as asset_type FROM laptop_desktop_assets WHERE status = 'HANDOVER' ORDER BY category ASC, asset_id ASC");
+        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, category, 'laptop_desktop' as asset_type FROM laptop_desktop_assets WHERE status IN ('AVAILABLE', 'RESERVED') ORDER BY category ASC, asset_id ASC");
         $laptopAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($laptopAssets as $asset) {
             $assets[] = $asset;
         }
         
-        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, class as category, 'av' as asset_type FROM av_assets WHERE status = 'HANDOVER' ORDER BY class ASC, asset_id ASC");
+        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, class as category, 'av' as asset_type FROM av_assets WHERE status IN ('AVAILABLE', 'RESERVED') ORDER BY class ASC, asset_id ASC");
         $avAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($avAssets as $asset) {
             $assets[] = $asset;
@@ -277,9 +282,9 @@ if (isset($_GET['action'])) {
         
         if (is_numeric($asset_id) && in_array($asset_type, ['laptop_desktop', 'av'])) {
             if ($asset_type === 'laptop_desktop') {
-                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, category FROM laptop_desktop_assets WHERE asset_id = ? AND status = 'HANDOVER'");
+                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, category, status FROM laptop_desktop_assets WHERE asset_id = ? AND status IN ('AVAILABLE', 'RESERVED')");
             } else {
-                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, class as category FROM av_assets WHERE asset_id = ? AND status = 'HANDOVER'");
+                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, class as category, status FROM av_assets WHERE asset_id = ? AND status IN ('AVAILABLE', 'RESERVED')");
             }
             $stmt->execute([$asset_id]);
             $asset = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -770,7 +775,7 @@ if (isset($_GET['action'])) {
                         <div class="form-group">
                             <label for="assetSelect">Select Asset <span style="color:#c0392b;">*</span></label>
                             <select id="assetSelect" name="assetSelect" required>
-                                <option value="">Select an asset with HANDOVER status</option>
+                                <option value="">Select an available asset</option>
                             </select>
                             <input type="hidden" id="assetType" name="assetType" value="">
                         </div>
