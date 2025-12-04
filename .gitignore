@@ -2,3 +2,4 @@ admin/.last_cleanup
 profile/
 database/migrations/
 pdf.txt
+/services/README.md

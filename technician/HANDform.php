@@ -101,12 +101,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 $pdo->commit();
-                $success = 'Handover form submitted successfully!';
+                
+                $stmt = $pdo->prepare("SELECT staff_name, email, faculty FROM staff_list WHERE staff_id = ?");
+                $stmt->execute([$staff_id]);
+                $staff = $stmt->fetch();
+                
+                $stmt = $pdo->prepare("SELECT tech_name FROM technician WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $handoverBy = $stmt->fetch();
+                
+                if ($asset_type === 'laptop_desktop') {
+                    $assetStmt = $pdo->prepare("SELECT serial_num, brand, model, category FROM laptop_desktop_assets WHERE asset_id = ?");
+                } else {
+                    $assetStmt = $pdo->prepare("SELECT serial_num, brand, model, class as category FROM av_assets WHERE asset_id = ?");
+                }
+                $assetStmt->execute([$asset_id]);
+                $asset = $assetStmt->fetch();
+                
+                $pdfData = [
+                    'staff_id' => $staff_id,
+                    'staff_name' => $staff['staff_name'] ?? '',
+                    'staff_designation' => $staff['faculty'] ?? '',
+                    'staff_email' => $staff['email'] ?? '',
+                    'asset_id' => $asset_id,
+                    'asset_type' => $asset_type,
+                    'serial_num' => $asset['serial_num'] ?? '',
+                    'brand' => $asset['brand'] ?? '',
+                    'model' => $asset['model'] ?? '',
+                    'category' => $asset['category'] ?? '',
+                    'accessories' => $accessories,
+                    'handover_date' => $handover_date,
+                    'handover_location' => $handover_location,
+                    'handover_notes' => $handover_notes,
+                    'digital_signoff' => $digital_signoff,
+                    'handover_by_name' => $handoverBy['tech_name'] ?? 'IT Department',
+                    'handover_by_designation' => 'IT Staff'
+                ];
+                
+                require_once '../services/pdf_generator.php';
+                require_once '../services/mail_config.php';
+                
+                $pdfContent = generateHandoverPDF($pdfData);
+                
+                if ($pdfContent && !empty($staff['email'])) {
+                    $tempFile = sys_get_temp_dir() . '/handover_' . $handover_id . '_' . time() . '.pdf';
+                    file_put_contents($tempFile, $pdfContent);
+                    
+                    $emailBody = "
+                        <html>
+                        <head>
+                            <style>
+                                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                                .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; }
+                                .content { padding: 20px; }
+                                .footer { background: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class='header'>
+                                <h2>Asset Handover Confirmation</h2>
+                            </div>
+                            <div class='content'>
+                                <p>Dear {$staff['staff_name']},</p>
+                                <p>This email confirms that you have received the following asset:</p>
+                                <ul>
+                                    <li><strong>Asset ID:</strong> {$asset_id}</li>
+                                    <li><strong>Type:</strong> " . ucwords(str_replace('_', ' ', $asset_type)) . "</li>
+                                    <li><strong>Category:</strong> {$asset['category']}</li>
+                                    <li><strong>Brand:</strong> {$asset['brand']}</li>
+                                    <li><strong>Model:</strong> {$asset['model']}</li>
+                                    <li><strong>Serial Number:</strong> {$asset['serial_num']}</li>
+                                    <li><strong>Handover Date:</strong> {$handover_date}</li>
+                                    <li><strong>Location:</strong> {$handover_location}</li>
+                                </ul>
+                                <p>Please find attached the complete handover document for your records.</p>
+                                <p>If you have any questions or concerns, please contact the IT Department.</p>
+                            </div>
+                            <div class='footer'>
+                                <p>UNIKL RCMP IT Inventory System</p>
+                                <p>This is an automated email. Please do not reply.</p>
+                            </div>
+                        </body>
+                        </html>
+                    ";
+                    
+                    $attachments = [[
+                        'path' => $tempFile,
+                        'name' => 'Handover_Document_' . $handover_id . '.pdf',
+                        'type' => 'application/pdf'
+                    ]];
+                    
+                    $emailSent = sendEmail(
+                        $staff['email'],
+                        'Asset Handover Confirmation - Handover ID: ' . $handover_id,
+                        $emailBody,
+                        $attachments
+                    );
+                    
+                    if ($emailSent) {
+                        $success = 'Handover form submitted successfully! Confirmation email with PDF has been sent.';
+                    } else {
+                        $success = 'Handover form submitted successfully! However, email could not be sent.';
+                    }
+                    
+                    if (file_exists($tempFile)) {
+                        unlink($tempFile);
+                    }
+                } else {
+                    $success = 'Handover form submitted successfully!';
+                }
             }
         } catch (PDOException $e) {
-            $pdo->rollBack();
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             error_log('Handover form submission error: ' . $e->getMessage());
             $error = 'Failed to submit handover form. Please try again.';
+        } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('Handover form error: ' . $e->getMessage());
+            $error = 'Failed to process handover form. Please try again.';
         }
     }
 }
