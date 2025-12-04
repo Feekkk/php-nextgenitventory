@@ -398,6 +398,11 @@ function formatCategoryClass($category)
             background: rgba(26, 26, 46, 0.03);
         }
 
+        .assets-table th:last-child,
+        .assets-table td:last-child {
+            text-align: center;
+        }
+
         .asset-id {
             font-weight: 600;
             color: #1a1a2e;
@@ -542,23 +547,87 @@ function formatCategoryClass($category)
         .action-buttons {
             display: flex;
             gap: 8px;
+            justify-content: center;
         }
 
         .btn-action {
-            padding: 6px 12px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 50%;
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: #ffffff;
-            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #2d3436;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
         .btn-action:hover {
             background: #1a1a2e;
             color: #ffffff;
             border-color: #1a1a2e;
+            transform: scale(1.05);
+        }
+
+        .btn-action.view {
+            color: #0984e3;
+        }
+
+        .btn-action.view:hover {
+            color: #ffffff;
+        }
+
+        .btn-action.handover {
+            color: #00b894;
+        }
+
+        .btn-action.handover:hover {
+            color: #ffffff;
+        }
+
+        .btn-action.return {
+            color: #e17055;
+        }
+
+        .btn-action.return:hover {
+            color: #ffffff;
+        }
+
+        .action-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            background: #1a1a2e;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .action-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1a1a2e;
+        }
+
+        .btn-action:hover .action-tooltip {
+            opacity: 1;
         }
 
         .empty-state {
@@ -697,6 +766,7 @@ function formatCategoryClass($category)
                             <?php
                                 $statusClass = formatStatusClass($asset['status'] ?? '');
                                 $statusLabel = formatStatusLabel($asset['status'] ?? '');
+                                $rawStatus = strtoupper(trim((string)($asset['status'] ?? '')));
                                 $category = trim((string)($asset['category'] ?? ''));
                                 $categoryClass = formatCategoryClass($category);
                                 $brand = trim((string)($asset['brand'] ?? ''));
@@ -740,9 +810,21 @@ function formatCategoryClass($category)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="window.location.href='../pages/LAPTOPview.php?id=<?php echo $asset['asset_id']; ?>'">
-                                            <i class="fa-solid fa-eye"></i> View
+                                        <button class="btn-action view" onclick="window.location.href='../pages/LAPTOPview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
+                                            <i class="fa-solid fa-eye"></i>
+                                            <span class="action-tooltip">View details</span>
                                         </button>
+                                        <?php if ($rawStatus === 'ACTIVE') : ?>
+                                            <button class="btn-action handover" onclick="window.location.href='HANDform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Handover asset">
+                                                <i class="fa-solid fa-hand-holding"></i>
+                                                <span class="action-tooltip">Handover</span>
+                                            </button>
+                                        <?php elseif ($rawStatus === 'DEPLOY') : ?>
+                                            <button class="btn-action return" onclick="window.location.href='HANDreturn.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Return asset">
+                                                <i class="fa-solid fa-rotate-left"></i>
+                                                <span class="action-tooltip">Return</span>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
