@@ -58,6 +58,39 @@
         </div>
     </section>
 
+    <section class="about" id="about">
+        <h2 class="section-title">About Us</h2>
+        <div class="about-content">
+            <div class="about-card main-card">
+                <div class="about-icon"><i class="fa-solid fa-building"></i></div>
+                <h3>UniKL RCMP IT Department</h3>
+                <p>We are the Information Technology Department of Universiti Kuala Lumpur Royal College of Medicine Perak (UniKL RCMP). Our mission is to provide cutting-edge IT solutions and support to enhance the academic and administrative operations of the institution.</p>
+            </div>
+            <div class="about-grid">
+                <div class="about-card">
+                    <div class="about-icon"><i class="fa-solid fa-flag-checkered"></i></div>
+                    <h3>Our Mission</h3>
+                    <p>To deliver innovative IT services and infrastructure that empower our community, ensuring seamless technology integration across all departments while maintaining the highest standards of security and efficiency.</p>
+                </div>
+                <div class="about-card">
+                    <div class="about-icon"><i class="fa-solid fa-eye"></i></div>
+                    <h3>Our Vision</h3>
+                    <p>To be a leading IT department that drives digital transformation, fostering a technology-enabled environment that supports excellence in education and research.</p>
+                </div>
+                <div class="about-card">
+                    <div class="about-icon"><i class="fa-solid fa-users"></i></div>
+                    <h3>Our Commitment</h3>
+                    <p>We are dedicated to maintaining comprehensive asset management, ensuring accountability, transparency, and optimal utilization of IT resources throughout the institution.</p>
+                </div>
+                <div class="about-card">
+                    <div class="about-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h3>Security & Compliance</h3>
+                    <p>We prioritize data security and regulatory compliance, implementing robust systems to protect institutional assets and sensitive information.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <?php include 'components/footer.php'; ?>
 
     <script src="js/home.js"></script>

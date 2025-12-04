@@ -254,6 +254,71 @@ nav a:hover {
     font-size: 0.95rem;
 }
 
+/* About Section */
+.about {
+    padding: 100px 50px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.about-content {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.about-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    padding: 40px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+}
+
+.about-card:hover {
+    transform: translateY(-10px);
+    background: var(--card-hover);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.about-card.main-card {
+    text-align: center;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.about-icon {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.about-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+.about-card p {
+    color: #636e72;
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
+.about-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .hero h1 {
@@ -267,5 +332,17 @@ nav a:hover {
     nav ul {
         display: none;
         /* Mobile menu to be implemented */
+    }
+
+    .about {
+        padding: 60px 20px;
+    }
+
+    .about-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .about-card.main-card {
+        padding: 30px 20px;
     }
 }
