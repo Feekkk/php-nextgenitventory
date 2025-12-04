@@ -12,7 +12,7 @@ $error = '';
 $success = '';
 $user = null;
 
-function logProfileAudit($pdo, $user_id, $staff_id, $email, $action_type, $fields_changed = [], $old_values = [], $new_values = [], $admin_id = null) {
+function logProfileAudit($pdo, $user_id, $tech_id, $email, $action_type, $fields_changed = [], $old_values = [], $new_values = [], $admin_id = null) {
     try {
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? null;
@@ -26,8 +26,8 @@ function logProfileAudit($pdo, $user_id, $staff_id, $email, $action_type, $field
         $old_values_str = !empty($old_values) ? json_encode($old_values) : null;
         $new_values_str = !empty($new_values) ? json_encode($new_values) : null;
         
-        $stmt = $pdo->prepare("INSERT INTO profile_audit (user_id, staff_id, email, action_type, fields_changed, old_values, new_values, ip_address, user_agent, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $staff_id, $email, $action_type, $fields_changed_str, $old_values_str, $new_values_str, $ip_address, $user_agent, $session_id]);
+        $stmt = $pdo->prepare("INSERT INTO profile_audit (user_id, tech_id, email, action_type, fields_changed, old_values, new_values, ip_address, user_agent, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $tech_id, $email, $action_type, $fields_changed_str, $old_values_str, $new_values_str, $ip_address, $user_agent, $session_id]);
     } catch (PDOException $e) {
         error_log("Failed to log profile audit: " . $e->getMessage());
     }
@@ -41,7 +41,7 @@ if (!$user_id) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status FROM technician WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT id, tech_id, tech_name, email, phone, role, status FROM technician WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
     
@@ -101,13 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             if (!empty($fields_changed)) {
-                logProfileAudit($pdo, $user_id, $user['staff_id'], $user['email'], 'admin_update', $fields_changed, $old_values, $new_values, $_SESSION['user_id']);
+                logProfileAudit($pdo, $user_id, $user['tech_id'], $user['email'], 'admin_update', $fields_changed, $old_values, $new_values, $_SESSION['user_id']);
             }
             
             $success = 'User updated successfully! Redirecting to Manage Users...';
             header("refresh:2;url=ManageUser.php");
             
-            $stmt = $pdo->prepare("SELECT id, staff_id, full_name, email, phone, role, status FROM technician WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id, tech_id, tech_name, email, phone, role, status FROM technician WHERE id = ?");
             $stmt->execute([$user_id]);
             $user = $stmt->fetch();
         } catch (PDOException $e) {
@@ -396,20 +396,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($user): ?>
                 <form method="POST" action="">
                     <div class="form-group">
-                        <label for="staff_id">Staff ID</label>
+                        <label for="tech_id">Tech ID</label>
                         <div class="input-wrapper">
                             <i class="fa-solid fa-id-card input-icon"></i>
-                            <input type="text" id="staff_id" name="staff_id" value="<?php echo htmlspecialchars($user['staff_id']); ?>" disabled>
+                            <input type="text" id="tech_id" name="tech_id" value="<?php echo htmlspecialchars($user['tech_id']); ?>" disabled>
                         </div>
-                        <p class="field-hint">Staff ID cannot be changed</p>
+                        <p class="field-hint">Tech ID cannot be changed</p>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="full_name">Full Name</label>
+                            <label for="tech_name">Full Name</label>
                             <div class="input-wrapper">
                                 <i class="fa-solid fa-user input-icon"></i>
-                                <input type="text" id="full_name" name="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" disabled>
+                                <input type="text" id="tech_name" name="tech_name" value="<?php echo htmlspecialchars($user['tech_name']); ?>" disabled>
                             </div>
                             <p class="field-hint">Full name cannot be changed</p>
                         </div>
