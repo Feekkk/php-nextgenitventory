@@ -110,6 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Asset ID must be a valid number.';
     }
 
+    if ($formData['asset_id'] !== '' && is_numeric($formData['asset_id'])) {
+        $stmt = $pdo->prepare("SELECT asset_id FROM laptop_desktop_assets WHERE asset_id = ?");
+        $stmt->execute([$formData['asset_id']]);
+        if ($stmt->fetch()) {
+            $errors[] = 'Asset ID already exists. Please use a different Asset ID or leave it empty for auto-generation.';
+        }
+    }
+
     if ($formData['staff_id'] !== '' && is_numeric($formData['staff_id'])) {
         $stmt = $pdo->prepare("SELECT staff_id FROM staff_list WHERE staff_id = ?");
         $stmt->execute([$formData['staff_id']]);
@@ -204,8 +212,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $staffName = '';
         } catch (PDOException $e) {
             error_log('LAPTOPadd.php INSERT Error: ' . $e->getMessage());
-            $errors[] = 'Unable to save asset right now. Please try again.';
-            $errors[] = 'Error: ' . $e->getMessage();
+            if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), 'PRIMARY') !== false) {
+                $errors[] = 'Asset ID already exists. Please use a different Asset ID or leave it empty for auto-generation.';
+            } else {
+                $errors[] = 'Unable to save asset right now. Please try again.';
+            }
         }
     }
 }

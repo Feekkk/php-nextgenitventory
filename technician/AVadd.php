@@ -123,7 +123,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $formData[$field] = '';
             }
         } catch (PDOException $e) {
-            $errors[] = 'Unable to save asset right now. Please try again.';
+            error_log('AVadd.php INSERT Error: ' . $e->getMessage());
+            if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), 'PRIMARY') !== false) {
+                $errors[] = 'Asset ID already exists. The system will auto-generate a unique Asset ID.';
+            } else {
+                $errors[] = 'Unable to save asset right now. Please try again.';
+            }
         }
     }
 }
