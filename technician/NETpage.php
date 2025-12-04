@@ -46,21 +46,54 @@ function formatAssetId($id)
 
 function formatStatusClass($status)
 {
+    $status = strtoupper(trim($status ?? ''));
     $map = [
-        'AVAILABLE' => 'AVAILABLE',
-        'UNAVAILABLE' => 'UNAVAILABLE',
-        'MAINTENANCE' => 'MAINTENANCE',
-        'DISPOSED' => 'DISPOSED',
+        'AVAILABLE' => 'available',
+        'ONLINE' => 'online',
+        'DEPLOY' => 'deploy',
+        'IN-USE' => 'in-use',
+        'MAINTENANCE' => 'maintenance',
+        'UNDER MAINTENANCE' => 'under-maintenance',
+        'DISPOSED' => 'disposed',
+        'DISPOSE' => 'dispose',
+        'FAULTY' => 'faulty',
+        'RESERVED' => 'reserved',
+        'OFFLINE' => 'offline',
+        'NON-ACTIVE' => 'non-active',
+        'LOST' => 'lost',
+        'UNAVAILABLE' => 'unavailable',
+        'HANDOVER' => 'handover',
     ];
-
-    $statusKey = strtolower(trim($status ?? ''));
-    return $map[$statusKey] ?? 'unknown';
+    return $map[$status] ?? 'unknown';
 }
 
 function formatStatusLabel($status)
 {
     $status = trim((string)$status);
     return $status === '' ? 'Unknown' : ucwords(str_replace('-', ' ', $status));
+}
+
+function formatStatusIcon($status)
+{
+    $status = strtoupper(trim($status ?? ''));
+    $iconMap = [
+        'AVAILABLE' => 'fa-circle-check',
+        'DEPLOY' => 'fa-circle-check',
+        'ONLINE' => 'fa-circle-check',
+        'IN-USE' => 'fa-laptop',
+        'FAULTY' => 'fa-triangle-exclamation',
+        'DISPOSE' => 'fa-trash',
+        'DISPOSED' => 'fa-trash',
+        'RESERVED' => 'fa-bookmark',
+        'UNDER MAINTENANCE' => 'fa-wrench',
+        'MAINTENANCE' => 'fa-wrench',
+        'OFFLINE' => 'fa-circle-xmark',
+        'NON-ACTIVE' => 'fa-circle-pause',
+        'LOST' => 'fa-circle-question',
+        'UNAVAILABLE' => 'fa-circle-xmark',
+        'HANDOVER' => 'fa-hand-holding',
+    ];
+    return $iconMap[$status] ?? 'fa-circle-question';
 }
 ?>
 <!DOCTYPE html>
@@ -377,31 +410,75 @@ function formatStatusLabel($status)
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1rem;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
         }
 
-        .status-badge.available {
-            background: rgba(0, 184, 148, 0.1);
+        .status-badge:hover {
+            transform: scale(1.1);
+        }
+
+        .status-badge.available,
+        .status-badge.deploy,
+        .status-badge.online {
+            background: rgba(0, 184, 148, 0.15);
             color: #00b894;
         }
 
         .status-badge.in-use {
-            background: rgba(108, 92, 231, 0.1);
+            background: rgba(108, 92, 231, 0.15);
             color: #6c5ce7;
         }
 
-        .status-badge.maintenance {
-            background: rgba(253, 121, 168, 0.1);
+        .status-badge.maintenance,
+        .status-badge.under-maintenance {
+            background: rgba(253, 121, 168, 0.15);
             color: #fd79a8;
         }
 
-        .status-badge.disposed {
-            background: rgba(99, 110, 114, 0.1);
+        .status-badge.disposed,
+        .status-badge.dispose {
+            background: rgba(99, 110, 114, 0.15);
             color: #636e72;
+        }
+
+        .status-badge.faulty {
+            background: rgba(214, 48, 49, 0.15);
+            color: #d63031;
+        }
+
+        .status-badge.reserved {
+            background: rgba(9, 132, 227, 0.15);
+            color: #0984e3;
+        }
+
+        .status-badge.offline,
+        .status-badge.unavailable {
+            background: rgba(214, 48, 49, 0.15);
+            color: #d63031;
+        }
+
+        .status-badge.non-active {
+            background: rgba(99, 110, 114, 0.15);
+            color: #636e72;
+        }
+
+        .status-badge.lost {
+            background: rgba(214, 48, 49, 0.15);
+            color: #d63031;
+        }
+
+        .status-badge.handover {
+            background: rgba(108, 92, 231, 0.15);
+            color: #6c5ce7;
         }
 
         .status-badge.spare {
@@ -411,7 +488,39 @@ function formatStatusLabel($status)
 
         .status-badge.unknown {
             background: rgba(99, 110, 114, 0.15);
-            color: #2d3436;
+            color: #636e72;
+        }
+
+        .status-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 6px 12px;
+            background: #1a1a2e;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .status-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1a1a2e;
+        }
+
+        .status-badge:hover .status-tooltip {
+            opacity: 1;
         }
 
         .action-buttons {
@@ -658,8 +767,9 @@ function formatStatusLabel($status)
                                 <td><?php echo htmlspecialchars($asset['ip_add'] ?: '-'); ?></td>
                                 <td><?php echo htmlspecialchars($locationLabel); ?></td>
                                 <td>
-                                    <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>">
-                                        <?php echo htmlspecialchars($statusLabel); ?>
+                                    <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>" title="<?php echo htmlspecialchars($statusLabel); ?>">
+                                        <i class="fa-solid <?php echo htmlspecialchars(formatStatusIcon($asset['status'] ?? '')); ?>"></i>
+                                        <span class="status-tooltip"><?php echo htmlspecialchars($statusLabel); ?></span>
                                     </span>
                                 </td>
                                 <td><?php echo htmlspecialchars($remarks !== '' ? $remarks : '-'); ?></td>
