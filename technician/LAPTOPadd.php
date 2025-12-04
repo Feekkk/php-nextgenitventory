@@ -458,6 +458,17 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
                         <label for="part_number">Part Number</label>
                         <input type="text" id="part_number" name="part_number" placeholder="Enter part number" value="<?php echo htmlspecialchars($formData['part_number']); ?>">
                     </div>
+                    <div class="form-group">
+                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
+                        <select id="status" name="status" required>
+                            <option value="">Select status</option>
+                            <?php foreach ($allowedStatuses as $status) : ?>
+                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($status); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -492,15 +503,15 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="staff_id">Staff ID</label>
-                        <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" value="<?php echo htmlspecialchars($formData['staff_id']); ?>">
+                        <input type="number" id="staff_id" name="staff_id" placeholder="Enter staff ID" value="<?php echo htmlspecialchars($formData['staff_id']); ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label for="staff_name">Staff Name</label>
-                        <input type="text" id="staff_name" name="staff_name" placeholder="Auto-filled from Staff ID" value="<?php echo htmlspecialchars($staffName); ?>" readonly style="background-color: #f5f5f5; cursor: not-allowed;">
+                        <input type="text" id="staff_name" name="staff_name" placeholder="Auto-filled from Staff ID" value="<?php echo htmlspecialchars($staffName); ?>" readonly style="background-color: #f5f5f5; cursor: not-allowed;" disabled>
                     </div>
                     <div class="form-group">
                         <label for="assignment_type">Assignment Type</label>
-                        <select id="assignment_type" name="assignment_type">
+                        <select id="assignment_type" name="assignment_type" disabled>
                             <option value="">Select assignment type</option>
                             <option value="ACADEMIC" <?php echo $formData['assignment_type'] === 'ACADEMIC' ? 'selected' : ''; ?>>ACADEMIC</option>
                             <option value="SERVICES" <?php echo $formData['assignment_type'] === 'SERVICES' ? 'selected' : ''; ?>>SERVICES</option>
@@ -511,26 +522,15 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
                     </div>
                     <div class="form-group">
                         <label for="location">Location</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., Building A, Level 2" value="<?php echo htmlspecialchars($formData['location']); ?>">
+                        <input type="text" id="location" name="location" placeholder="e.g., Building A, Level 2" value="<?php echo htmlspecialchars($formData['location']); ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label for="warranty_expiry">Warranty Expiry</label>
-                        <input type="date" id="warranty_expiry" name="warranty_expiry" value="<?php echo htmlspecialchars($formData['warranty_expiry']); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
-                        <select id="status" name="status" required>
-                            <option value="">Select status</option>
-                            <?php foreach ($allowedStatuses as $status) : ?>
-                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($status); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="date" id="warranty_expiry" name="warranty_expiry" value="<?php echo htmlspecialchars($formData['warranty_expiry']); ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label for="supplier">Supplier</label>
-                        <input type="text" id="supplier" name="supplier" placeholder="Enter supplier name" value="<?php echo htmlspecialchars($formData['supplier']); ?>">
+                        <input type="text" id="supplier" name="supplier" placeholder="Enter supplier name" value="<?php echo htmlspecialchars($formData['supplier']); ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label for="period">Period</label>
@@ -599,6 +599,38 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
     </footer>
 
     <script>
+        function toggleDeploymentFields() {
+            const status = document.getElementById('status').value;
+            const isDeploy = status === 'DEPLOY';
+            
+            const deploymentFields = [
+                'staff_id',
+                'staff_name',
+                'assignment_type',
+                'location',
+                'warranty_expiry',
+                'supplier'
+            ];
+            
+            deploymentFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.disabled = !isDeploy;
+                    if (field.type === 'text' || field.type === 'number' || field.type === 'date') {
+                        field.style.backgroundColor = isDeploy ? '' : '#f5f5f5';
+                        field.style.cursor = isDeploy ? '' : 'not-allowed';
+                    }
+                    if (field.tagName === 'SELECT') {
+                        field.style.backgroundColor = isDeploy ? '' : '#f5f5f5';
+                        field.style.cursor = isDeploy ? '' : 'not-allowed';
+                    }
+                }
+            });
+        }
+        
+        document.getElementById('status').addEventListener('change', toggleDeploymentFields);
+        toggleDeploymentFields();
+        
         document.getElementById('staff_id').addEventListener('input', function() {
             const staffId = this.value.trim();
             const staffNameField = document.getElementById('staff_name');

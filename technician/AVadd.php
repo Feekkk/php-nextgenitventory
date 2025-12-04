@@ -355,16 +355,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="serial_num">Serial Number <span style="color:#c0392b;">*</span></label>
                         <input type="text" id="serial_num" name="serial_num" placeholder="Enter serial number" value="<?php echo htmlspecialchars($formData['serial_num']); ?>" required>
                     </div>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h3 class="form-section-title">Deployment Details</h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="location">Location</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., Lecture Hall A, Block 3" value="<?php echo htmlspecialchars($formData['location']); ?>">
-                    </div>
                     <div class="form-group">
                         <label for="status">Status <span style="color:#c0392b;">*</span></label>
                         <select id="status" name="status" required>
@@ -375,6 +365,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Deployment Details</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" placeholder="e.g., Lecture Hall A, Block 3" value="<?php echo htmlspecialchars($formData['location']); ?>" disabled>
                     </div>
                 </div>
             </div>
@@ -433,6 +433,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <footer>
         <?php include_once("../components/Footer.php"); ?>
     </footer>
+
+    <script>
+        function toggleDeploymentFields() {
+            const status = document.getElementById('status').value;
+            const isDeploy = status === 'DEPLOY';
+            
+            const locationField = document.getElementById('location');
+            if (locationField) {
+                locationField.disabled = !isDeploy;
+                locationField.style.backgroundColor = isDeploy ? '' : '#f5f5f5';
+                locationField.style.cursor = isDeploy ? '' : 'not-allowed';
+            }
+        }
+        
+        document.getElementById('status').addEventListener('change', toggleDeploymentFields);
+        toggleDeploymentFields();
+    </script>
 </body>
 </html>
 

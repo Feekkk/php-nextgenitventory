@@ -358,6 +358,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="model">Model <span style="color:#c0392b;">*</span></label>
                         <input type="text" id="model" name="model" placeholder="e.g., Catalyst 9300" value="<?php echo htmlspecialchars($formData['model']); ?>" required>
                     </div>
+                    <div class="form-group">
+                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
+                        <select id="status" name="status" required>
+                            <option value="">Select status</option>
+                            <?php foreach ($allowedStatuses as $status) : ?>
+                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
+                                    <?php echo ucwords(str_replace('-', ' ', strtolower($status))); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -380,22 +391,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="building">Building</label>
-                        <input type="text" id="building" name="building" placeholder="e.g., Main Campus" value="<?php echo htmlspecialchars($formData['building']); ?>">
+                        <input type="text" id="building" name="building" placeholder="e.g., Main Campus" value="<?php echo htmlspecialchars($formData['building']); ?>" disabled>
                     </div>
                     <div class="form-group">
                         <label for="level">Level / Floor</label>
-                        <input type="text" id="level" name="level" placeholder="e.g., Level 3" value="<?php echo htmlspecialchars($formData['level']); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Status <span style="color:#c0392b;">*</span></label>
-                        <select id="status" name="status" required>
-                            <option value="">Select status</option>
-                            <?php foreach ($allowedStatuses as $status) : ?>
-                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $formData['status'] === $status ? 'selected' : ''; ?>>
-                                    <?php echo ucwords(str_replace('-', ' ', strtolower($status))); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="text" id="level" name="level" placeholder="e.g., Level 3" value="<?php echo htmlspecialchars($formData['level']); ?>" disabled>
                     </div>
                 </div>
             </div>
@@ -454,5 +454,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <footer>
         <?php include_once("../components/Footer.php"); ?>
     </footer>
+
+    <script>
+        function toggleDeploymentFields() {
+            const status = document.getElementById('status').value;
+            const isDeploy = status === 'DEPLOY';
+            
+            const deploymentFields = ['building', 'level'];
+            
+            deploymentFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.disabled = !isDeploy;
+                    field.style.backgroundColor = isDeploy ? '' : '#f5f5f5';
+                    field.style.cursor = isDeploy ? '' : 'not-allowed';
+                }
+            });
+        }
+        
+        document.getElementById('status').addEventListener('change', toggleDeploymentFields);
+        toggleDeploymentFields();
+    </script>
 </body>
 </html>
