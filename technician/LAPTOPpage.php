@@ -575,10 +575,6 @@ function formatCategoryClass($category)
                             </button>
                         </div>
                     </div>
-                    <button type="button" class="btn-queue" onclick="window.location.href='QUEUEpage.php'">
-                        <i class="fa-solid fa-list-check"></i>
-                        Add Queue
-                    </button>
                 </div>
             </div>
         </div>
