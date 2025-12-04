@@ -12,7 +12,7 @@ $errors = [];
 $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
-$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'AVAILABLE', 'UNAVAILABLE'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'ACTIVE'];
 $requiredHeaders = ['serial_num', 'brand', 'model', 'status'];
 
 if (!function_exists('convertExcelDate')) {
