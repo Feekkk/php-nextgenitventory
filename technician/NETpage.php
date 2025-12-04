@@ -10,6 +10,10 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getDBConnection();
 $netAssets = [];
 $netAssetsError = '';
+$statuses = [];
+$brands = [];
+$buildings = [];
+$levels = [];
 
 try {
     $stmt = $pdo->query("
@@ -19,6 +23,18 @@ try {
         ORDER BY na.created_at DESC, na.asset_id DESC
     ");
     $netAssets = $stmt->fetchAll();
+    
+    $statusStmt = $pdo->query("SELECT DISTINCT status FROM net_assets WHERE status IS NOT NULL AND status != '' ORDER BY status");
+    $statuses = $statusStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $brandStmt = $pdo->query("SELECT DISTINCT brand FROM net_assets WHERE brand IS NOT NULL AND brand != '' ORDER BY brand");
+    $brands = $brandStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $buildingStmt = $pdo->query("SELECT DISTINCT building FROM net_assets WHERE building IS NOT NULL AND building != '' ORDER BY building");
+    $buildings = $buildingStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $levelStmt = $pdo->query("SELECT DISTINCT level FROM net_assets WHERE level IS NOT NULL AND level != '' ORDER BY level");
+    $levels = $levelStmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     $netAssetsError = 'Unable to load network assets right now. Please try again later.';
 }
@@ -88,6 +104,80 @@ function formatStatusLabel($status)
             position: relative;
         }
 
+        .filter-section {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .filter-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-header i {
+            transition: transform 0.3s ease;
+        }
+
+        .filter-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+
+        .filter-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-content.collapsed {
+            display: none;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #2d3436;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 14px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: #ffffff;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #1a1a2e;
+            box-shadow: 0 0 0 3px rgba(26, 26, 46, 0.1);
+        }
+
         .search-box {
             position: relative;
             display: flex;
@@ -99,7 +189,7 @@ function formatStatusLabel($status)
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             font-size: 0.95rem;
-            width: 300px;
+            width: 100%;
             transition: all 0.2s ease;
         }
 
@@ -113,6 +203,23 @@ function formatStatusLabel($status)
             position: absolute;
             left: 16px;
             color: #636e72;
+        }
+
+        .btn-clear-filters {
+            padding: 10px 20px;
+            background: #f1f2f6;
+            color: #2d3436;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            align-self: flex-end;
+        }
+
+        .btn-clear-filters:hover {
+            background: #e3e6ed;
         }
 
         .btn-add {
@@ -376,8 +483,8 @@ function formatStatusLabel($status)
                 align-items: flex-start;
             }
 
-            .search-box input {
-                width: 100%;
+            .filter-content {
+                grid-template-columns: 1fr;
             }
 
             .assets-table-container {
@@ -402,10 +509,6 @@ function formatStatusLabel($status)
         <div class="page-header">
             <h1 class="page-title">Network Assets</h1>
             <div class="page-actions">
-                <div class="search-box">
-                    <i class="fa-solid fa-search"></i>
-                    <input type="text" placeholder="Search assets..." id="searchInput">
-                </div>
                 <div>
                     <button class="btn-add" id="btn-add" type="button">
                         <i class="fa-solid fa-plus"></i>
@@ -422,6 +525,66 @@ function formatStatusLabel($status)
                             Import via CSV
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-header" id="filterHeader">
+                <h3>
+                    <i class="fa-solid fa-filter"></i>
+                    Filters & Search
+                </h3>
+                <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="filter-content" id="filterContent">
+                <div class="filter-group" style="grid-column: 1 / -1;">
+                    <label for="searchInput">Search</label>
+                    <div class="search-box">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, MAC, IP, Location..." id="searchInput">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="filterStatus">Status</label>
+                    <select id="filterStatus">
+                        <option value="">All Statuses</option>
+                        <?php foreach ($statuses as $status) : ?>
+                            <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($status); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterBrand">Brand</label>
+                    <select id="filterBrand">
+                        <option value="">All Brands</option>
+                        <?php foreach ($brands as $brand) : ?>
+                            <option value="<?php echo htmlspecialchars($brand); ?>"><?php echo htmlspecialchars($brand); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterBuilding">Building</label>
+                    <select id="filterBuilding">
+                        <option value="">All Buildings</option>
+                        <?php foreach ($buildings as $building) : ?>
+                            <option value="<?php echo htmlspecialchars($building); ?>"><?php echo htmlspecialchars($building); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterLevel">Level</label>
+                    <select id="filterLevel">
+                        <option value="">All Levels</option>
+                        <?php foreach ($levels as $level) : ?>
+                            <option value="<?php echo htmlspecialchars($level); ?>"><?php echo htmlspecialchars($level); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="button" class="btn-clear-filters" id="btnClearFilters">
+                        <i class="fa-solid fa-times"></i> Clear Filters
+                    </button>
                 </div>
             </div>
         </div>
@@ -479,7 +642,15 @@ function formatStatusLabel($status)
                                     $serial = '-';
                                 }
                             ?>
-                            <tr>
+                            <tr data-asset-id="<?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?>"
+                                data-serial="<?php echo htmlspecialchars(strtolower($serial)); ?>"
+                                data-brand="<?php echo htmlspecialchars(strtolower($brand)); ?>"
+                                data-model="<?php echo htmlspecialchars(strtolower($model)); ?>"
+                                data-status="<?php echo htmlspecialchars(strtoupper($asset['status'] ?? '')); ?>"
+                                data-mac="<?php echo htmlspecialchars(strtolower($asset['mac_add'] ?? '')); ?>"
+                                data-ip="<?php echo htmlspecialchars(strtolower($asset['ip_add'] ?? '')); ?>"
+                                data-building="<?php echo htmlspecialchars(strtolower($asset['building'] ?? '')); ?>"
+                                data-level="<?php echo htmlspecialchars(strtolower($asset['level'] ?? '')); ?>">
                                 <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
                                 <td><?php echo htmlspecialchars($brandModel); ?></td>
                                 <td><?php echo htmlspecialchars($serial); ?></td>
@@ -518,18 +689,87 @@ function formatStatusLabel($status)
     </footer>
 
     <script>
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
+        const filterHeader = document.getElementById('filterHeader');
+        const filterContent = document.getElementById('filterContent');
+        
+        filterHeader.addEventListener('click', () => {
+            filterHeader.classList.toggle('collapsed');
+            filterContent.classList.toggle('collapsed');
+        });
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilterValue = document.getElementById('filterStatus').value.trim();
+            const statusFilter = statusFilterValue ? statusFilterValue.toUpperCase() : '';
+            const brandFilter = document.getElementById('filterBrand').value.toLowerCase().trim();
+            const buildingFilter = document.getElementById('filterBuilding').value.toLowerCase().trim();
+            const levelFilter = document.getElementById('filterLevel').value.toLowerCase().trim();
             const rows = document.querySelectorAll('.assets-table tbody tr');
             
             rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
+                if (row.querySelector('.data-message') || row.querySelector('.empty-state')) {
+                    return;
                 }
+                
+                let show = true;
+                
+                if (searchTerm) {
+                    const assetId = (row.dataset.assetId || '').toLowerCase();
+                    const serial = row.dataset.serial || '';
+                    const brand = row.dataset.brand || '';
+                    const model = row.dataset.model || '';
+                    const mac = row.dataset.mac || '';
+                    const ip = row.dataset.ip || '';
+                    const building = row.dataset.building || '';
+                    const level = row.dataset.level || '';
+                    
+                    const matchesSearch = assetId.includes(searchTerm) ||
+                                        serial.includes(searchTerm) ||
+                                        brand.includes(searchTerm) ||
+                                        model.includes(searchTerm) ||
+                                        mac.includes(searchTerm) ||
+                                        ip.includes(searchTerm) ||
+                                        building.includes(searchTerm) ||
+                                        level.includes(searchTerm);
+                    
+                    if (!matchesSearch) {
+                        show = false;
+                    }
+                }
+                
+                if (statusFilter && row.dataset.status !== statusFilter) {
+                    show = false;
+                }
+                
+                if (brandFilter && row.dataset.brand !== brandFilter) {
+                    show = false;
+                }
+                
+                if (buildingFilter && row.dataset.building !== buildingFilter) {
+                    show = false;
+                }
+                
+                if (levelFilter && row.dataset.level !== levelFilter) {
+                    show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
             });
+        }
+        
+        document.getElementById('searchInput').addEventListener('input', filterTable);
+        document.getElementById('filterStatus').addEventListener('change', filterTable);
+        document.getElementById('filterBrand').addEventListener('change', filterTable);
+        document.getElementById('filterBuilding').addEventListener('change', filterTable);
+        document.getElementById('filterLevel').addEventListener('change', filterTable);
+        
+        document.getElementById('btnClearFilters').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterBrand').value = '';
+            document.getElementById('filterBuilding').value = '';
+            document.getElementById('filterLevel').value = '';
+            filterTable();
         });
 
         const addButton = document.getElementById('btn-add');

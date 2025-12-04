@@ -10,6 +10,11 @@ if (!isset($_SESSION['user_id'])) {
 $pdo = getDBConnection();
 $laptopAssets = [];
 $laptopAssetsError = '';
+$categories = [];
+$statuses = [];
+$brands = [];
+$assignmentTypes = [];
+$locations = [];
 
 try {
     $stmt = $pdo->query("
@@ -19,6 +24,21 @@ try {
         ORDER BY la.created_at DESC, la.asset_id DESC
     ");
     $laptopAssets = $stmt->fetchAll();
+    
+    $categoryStmt = $pdo->query("SELECT DISTINCT category FROM laptop_desktop_assets WHERE category IS NOT NULL AND category != '' ORDER BY category");
+    $categories = $categoryStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $statusStmt = $pdo->query("SELECT DISTINCT status FROM laptop_desktop_assets WHERE status IS NOT NULL AND status != '' ORDER BY status");
+    $statuses = $statusStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $brandStmt = $pdo->query("SELECT DISTINCT brand FROM laptop_desktop_assets WHERE brand IS NOT NULL AND brand != '' ORDER BY brand");
+    $brands = $brandStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $assignmentStmt = $pdo->query("SELECT DISTINCT assignment_type FROM laptop_desktop_assets WHERE assignment_type IS NOT NULL AND assignment_type != '' ORDER BY assignment_type");
+    $assignmentTypes = $assignmentStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $locationStmt = $pdo->query("SELECT DISTINCT location FROM laptop_desktop_assets WHERE location IS NOT NULL AND location != '' ORDER BY location");
+    $locations = $locationStmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     $laptopAssetsError = 'Unable to load laptop/desktop assets right now. Please try again later.';
 }
@@ -128,6 +148,80 @@ function formatCategoryClass($category)
             position: relative;
         }
 
+        .filter-section {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .filter-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-header i {
+            transition: transform 0.3s ease;
+        }
+
+        .filter-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+
+        .filter-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-content.collapsed {
+            display: none;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #2d3436;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 14px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: #ffffff;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #1a1a2e;
+            box-shadow: 0 0 0 3px rgba(26, 26, 46, 0.1);
+        }
+
         .search-box {
             position: relative;
             display: flex;
@@ -139,7 +233,7 @@ function formatCategoryClass($category)
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             font-size: 0.95rem;
-            width: 300px;
+            width: 100%;
             transition: all 0.2s ease;
         }
 
@@ -153,6 +247,23 @@ function formatCategoryClass($category)
             position: absolute;
             left: 16px;
             color: #636e72;
+        }
+
+        .btn-clear-filters {
+            padding: 10px 20px;
+            background: #f1f2f6;
+            color: #2d3436;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            align-self: flex-end;
+        }
+
+        .btn-clear-filters:hover {
+            background: #e3e6ed;
         }
 
         .btn-add {
@@ -420,8 +531,8 @@ function formatCategoryClass($category)
                 align-items: flex-start;
             }
 
-            .search-box input {
-                width: 100%;
+            .filter-content {
+                grid-template-columns: 1fr;
             }
 
             .assets-table-container {
@@ -446,10 +557,6 @@ function formatCategoryClass($category)
         <div class="page-header">
             <h1 class="page-title">Laptop & Desktop Assets</h1>
             <div class="page-actions">
-                <div class="search-box">
-                    <i class="fa-solid fa-search"></i>
-                    <input type="text" placeholder="Search assets..." id="searchInput">
-                </div>
                 <div class="actions-group">
                     <div class="dropdown-wrapper">
                         <button class="btn-add" id="btn-add" type="button">
@@ -471,6 +578,75 @@ function formatCategoryClass($category)
                     <button type="button" class="btn-queue" onclick="window.location.href='QUEUEpage.php'">
                         <i class="fa-solid fa-list-check"></i>
                         Add Queue
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-header" id="filterHeader">
+                <h3>
+                    <i class="fa-solid fa-filter"></i>
+                    Filters & Search
+                </h3>
+                <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="filter-content" id="filterContent">
+                <div class="filter-group" style="grid-column: 1 / -1;">
+                    <label for="searchInput">Search</label>
+                    <div class="search-box">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Assigned To..." id="searchInput">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="filterCategory">Category</label>
+                    <select id="filterCategory">
+                        <option value="">All Categories</option>
+                        <?php foreach ($categories as $cat) : ?>
+                            <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterStatus">Status</label>
+                    <select id="filterStatus">
+                        <option value="">All Statuses</option>
+                        <?php foreach ($statuses as $status) : ?>
+                            <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($status); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterBrand">Brand</label>
+                    <select id="filterBrand">
+                        <option value="">All Brands</option>
+                        <?php foreach ($brands as $brand) : ?>
+                            <option value="<?php echo htmlspecialchars($brand); ?>"><?php echo htmlspecialchars($brand); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterAssignmentType">Assignment Type</label>
+                    <select id="filterAssignmentType">
+                        <option value="">All Types</option>
+                        <?php foreach ($assignmentTypes as $type) : ?>
+                            <option value="<?php echo htmlspecialchars($type); ?>"><?php echo htmlspecialchars($type); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterLocation">Location</label>
+                    <select id="filterLocation">
+                        <option value="">All Locations</option>
+                        <?php foreach ($locations as $location) : ?>
+                            <option value="<?php echo htmlspecialchars($location); ?>"><?php echo htmlspecialchars($location); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="button" class="btn-clear-filters" id="btnClearFilters">
+                        <i class="fa-solid fa-times"></i> Clear Filters
                     </button>
                 </div>
             </div>
@@ -528,7 +704,15 @@ function formatCategoryClass($category)
                                     $assignedTo = '-';
                                 }
                             ?>
-                            <tr>
+                            <tr data-asset-id="<?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?>"
+                                data-serial="<?php echo htmlspecialchars(strtolower($serial)); ?>"
+                                data-brand="<?php echo htmlspecialchars(strtolower($brand)); ?>"
+                                data-model="<?php echo htmlspecialchars(strtolower($model)); ?>"
+                                data-category="<?php echo htmlspecialchars($category); ?>"
+                                data-status="<?php echo htmlspecialchars(strtoupper($asset['status'] ?? '')); ?>"
+                                data-assigned="<?php echo htmlspecialchars(strtolower($assignedTo)); ?>"
+                                data-assignment-type="<?php echo htmlspecialchars(strtolower($asset['assignment_type'] ?? '')); ?>"
+                                data-location="<?php echo htmlspecialchars(strtolower($asset['location'] ?? '')); ?>">
                                 <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
                                 <td>
                                     <span class="asset-type <?php echo htmlspecialchars($categoryClass); ?>">
@@ -563,18 +747,88 @@ function formatCategoryClass($category)
     </footer>
 
     <script>
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
+        const filterHeader = document.getElementById('filterHeader');
+        const filterContent = document.getElementById('filterContent');
+        
+        filterHeader.addEventListener('click', () => {
+            filterHeader.classList.toggle('collapsed');
+            filterContent.classList.toggle('collapsed');
+        });
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const categoryFilter = document.getElementById('filterCategory').value.trim();
+            const statusFilterValue = document.getElementById('filterStatus').value.trim();
+            const statusFilter = statusFilterValue ? statusFilterValue.toUpperCase() : '';
+            const brandFilter = document.getElementById('filterBrand').value.toLowerCase().trim();
+            const assignmentTypeFilter = document.getElementById('filterAssignmentType').value.toLowerCase().trim();
+            const locationFilter = document.getElementById('filterLocation').value.toLowerCase().trim();
             const rows = document.querySelectorAll('.assets-table tbody tr');
             
             rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
+                if (row.querySelector('.data-message') || row.querySelector('.empty-state')) {
+                    return;
                 }
+                
+                let show = true;
+                
+                if (searchTerm) {
+                    const assetId = (row.dataset.assetId || '').toLowerCase();
+                    const serial = row.dataset.serial || '';
+                    const brand = row.dataset.brand || '';
+                    const model = row.dataset.model || '';
+                    const assigned = row.dataset.assigned || '';
+                    
+                    const matchesSearch = assetId.includes(searchTerm) ||
+                                        serial.includes(searchTerm) ||
+                                        brand.includes(searchTerm) ||
+                                        model.includes(searchTerm) ||
+                                        assigned.includes(searchTerm);
+                    
+                    if (!matchesSearch) {
+                        show = false;
+                    }
+                }
+                
+                if (categoryFilter && row.dataset.category !== categoryFilter) {
+                    show = false;
+                }
+                
+                if (statusFilter && row.dataset.status !== statusFilter) {
+                    show = false;
+                }
+                
+                if (brandFilter && row.dataset.brand !== brandFilter) {
+                    show = false;
+                }
+                
+                if (assignmentTypeFilter && row.dataset.assignmentType !== assignmentTypeFilter) {
+                    show = false;
+                }
+                
+                if (locationFilter && row.dataset.location !== locationFilter) {
+                    show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
             });
+        }
+        
+        document.getElementById('searchInput').addEventListener('input', filterTable);
+        document.getElementById('filterCategory').addEventListener('change', filterTable);
+        document.getElementById('filterStatus').addEventListener('change', filterTable);
+        document.getElementById('filterBrand').addEventListener('change', filterTable);
+        document.getElementById('filterAssignmentType').addEventListener('change', filterTable);
+        document.getElementById('filterLocation').addEventListener('change', filterTable);
+        
+        document.getElementById('btnClearFilters').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterBrand').value = '';
+            document.getElementById('filterAssignmentType').value = '';
+            document.getElementById('filterLocation').value = '';
+            filterTable();
         });
 
         const addButton = document.getElementById('btn-add');
