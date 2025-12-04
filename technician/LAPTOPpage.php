@@ -45,6 +45,36 @@ function formatStatusLabel($status)
     $status = trim((string)$status);
     return $status === '' ? 'Unknown' : ucwords(str_replace('-', ' ', $status));
 }
+
+function formatCategoryClass($category)
+{
+    $category = trim((string)($category ?? ''));
+    if ($category === '') {
+        return 'other';
+    }
+    
+    $categoryUpper = strtoupper($category);
+    $categoryNormalized = str_replace([' ', '_'], '-', strtolower($category));
+    
+    $categoryMap = [
+        'NOTEBOOK' => 'notebook',
+        'NOTEBOOK-STANDBY' => 'notebook-standby',
+        'DESKTOP AIO' => 'desktop-aio',
+        'DESKTOP-AIO' => 'desktop-aio',
+        'DESKTOP AIO-SHARING' => 'desktop-aio-sharing',
+        'DESKTOP-AIO-SHARING' => 'desktop-aio-sharing'
+    ];
+    
+    if (isset($categoryMap[$categoryUpper])) {
+        return $categoryMap[$categoryUpper];
+    }
+    
+    if (in_array($categoryNormalized, ['notebook', 'notebook-standby', 'desktop-aio', 'desktop-aio-sharing'], true)) {
+        return $categoryNormalized;
+    }
+    
+    return 'other';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -280,14 +310,29 @@ function formatStatusLabel($status)
             font-weight: 500;
         }
 
-        .asset-type.laptop {
-            background: rgba(108, 92, 231, 0.1);
+        .asset-type.notebook {
+            background: rgba(9, 132, 227, 0.15);
+            color: #0984e3;
+        }
+
+        .asset-type.notebook-standby {
+            background: rgba(116, 185, 255, 0.15);
+            color: #74b9ff;
+        }
+
+        .asset-type.desktop-aio {
+            background: rgba(0, 206, 201, 0.15);
+            color: #00cec9;
+        }
+
+        .asset-type.desktop-aio-sharing {
+            background: rgba(108, 92, 231, 0.15);
             color: #6c5ce7;
         }
 
-        .asset-type.desktop {
-            background: rgba(0, 206, 201, 0.1);
-            color: #00cec9;
+        .asset-type.other {
+            background: rgba(99, 110, 114, 0.15);
+            color: #636e72;
         }
 
         .status-badge {
@@ -467,6 +512,7 @@ function formatStatusLabel($status)
                                 $statusClass = formatStatusClass($asset['status'] ?? '');
                                 $statusLabel = formatStatusLabel($asset['status'] ?? '');
                                 $category = trim((string)($asset['category'] ?? ''));
+                                $categoryClass = formatCategoryClass($category);
                                 $brand = trim((string)($asset['brand'] ?? ''));
                                 $model = trim((string)($asset['model'] ?? ''));
                                 $brandModel = trim($brand . ' ' . $model);
@@ -485,7 +531,7 @@ function formatStatusLabel($status)
                             <tr>
                                 <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
                                 <td>
-                                    <span class="asset-type <?php echo htmlspecialchars(strtolower($category ?: 'other')); ?>">
+                                    <span class="asset-type <?php echo htmlspecialchars($categoryClass); ?>">
                                         <?php echo htmlspecialchars($category ?: 'Other'); ?>
                                     </span>
                                 </td>
