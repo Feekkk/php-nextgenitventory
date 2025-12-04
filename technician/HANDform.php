@@ -11,20 +11,57 @@ $pdo = getDBConnection();
 $error = '';
 $success = '';
 
+// Asset is chosen in listing page and passed via URL (?asset_id=...&asset_type=...)
+$assetTypeParam = trim($_GET['asset_type'] ?? '');
+$assetIdParam = trim($_GET['asset_id'] ?? '');
+
+// Allow POST to carry same values so the wizard stays consistent
+$currentAssetType = trim($_POST['assetType'] ?? $assetTypeParam);
+$currentAssetIdRaw = $_POST['assetId'] ?? $assetIdParam;
+$currentAssetId = is_numeric($currentAssetIdRaw) ? (int)$currentAssetIdRaw : 0;
+$assetDetails = null;
+
+if ($currentAssetType && $currentAssetId) {
+    try {
+        if ($currentAssetType === 'laptop_desktop') {
+            $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, category AS category, status FROM laptop_desktop_assets WHERE asset_id = ?");
+        } elseif ($currentAssetType === 'av') {
+            $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, class AS category, status FROM av_assets WHERE asset_id = ?");
+        } else {
+            $stmt = null;
+        }
+
+        if ($stmt) {
+            $stmt->execute([$currentAssetId]);
+            $assetDetails = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        if (!$assetDetails && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $error = 'Selected asset could not be found.';
+        }
+    } catch (PDOException $e) {
+        error_log('Error fetching asset for handover form: ' . $e->getMessage());
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $error = 'Failed to load selected asset. Please try again.';
+        }
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $error = 'No asset selected for handover. Please start from the asset list.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $staff_id = trim($_POST['staff_id'] ?? '');
     $handover_date = trim($_POST['handoverDate'] ?? '');
     $handover_location = trim($_POST['handoverLocation'] ?? '');
-    $assetSelect = trim($_POST['assetSelect'] ?? '');
-    $asset_type = trim($_POST['assetType'] ?? '');
-    $asset_id = trim($_POST['assetId'] ?? '');
+    $asset_type = $currentAssetType;
+    $asset_id = (string)$currentAssetId;
     $accessories = trim($_POST['accessories'] ?? '');
     $condition_agreement = isset($_POST['conditionAgreement']) ? 1 : 0;
     $handover_notes = trim($_POST['handoverNotes'] ?? '');
     $digital_signoff = trim($_POST['signOff'] ?? '');
 
     if (empty($staff_id) || empty($handover_date) || empty($handover_location) || 
-        empty($assetSelect) || empty($asset_type) || empty($asset_id) || 
+        empty($asset_type) || empty($asset_id) || 
         !$condition_agreement || empty($digital_signoff)) {
         $error = 'All required fields must be filled.';
     } elseif (!is_numeric($staff_id)) {
@@ -37,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$staff_id]);
             if (!$stmt->fetch()) {
                 $error = 'Staff ID does not exist.';
+            } elseif (!$currentAssetType || !$currentAssetId || !$assetDetails) {
+                $error = 'Invalid or missing asset information.';
             } else {
                 $pdo->beginTransaction();
 
@@ -115,13 +154,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$_SESSION['user_id']]);
                 $handoverBy = $stmt->fetch();
                 
-                if ($asset_type === 'laptop_desktop') {
-                    $assetStmt = $pdo->prepare("SELECT serial_num, brand, model, category FROM laptop_desktop_assets WHERE asset_id = ?");
+                // Reuse already loaded asset details where possible
+                if ($assetDetails) {
+                    $asset = $assetDetails;
                 } else {
-                    $assetStmt = $pdo->prepare("SELECT serial_num, brand, model, class as category FROM av_assets WHERE asset_id = ?");
+                    if ($asset_type === 'laptop_desktop') {
+                        $assetStmt = $pdo->prepare("SELECT serial_num, brand, model, category FROM laptop_desktop_assets WHERE asset_id = ?");
+                    } else {
+                        $assetStmt = $pdo->prepare("SELECT serial_num, brand, model, class as category FROM av_assets WHERE asset_id = ?");
+                    }
+                    $assetStmt->execute([$asset_id]);
+                    $asset = $assetStmt->fetch();
                 }
-                $assetStmt->execute([$asset_id]);
-                $asset = $assetStmt->fetch();
                 
                 $pdfData = [
                     'staff_id' => $staff_id,
@@ -247,53 +291,6 @@ if (isset($_GET['action'])) {
         }
         exit;
     }
-    
-    if ($_GET['action'] === 'get_assets') {
-        $assets = [];
-        
-        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, category, 'laptop_desktop' as asset_type FROM laptop_desktop_assets WHERE status IN ('AVAILABLE', 'RESERVED') ORDER BY category ASC, asset_id ASC");
-        $laptopAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($laptopAssets as $asset) {
-            $assets[] = $asset;
-        }
-        
-        $stmt = $pdo->query("SELECT asset_id, serial_num, brand, model, class as category, 'av' as asset_type FROM av_assets WHERE status IN ('AVAILABLE', 'RESERVED') ORDER BY class ASC, asset_id ASC");
-        $avAssets = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($avAssets as $asset) {
-            $assets[] = $asset;
-        }
-
-        usort($assets, function ($a, $b) {
-            $catA = strtolower($a['category'] ?? '');
-            $catB = strtolower($b['category'] ?? '');
-            if ($catA === $catB) {
-                return ($a['asset_id'] ?? 0) <=> ($b['asset_id'] ?? 0);
-            }
-            return $catA <=> $catB;
-        });
-        
-        echo json_encode($assets);
-        exit;
-    }
-    
-    if ($_GET['action'] === 'get_asset_details') {
-        $asset_id = $_GET['asset_id'] ?? '';
-        $asset_type = $_GET['asset_type'] ?? '';
-        
-        if (is_numeric($asset_id) && in_array($asset_type, ['laptop_desktop', 'av'])) {
-            if ($asset_type === 'laptop_desktop') {
-                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, category, status FROM laptop_desktop_assets WHERE asset_id = ? AND status IN ('AVAILABLE', 'RESERVED')");
-            } else {
-                $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, class as category, status FROM av_assets WHERE asset_id = ? AND status IN ('AVAILABLE', 'RESERVED')");
-            }
-            $stmt->execute([$asset_id]);
-            $asset = $stmt->fetch(PDO::FETCH_ASSOC);
-            echo json_encode($asset ?: ['error' => 'Asset not found']);
-        } else {
-            echo json_encode(['error' => 'Invalid parameters']);
-        }
-        exit;
-    }
 }
 ?>
 <!DOCTYPE html>
@@ -337,6 +334,64 @@ if (isset($_GET['action'])) {
             border-radius: 20px;
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        .asset-summary-card {
+            margin-bottom: 25px;
+            padding: 18px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(245, 246, 250, 0.9);
+        }
+
+        .asset-summary-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .asset-summary-header i {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(26, 26, 46, 0.08);
+            color: #1a1a2e;
+        }
+
+        .asset-summary-header h4 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .asset-summary-header p {
+            margin: 2px 0 0;
+            font-size: 0.85rem;
+            color: #636e72;
+        }
+
+        .asset-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 16px;
+        }
+
+        .asset-summary-item .label {
+            display: block;
+            font-size: 0.8rem;
+            color: #636e72;
+            margin-bottom: 2px;
+        }
+
+        .asset-summary-item .value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2d3436;
         }
 
         .step-indicator {
@@ -718,10 +773,6 @@ if (isset($_GET['action'])) {
                 </div>
                 <div class="step-item" data-step="2">
                     <div class="step-number">2</div>
-                    <div class="step-label">Asset Details</div>
-                </div>
-                <div class="step-item" data-step="3">
-                    <div class="step-number">3</div>
                     <div class="step-label">Agreement</div>
                 </div>
             </div>
@@ -770,49 +821,48 @@ if (isset($_GET['action'])) {
 
             <div class="form-step" id="step2">
                 <div class="form-section">
-                    <h3 class="form-section-title">Asset Details</h3>
+                    <h3 class="form-section-title">Acknowledgements</h3>
+                    <div class="asset-summary-card">
+                        <div class="asset-summary-header">
+                            <i class="fa-solid fa-laptop"></i>
+                            <div>
+                                <h4>Asset Summary</h4>
+                                <p>Please confirm this is the correct asset being handed over.</p>
+                            </div>
+                        </div>
+                        <div class="asset-summary-grid">
+                            <div class="asset-summary-item">
+                                <span class="label">Asset ID</span>
+                                <span class="value"><?php echo htmlspecialchars((string)($assetDetails['asset_id'] ?? $currentAssetId)); ?></span>
+                            </div>
+                            <div class="asset-summary-item">
+                                <span class="label">Category</span>
+                                <span class="value"><?php echo htmlspecialchars((string)($assetDetails['category'] ?? '-')); ?></span>
+                            </div>
+                            <div class="asset-summary-item">
+                                <span class="label">Brand</span>
+                                <span class="value"><?php echo htmlspecialchars((string)($assetDetails['brand'] ?? '-')); ?></span>
+                            </div>
+                            <div class="asset-summary-item">
+                                <span class="label">Model</span>
+                                <span class="value"><?php echo htmlspecialchars((string)($assetDetails['model'] ?? '-')); ?></span>
+                            </div>
+                            <div class="asset-summary-item">
+                                <span class="label">Serial Number</span>
+                                <span class="value"><?php echo htmlspecialchars((string)($assetDetails['serial_num'] ?? '-')); ?></span>
+                            </div>
+                        </div>
+
+                        <!-- Hidden fields so POST always carries asset info -->
+                        <input type="hidden" id="assetId" name="assetId" value="<?php echo htmlspecialchars((string)$currentAssetId); ?>">
+                        <input type="hidden" id="assetType" name="assetType" value="<?php echo htmlspecialchars($currentAssetType); ?>">
+                    </div>
+
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label for="assetSelect">Select Asset <span style="color:#c0392b;">*</span></label>
-                            <select id="assetSelect" name="assetSelect" required>
-                                <option value="">Select an available asset</option>
-                            </select>
-                            <input type="hidden" id="assetType" name="assetType" value="">
-                        </div>
-                        <div class="form-group">
-                            <label for="assetId">Asset ID</label>
-                            <input type="text" id="assetId" name="assetId" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="assetCategory">Category</label>
-                            <input type="text" id="assetCategory" name="assetCategory" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="assetBrand">Brand</label>
-                            <input type="text" id="assetBrand" name="assetBrand" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="assetModel">Model</label>
-                            <input type="text" id="assetModel" name="assetModel" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="serialNumber">Serial Number</label>
-                            <input type="text" id="serialNumber" name="serialNumber" placeholder="Auto-filled from selection" readonly style="background-color: #f5f5f5; cursor: not-allowed;" required>
-                        </div>
-                        <div class="form-group">
+                        <div class="form-group" style="grid-column: 1 / -1;">
                             <label for="accessories">Included Accessories</label>
                             <input type="text" id="accessories" name="accessories" placeholder="e.g., Charger, Bag, Docking Station">
                         </div>
-                    </div>
-                </div>
-
-
-            </div>
-
-            <div class="form-step" id="step3">
-                <div class="form-section">
-                    <h3 class="form-section-title">Acknowledgements</h3>
-                    <div class="form-grid">
                         <div class="form-group" style="grid-column: 1 / -1;">
                             <div class="checkbox-group">
                                 <input type="checkbox" id="conditionAgreement" name="conditionAgreement" required disabled>
@@ -892,7 +942,7 @@ if (isset($_GET['action'])) {
 
         <script>
             let currentStep = 1;
-            const totalSteps = 3;
+            const totalSteps = 2;
 
             function updateStepIndicator() {
                 document.querySelectorAll('.step-item').forEach((item, index) => {
@@ -962,8 +1012,8 @@ if (isset($_GET['action'])) {
             }
 
             document.getElementById('handoverForm').addEventListener('submit', function(e) {
-                const step3Form = document.getElementById('step3');
-                const requiredFields = step3Form.querySelectorAll('[required]');
+                const step2Form = document.getElementById('step2');
+                const requiredFields = step2Form.querySelectorAll('[required]');
                 let isValid = true;
 
                 requiredFields.forEach(field => {
@@ -1061,72 +1111,7 @@ if (isset($_GET['action'])) {
                 }, 500);
             });
 
-            const assetSelect = document.getElementById('assetSelect');
-            const assetIdField = document.getElementById('assetId');
-            const assetCategoryField = document.getElementById('assetCategory');
-            const assetBrandField = document.getElementById('assetBrand');
-            const assetModelField = document.getElementById('assetModel');
-            const serialNumberField = document.getElementById('serialNumber');
-
-            fetch('?action=get_assets')
-                .then(response => response.json())
-                .then(assets => {
-                    assets.forEach(asset => {
-                        const option = document.createElement('option');
-                        option.value = asset.asset_id + '|' + asset.asset_type;
-                        const categoryLabel = asset.category || (asset.asset_type === 'laptop_desktop' ? 'Laptop/Desktop' : 'AV');
-                        option.textContent = `${categoryLabel} - ${asset.brand} ${asset.model} (ID: ${asset.asset_id}, Serial: ${asset.serial_num})`;
-                        assetSelect.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching assets:', error);
-                });
-
-            assetSelect.addEventListener('change', function() {
-                const value = this.value;
-                const assetTypeField = document.getElementById('assetType');
-                
-                if (!value) {
-                    assetIdField.value = '';
-                    assetCategoryField.value = '';
-                    assetBrandField.value = '';
-                    assetModelField.value = '';
-                    serialNumberField.value = '';
-                    assetTypeField.value = '';
-                    return;
-                }
-                
-                const [assetId, assetType] = value.split('|');
-                assetTypeField.value = assetType;
-                
-                fetch('?action=get_asset_details&asset_id=' + encodeURIComponent(assetId) + '&asset_type=' + encodeURIComponent(assetType))
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            alert('Asset not found');
-                            assetIdField.value = '';
-                            assetCategoryField.value = '';
-                            assetBrandField.value = '';
-                            assetModelField.value = '';
-                            serialNumberField.value = '';
-                            assetTypeField.value = '';
-                        } else {
-                            assetIdField.value = data.asset_id || '';
-                            assetCategoryField.value = data.category || '';
-                            assetBrandField.value = data.brand || '';
-                            assetModelField.value = data.model || '';
-                            serialNumberField.value = data.serial_num || '';
-                            const modalAssetId = document.getElementById('modalAssetId');
-                            if (modalAssetId) {
-                                modalAssetId.textContent = data.asset_id || '-';
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching asset details:', error);
-                    });
-            });
+            // Asset is fixed (page is opened from asset list), so there is no in-form asset selection.
         </script>
     </div>
 
