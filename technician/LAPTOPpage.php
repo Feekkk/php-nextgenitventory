@@ -52,7 +52,7 @@ function formatStatusClass($status)
 {
     $status = strtoupper(trim($status ?? ''));
     $map = [
-        'AVAILABLE' => 'available',
+        'ACTIVE' => 'active',
         'DEPLOY' => 'deploy',
         'IN-USE' => 'in-use',
         'MAINTENANCE' => 'maintenance',
@@ -63,7 +63,6 @@ function formatStatusClass($status)
         'RESERVED' => 'reserved',
         'NON-ACTIVE' => 'non-active',
         'LOST' => 'lost',
-        'UNAVAILABLE' => 'unavailable',
     ];
     return $map[$status] ?? 'unknown';
 }
@@ -78,7 +77,7 @@ function formatStatusIcon($status)
 {
     $status = strtoupper(trim($status ?? ''));
     $iconMap = [
-        'AVAILABLE' => 'fa-circle-check',
+        'ACTIVE' => 'fa-circle-check',
         'DEPLOY' => 'fa-circle-check',
         'IN-USE' => 'fa-laptop',
         'FAULTY' => 'fa-triangle-exclamation',
@@ -89,7 +88,6 @@ function formatStatusIcon($status)
         'MAINTENANCE' => 'fa-wrench',
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
-        'UNAVAILABLE' => 'fa-circle-xmark',
     ];
     return $iconMap[$status] ?? 'fa-circle-question';
 }
@@ -456,6 +454,7 @@ function formatCategoryClass($category)
         }
 
         .status-badge.available,
+        .status-badge.active,
         .status-badge.deploy {
             background: rgba(0, 184, 148, 0.15);
             color: #00b894;
@@ -759,7 +758,7 @@ function formatCategoryClass($category)
     </footer>
 
     <script>
-        const inStockStatuses = ['AVAILABLE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'UNDER MAINTENANCE', 'MAINTENANCE', 'NON-ACTIVE', 'UNAVAILABLE'];
+        const inStockStatuses = ['ACTIVE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'UNDER MAINTENANCE', 'MAINTENANCE', 'NON-ACTIVE', 'LOST'];
         const outStockStatuses = ['DEPLOY', 'IN-USE', 'LOST'];
         let currentStockType = 'in-stock';
 
