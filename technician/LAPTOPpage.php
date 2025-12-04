@@ -176,78 +176,58 @@ function formatCategoryClass($category)
             position: relative;
         }
 
-        .filter-section {
+        .stock-type-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
             background: rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(0, 0, 0, 0.05);
             border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 30px;
+            padding: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         }
 
-        .filter-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            cursor: pointer;
-        }
-
-        .filter-header h3 {
-            font-size: 1.1rem;
+        .stock-tab {
+            flex: 1;
+            padding: 15px 25px;
+            background: #f1f2f6;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            font-size: 1rem;
             font-weight: 600;
-            color: #1a1a2e;
-            margin: 0;
+            color: #2d3436;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
         }
 
-        .filter-header i {
-            transition: transform 0.3s ease;
+        .stock-tab:hover {
+            background: #e3e6ed;
+            transform: translateY(-2px);
         }
 
-        .filter-header.collapsed i {
-            transform: rotate(-90deg);
-        }
-
-        .filter-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-
-        .filter-content.collapsed {
-            display: none;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .filter-group label {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #2d3436;
-        }
-
-        .filter-group input,
-        .filter-group select {
-            padding: 10px 14px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-            background: #ffffff;
-        }
-
-        .filter-group input:focus,
-        .filter-group select:focus {
-            outline: none;
+        .stock-tab.active {
+            background: #1a1a2e;
+            color: #ffffff;
             border-color: #1a1a2e;
-            box-shadow: 0 0 0 3px rgba(26, 26, 46, 0.1);
+            box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+        }
+
+        .stock-tab i {
+            font-size: 1.1rem;
+        }
+
+        .search-section {
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         }
 
         .search-box {
@@ -257,11 +237,11 @@ function formatCategoryClass($category)
         }
 
         .search-box input {
-            padding: 10px 16px 10px 44px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            font-size: 0.95rem;
             width: 100%;
+            padding: 12px 16px 12px 48px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            font-size: 1rem;
             transition: all 0.2s ease;
         }
 
@@ -273,25 +253,9 @@ function formatCategoryClass($category)
 
         .search-box i {
             position: absolute;
-            left: 16px;
+            left: 18px;
             color: #636e72;
-        }
-
-        .btn-clear-filters {
-            padding: 10px 20px;
-            background: #f1f2f6;
-            color: #2d3436;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            align-self: flex-end;
-        }
-
-        .btn-clear-filters:hover {
-            background: #e3e6ed;
+            font-size: 1.1rem;
         }
 
         .btn-add {
@@ -681,72 +645,21 @@ function formatCategoryClass($category)
             </div>
         </div>
 
-        <div class="filter-section">
-            <div class="filter-header" id="filterHeader">
-                <h3>
-                    <i class="fa-solid fa-filter"></i>
-                    Filters & Search
-                </h3>
-                <i class="fa-solid fa-chevron-down"></i>
+        <div class="stock-type-tabs">
+            <div class="stock-tab active" data-stock-type="in-stock" id="tabInStock">
+                <i class="fa-solid fa-warehouse"></i>
+                <span>In Stock</span>
             </div>
-            <div class="filter-content" id="filterContent">
-                <div class="filter-group" style="grid-column: 1 / -1;">
-                    <label for="searchInput">Search</label>
-                    <div class="search-box">
-                        <i class="fa-solid fa-search"></i>
-                        <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Assigned To..." id="searchInput">
-                    </div>
-                </div>
-                <div class="filter-group">
-                    <label for="filterCategory">Category</label>
-                    <select id="filterCategory">
-                        <option value="">All Categories</option>
-                        <?php foreach ($categories as $cat) : ?>
-                            <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterStatus">Status</label>
-                    <select id="filterStatus">
-                        <option value="">All Statuses</option>
-                        <?php foreach ($statuses as $status) : ?>
-                            <option value="<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($status); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterBrand">Brand</label>
-                    <select id="filterBrand">
-                        <option value="">All Brands</option>
-                        <?php foreach ($brands as $brand) : ?>
-                            <option value="<?php echo htmlspecialchars($brand); ?>"><?php echo htmlspecialchars($brand); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterAssignmentType">Assignment Type</label>
-                    <select id="filterAssignmentType">
-                        <option value="">All Types</option>
-                        <?php foreach ($assignmentTypes as $type) : ?>
-                            <option value="<?php echo htmlspecialchars($type); ?>"><?php echo htmlspecialchars($type); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="filterLocation">Location</label>
-                    <select id="filterLocation">
-                        <option value="">All Locations</option>
-                        <?php foreach ($locations as $location) : ?>
-                            <option value="<?php echo htmlspecialchars($location); ?>"><?php echo htmlspecialchars($location); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <button type="button" class="btn-clear-filters" id="btnClearFilters">
-                        <i class="fa-solid fa-times"></i> Clear Filters
-                    </button>
-                </div>
+            <div class="stock-tab" data-stock-type="out-stock" id="tabOutStock">
+                <i class="fa-solid fa-box-open"></i>
+                <span>Out Stock</span>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Assigned To..." id="searchInput">
             </div>
         </div>
 
@@ -846,89 +759,65 @@ function formatCategoryClass($category)
     </footer>
 
     <script>
-        const filterHeader = document.getElementById('filterHeader');
-        const filterContent = document.getElementById('filterContent');
-        
-        filterHeader.addEventListener('click', () => {
-            filterHeader.classList.toggle('collapsed');
-            filterContent.classList.toggle('collapsed');
+        const inStockStatuses = ['AVAILABLE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'UNDER MAINTENANCE', 'MAINTENANCE', 'NON-ACTIVE', 'UNAVAILABLE'];
+        const outStockStatuses = ['DEPLOY', 'IN-USE', 'LOST'];
+        let currentStockType = 'in-stock';
+
+        const stockTabs = document.querySelectorAll('.stock-tab');
+        stockTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                stockTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                currentStockType = this.dataset.stockType;
+                updateStockView();
+            });
         });
 
-        function filterTable() {
+        function getStockType(status) {
+            const statusUpper = status ? status.toUpperCase() : '';
+            if (inStockStatuses.includes(statusUpper)) {
+                return 'in-stock';
+            } else if (outStockStatuses.includes(statusUpper)) {
+                return 'out-stock';
+            }
+            return 'unknown';
+        }
+
+        function updateStockView() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            const categoryFilter = document.getElementById('filterCategory').value.trim();
-            const statusFilterValue = document.getElementById('filterStatus').value.trim();
-            const statusFilter = statusFilterValue ? statusFilterValue.toUpperCase() : '';
-            const brandFilter = document.getElementById('filterBrand').value.toLowerCase().trim();
-            const assignmentTypeFilter = document.getElementById('filterAssignmentType').value.toLowerCase().trim();
-            const locationFilter = document.getElementById('filterLocation').value.toLowerCase().trim();
             const rows = document.querySelectorAll('.assets-table tbody tr');
             
             rows.forEach(row => {
                 if (row.querySelector('.data-message') || row.querySelector('.empty-state')) {
+                    row.style.display = 'none';
                     return;
                 }
                 
-                let show = true;
+                const status = row.dataset.status || '';
+                const stockType = getStockType(status);
                 
-                if (searchTerm) {
+                let show = stockType === currentStockType;
+                
+                if (show && searchTerm) {
                     const assetId = (row.dataset.assetId || '').toLowerCase();
                     const serial = row.dataset.serial || '';
                     const brand = row.dataset.brand || '';
                     const model = row.dataset.model || '';
                     const assigned = row.dataset.assigned || '';
                     
-                    const matchesSearch = assetId.includes(searchTerm) ||
-                                        serial.includes(searchTerm) ||
-                                        brand.includes(searchTerm) ||
-                                        model.includes(searchTerm) ||
-                                        assigned.includes(searchTerm);
-                    
-                    if (!matchesSearch) {
-                        show = false;
-                    }
-                }
-                
-                if (categoryFilter && row.dataset.category !== categoryFilter) {
-                    show = false;
-                }
-                
-                if (statusFilter && row.dataset.status !== statusFilter) {
-                    show = false;
-                }
-                
-                if (brandFilter && row.dataset.brand !== brandFilter) {
-                    show = false;
-                }
-                
-                if (assignmentTypeFilter && row.dataset.assignmentType !== assignmentTypeFilter) {
-                    show = false;
-                }
-                
-                if (locationFilter && row.dataset.location !== locationFilter) {
-                    show = false;
+                    show = assetId.includes(searchTerm) ||
+                           serial.includes(searchTerm) ||
+                           brand.includes(searchTerm) ||
+                           model.includes(searchTerm) ||
+                           assigned.includes(searchTerm);
                 }
                 
                 row.style.display = show ? '' : 'none';
             });
         }
-        
-        document.getElementById('searchInput').addEventListener('input', filterTable);
-        document.getElementById('filterCategory').addEventListener('change', filterTable);
-        document.getElementById('filterStatus').addEventListener('change', filterTable);
-        document.getElementById('filterBrand').addEventListener('change', filterTable);
-        document.getElementById('filterAssignmentType').addEventListener('change', filterTable);
-        document.getElementById('filterLocation').addEventListener('change', filterTable);
-        
-        document.getElementById('btnClearFilters').addEventListener('click', function() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('filterCategory').value = '';
-            document.getElementById('filterStatus').value = '';
-            document.getElementById('filterBrand').value = '';
-            document.getElementById('filterAssignmentType').value = '';
-            document.getElementById('filterLocation').value = '';
-            filterTable();
-        });
+
+        document.getElementById('searchInput').addEventListener('input', updateStockView);
+        updateStockView();
 
         const addButton = document.getElementById('btn-add');
         const dropdown = document.getElementById('addDropdown');
