@@ -475,13 +475,7 @@ if (isset($_SESSION['user_id'])) {
                     <li><a href="NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
                 </ul>
             </li>
-            <li class="menu-item has-dropdown">
-                <a href="#" class="dropdown-toggle"><i class="fa fa-handshake"></i> Handover</a>
-                <ul class="submenu">
-                    <li><a href="HANDform.php"><i class="fa fa-file-signature"></i> Form</a></li>
-                    <li><a href="HANDreturn.php"><i class="fa fa-undo"></i> Return</a></li>
-                </ul>
-            </li>
+            <li><a href="HANDreturn.php"><i class="fa fa-undo"></i> Return</a></li>
             <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>
             <li><a href="History.php"><i class="fa fa-clock-rotate-left"></i> History</a></li>
             <li><a href="UserManual.php"><i class="fa fa-book"></i> User Manual</a></li>
