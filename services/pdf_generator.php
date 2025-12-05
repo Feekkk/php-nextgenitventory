@@ -1,17 +1,29 @@
 <?php
+$oldErrorReporting = error_reporting();
+$oldDisplayErrors = ini_get('display_errors');
+$oldLogErrors = ini_get('log_errors');
+
+error_reporting(0);
+ini_set('display_errors', '0');
+ini_set('log_errors', '0');
+
 $tcpdfPath = __DIR__ . '/../tcpdf/tcpdf.php';
 $vendorTcpdfPath = __DIR__ . '/../vendor/tecnickcom/tcpdf/tcpdf.php';
 $vendorAutoload = __DIR__ . '/../vendor/autoload.php';
 
 if (file_exists($tcpdfPath)) {
-    require_once $tcpdfPath;
+    @require_once $tcpdfPath;
 } elseif (file_exists($vendorTcpdfPath)) {
-    require_once $vendorTcpdfPath;
+    @require_once $vendorTcpdfPath;
 } elseif (file_exists($vendorAutoload)) {
-    require_once $vendorAutoload;
+    @require_once $vendorAutoload;
 } else {
     // TCPDF is not available; PDF generation will fail gracefully.
 }
+
+error_reporting($oldErrorReporting);
+ini_set('display_errors', $oldDisplayErrors);
+ini_set('log_errors', $oldLogErrors);
 
 class HandoverPDFGenerator {
     private $pdf;
@@ -21,11 +33,14 @@ class HandoverPDFGenerator {
         if (class_exists('TCPDF')) {
             $oldErrorReporting = error_reporting();
             $oldDisplayErrors = ini_get('display_errors');
+            $oldLogErrors = ini_get('log_errors');
             ini_set('display_errors', '0');
+            ini_set('log_errors', '0');
             error_reporting(0);
             $this->pdf = @new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
             error_reporting($oldErrorReporting);
             ini_set('display_errors', $oldDisplayErrors);
+            ini_set('log_errors', $oldLogErrors);
         } else {
             throw new Exception('TCPDF library not found. Please install via: composer require tecnickcom/tcpdf');
         }
@@ -266,8 +281,13 @@ class HandoverPDFGenerator {
 function generateHandoverPDF($data) {
     $oldErrorReporting = error_reporting();
     $oldDisplayErrors = ini_get('display_errors');
+    $oldLogErrors = ini_get('log_errors');
+    
     $oldErrorHandler = set_error_handler(function($errno, $errstr, $errfile, $errline) {
         if ($errno === E_DEPRECATED || $errno === E_STRICT || $errno === E_WARNING) {
+            return true;
+        }
+        if (strpos($errfile, 'tcpdf') !== false) {
             return true;
         }
         return false;
@@ -276,6 +296,7 @@ function generateHandoverPDF($data) {
     
     try {
         ini_set('display_errors', '0');
+        ini_set('log_errors', '0');
         error_reporting(0);
         
         if (!ob_get_level()) {
@@ -292,6 +313,7 @@ function generateHandoverPDF($data) {
         
         error_reporting($oldErrorReporting);
         ini_set('display_errors', $oldDisplayErrors);
+        ini_set('log_errors', $oldLogErrors);
         if ($oldErrorHandler !== null) {
             set_error_handler($oldErrorHandler);
         } else {
@@ -304,6 +326,7 @@ function generateHandoverPDF($data) {
         }
         error_reporting($oldErrorReporting);
         ini_set('display_errors', $oldDisplayErrors);
+        ini_set('log_errors', $oldLogErrors);
         if ($oldErrorHandler !== null) {
             set_error_handler($oldErrorHandler);
         } else {
