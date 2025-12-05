@@ -873,9 +873,19 @@ if (isset($_GET['action'])) {
                             <label for="handoverNotes">Additional Notes</label>
                             <textarea id="handoverNotes" name="handoverNotes" placeholder="Add remarks about condition, software, tags, etc."></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="signOff">Digital Sign-off (Recipient)</label>
-                            <input type="text" id="signOff" name="signOff" placeholder="Type full name as signature" required>
+                        <div class="form-group" id="signOffGroup">
+                            <label for="signOff">Digital Sign-off (Recipient) <span style="color: red;">*</span></label>
+                            <input 
+                                type="text" 
+                                id="signOff" 
+                                name="signOff" 
+                                placeholder="Type full name as signature" 
+                                required 
+                                aria-required="true"
+                                autocomplete="off"
+                                oninvalid="this.setCustomValidity('Please enter your full name for digital sign-off!')" 
+                                oninput="this.setCustomValidity('')"
+                            >
                         </div>
                     </div>
                 </div>
@@ -900,6 +910,9 @@ if (isset($_GET['action'])) {
                     <button class="close-modal" onclick="closeTermsModal()">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <img src="../public/unikl-rcmp.png" alt="UNIKL RCMP Logo" style="max-width: 300px; height: auto; margin-bottom: 20px;">
+                    </div>
                     <div style="margin-bottom: 25px;">
                         <h4 style="color: #1a1a2e; font-size: 1.1rem; margin-bottom: 15px;">UNIVERSITI KUALA LUMPUR ROYAL COLLEGE OF MEDICINE PERAK (UNIKL RCMP)</h4>
                         <p style="font-weight: 600; margin-bottom: 15px; color: #1a1a2e;">Software Policy Regarding the Use of Computer Software</p>
