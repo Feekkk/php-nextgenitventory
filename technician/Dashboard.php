@@ -18,6 +18,7 @@ $monthlyAdds = [];
 $activeHandovers = 0;
 $addedThisMonth = 0;
 $assetTypeData = [];
+$recentActivity = [];
 
 try {
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM laptop_desktop_assets");
@@ -66,10 +67,6 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM handover WHERE status = 'active'");
     $activeHandovers = $stmt->fetch()['count'] ?? 0;
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM handover WHERE status != 'returned' AND return_date IS NOT NULL AND return_date < CURDATE()");
-    $stmt->execute();
-    $overdueReturns = $stmt->fetch()['count'] ?? 0;
-
     // New assets this month
     $stmt = $pdo->query("
         SELECT COUNT(*) as count FROM (
@@ -86,6 +83,15 @@ try {
         'Audio Visual' => $avCount,
         'Network' => $netCount,
     ];
+
+    $activitySql = "
+        SELECT asset_type, asset_id, action_type, field_name, new_value, created_at, tech_id, changed_by
+        FROM asset_trails
+        ORDER BY created_at DESC
+        LIMIT 6
+    ";
+    $stmt = $pdo->query($activitySql);
+    $recentActivity = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log('Dashboard stats error: ' . $e->getMessage());
 }
@@ -198,6 +204,27 @@ try {
             font-size: 0.95rem;
         }
 
+        .activity-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: 0.82rem;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
         .stats-card .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -300,7 +327,31 @@ try {
             <div class="dashboard-card recent-activity">
                 <h2>Recent Activity</h2>
                 <ul class="activity-list">
-                    <li class="activity-item">No recent activity</li>
+                    <?php if (empty($recentActivity)): ?>
+                        <li class="activity-item">No recent activity</li>
+                    <?php else: ?>
+                        <?php foreach ($recentActivity as $activity): ?>
+                            <li class="activity-item">
+                                <div>
+                                    <strong><?php echo htmlspecialchars($activity['action_type']); ?></strong>
+                                    on <span class="pill"><?php echo htmlspecialchars(strtoupper($activity['asset_type'])); ?></span>
+                                    <span>#<?php echo htmlspecialchars($activity['asset_id']); ?></span>
+                                </div>
+                                <div class="activity-meta">
+                                    <span><?php echo htmlspecialchars($activity['field_name'] ?? ''); ?></span>
+                                    <?php if (!empty($activity['new_value'])): ?>
+                                        <span>→ <?php echo htmlspecialchars(mb_strimwidth($activity['new_value'], 0, 60, '...')); ?></span>
+                                    <?php endif; ?>
+                                    <span><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($activity['created_at']))); ?></span>
+                                    <?php if (!empty($activity['tech_id'])): ?>
+                                        <span>by <?php echo htmlspecialchars($activity['tech_id']); ?></span>
+                                    <?php elseif (!empty($activity['changed_by'])): ?>
+                                        <span>by #<?php echo htmlspecialchars($activity['changed_by']); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </ul>
             </div>
         </section>
