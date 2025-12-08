@@ -13,6 +13,11 @@ $totalAssets = 0;
 $laptopCount = 0;
 $avCount = 0;
 $netCount = 0;
+$statusCounts = [];
+$monthlyAdds = [];
+$activeHandovers = 0;
+$addedThisMonth = 0;
+$assetTypeData = [];
 
 try {
     $stmt = $pdo->query("SELECT COUNT(*) as count FROM laptop_desktop_assets");
@@ -25,7 +30,62 @@ try {
     $netCount = $stmt->fetch()['count'] ?? 0;
     
     $totalAssets = $laptopCount + $avCount + $netCount;
-    
+
+    // Status distribution across all assets
+    $statusSql = "
+        SELECT status, COUNT(*) as count FROM (
+            SELECT COALESCE(status, 'Unknown') as status FROM laptop_desktop_assets
+            UNION ALL
+            SELECT COALESCE(status, 'Unknown') as status FROM av_assets
+            UNION ALL
+            SELECT COALESCE(status, 'Unknown') as status FROM net_assets
+        ) s
+        GROUP BY status
+        ORDER BY count DESC
+    ";
+    $stmt = $pdo->query($statusSql);
+    $statusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Last 6 months additions (including current month)
+    $monthlySql = "
+        SELECT DATE_FORMAT(created_at, '%Y-%m') as month_label, COUNT(*) as count FROM (
+            SELECT created_at FROM laptop_desktop_assets
+            UNION ALL
+            SELECT created_at FROM av_assets
+            UNION ALL
+            SELECT created_at FROM net_assets
+        ) t
+        WHERE created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 5 MONTH)
+        GROUP BY month_label
+        ORDER BY month_label
+    ";
+    $stmt = $pdo->query($monthlySql);
+    $monthlyAdds = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Handovers
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM handover WHERE status = 'active'");
+    $activeHandovers = $stmt->fetch()['count'] ?? 0;
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM handover WHERE status != 'returned' AND return_date IS NOT NULL AND return_date < CURDATE()");
+    $stmt->execute();
+    $overdueReturns = $stmt->fetch()['count'] ?? 0;
+
+    // New assets this month
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as count FROM (
+            SELECT created_at FROM laptop_desktop_assets
+            UNION ALL SELECT created_at FROM av_assets
+            UNION ALL SELECT created_at FROM net_assets
+        ) t
+        WHERE created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+    ");
+    $addedThisMonth = $stmt->fetch()['count'] ?? 0;
+
+    $assetTypeData = [
+        'Laptop/Desktop' => $laptopCount,
+        'Audio Visual' => $avCount,
+        'Network' => $netCount,
+    ];
 } catch (PDOException $e) {
     error_log('Dashboard stats error: ' . $e->getMessage());
 }
@@ -140,7 +200,7 @@ try {
 
         .stats-card .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 18px;
             margin-top: 20px;
         }
@@ -155,6 +215,28 @@ try {
             gap: 6px;
             border: 1px solid rgba(15, 23, 42, 0.08);
             box-shadow: 0 12px 25px rgba(15, 23, 42, 0.05);
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 18px;
+            margin-top: 20px;
+        }
+
+        .chart-box {
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 12px 25px rgba(15, 23, 42, 0.05);
+            min-height: 260px;
+        }
+
+        .chart-box h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #0f172a;
         }
 
         .stat-title {
@@ -243,6 +325,29 @@ try {
                         <span class="stat-title">Network</span>
                         <span class="stat-value"><?php echo number_format($netCount); ?></span>
                     </div>
+                    <div class="stat-box">
+                        <span class="stat-title">Added This Month</span>
+                        <span class="stat-value"><?php echo number_format($addedThisMonth); ?></span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-title">Active Handovers</span>
+                        <span class="stat-value"><?php echo number_format($activeHandovers); ?></span>
+                    </div>
+                </div>
+
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <h3>Asset Mix</h3>
+                        <canvas id="assetTypeChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Status Distribution</h3>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Last 6 Months Additions</h3>
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
                 </div>
             </div>
         </section>
@@ -251,5 +356,85 @@ try {
     <footer>
         <?php include_once("../components/Footer.php"); ?>
     </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        const assetTypeLabels = <?php echo json_encode(array_keys($assetTypeData)); ?>;
+        const assetTypeValues = <?php echo json_encode(array_values($assetTypeData)); ?>;
+
+        const statusLabels = <?php echo json_encode(array_keys($statusCounts)); ?>;
+        const statusValues = <?php echo json_encode(array_values($statusCounts)); ?>;
+
+        const monthlyLabels = <?php echo json_encode(array_keys($monthlyAdds)); ?>;
+        const monthlyValues = <?php echo json_encode(array_values($monthlyAdds)); ?>;
+
+        const palette = ['#6366F1', '#22C55E', '#06B6D4', '#F59E0B', '#EF4444', '#0EA5E9', '#A855F7'];
+
+        const assetCtx = document.getElementById('assetTypeChart');
+        if (assetCtx) {
+            new Chart(assetCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: assetTypeLabels,
+                    datasets: [{
+                        data: assetTypeValues,
+                        backgroundColor: palette,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '60%'
+                }
+            });
+        }
+
+        const statusCtx = document.getElementById('statusChart');
+        if (statusCtx) {
+            new Chart(statusCtx, {
+                type: 'bar',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{
+                        data: statusValues,
+                        backgroundColor: palette,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        }
+
+        const monthlyCtx = document.getElementById('monthlyChart');
+        if (monthlyCtx) {
+            new Chart(monthlyCtx, {
+                type: 'line',
+                data: {
+                    labels: monthlyLabels,
+                    datasets: [{
+                        label: 'Assets Added',
+                        data: monthlyValues,
+                        borderColor: '#0EA5E9',
+                        backgroundColor: 'rgba(14, 165, 233, 0.15)',
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#0284C7'
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>
