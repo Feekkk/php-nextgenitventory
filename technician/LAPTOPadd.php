@@ -13,6 +13,39 @@ $successMessage = '';
 $allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'ACTIVE'];
 $staffName = '';
 
+function generateAssetId($pdo, $categoryCode) {
+    $year = date('y');
+    $prefix = $categoryCode . $year;
+    
+    $stmt = $pdo->prepare("SELECT asset_id FROM laptop_desktop_assets WHERE asset_id LIKE ? ORDER BY asset_id DESC LIMIT 1");
+    $stmt->execute([$prefix . '%']);
+    $lastId = $stmt->fetchColumn();
+    
+    if ($lastId) {
+        $lastSequence = (int)substr($lastId, -3);
+        $nextSequence = $lastSequence + 1;
+    } else {
+        $nextSequence = 1;
+    }
+    
+    $newId = (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
+    
+    $maxAttempts = 100;
+    $attempts = 0;
+    while ($attempts < $maxAttempts) {
+        $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM laptop_desktop_assets WHERE asset_id = ?");
+        $checkStmt->execute([$newId]);
+        if ($checkStmt->fetchColumn() == 0) {
+            return $newId;
+        }
+        $nextSequence++;
+        $newId = (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
+        $attempts++;
+    }
+    
+    throw new Exception('Unable to generate unique asset ID after multiple attempts');
+}
+
 if (isset($_GET['staff_id']) && is_numeric($_GET['staff_id'])) {
     $stmt = $pdo->prepare("SELECT staff_name FROM staff_list WHERE staff_id = ?");
     $stmt->execute([$_GET['staff_id']]);
@@ -142,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )
             ");
 
-            $assetId = $formData['asset_id'] !== '' ? (int)$formData['asset_id'] : null;
+            $assetId = $formData['asset_id'] !== '' ? (int)$formData['asset_id'] : generateAssetId($pdo, 11);
             $poDate = $formData['PO_DATE'];
             $doDate = $formData['DO_DATE'];
             $invoiceDate = $formData['INVOICE_DATE'];
@@ -182,7 +215,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Asset trail: record asset creation
             try {
-                $newAssetId = $assetId ?? (int)$pdo->lastInsertId();
                 $trailStmt = $pdo->prepare("
                     INSERT INTO asset_trails (
                         asset_type, asset_id, action_type, changed_by,
@@ -195,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     )
                 ");
                 $trailStmt->execute([
-                    ':asset_id' => $newAssetId,
+                    ':asset_id' => $assetId,
                     ':changed_by' => $_SESSION['user_id'] ?? null,
                     ':description' => 'Created laptop/desktop asset with serial ' . $formData['serial_num'],
                     ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,

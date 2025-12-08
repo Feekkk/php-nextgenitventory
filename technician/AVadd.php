@@ -11,6 +11,39 @@ $pdo = getDBConnection();
 $errors = [];
 $successMessage = '';
 $allowedStatuses = ['ACTIVE','RESERVED','FAULTY','DISPOSED','MAINTENANCE','LOST','DEPLOY'];
+
+function generateAssetId($pdo, $categoryCode) {
+    $year = date('y');
+    $prefix = $categoryCode . $year;
+    
+    $stmt = $pdo->prepare("SELECT asset_id FROM av_assets WHERE asset_id LIKE ? ORDER BY asset_id DESC LIMIT 1");
+    $stmt->execute([$prefix . '%']);
+    $lastId = $stmt->fetchColumn();
+    
+    if ($lastId) {
+        $lastSequence = (int)substr($lastId, -3);
+        $nextSequence = $lastSequence + 1;
+    } else {
+        $nextSequence = 1;
+    }
+    
+    $newId = (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
+    
+    $maxAttempts = 100;
+    $attempts = 0;
+    while ($attempts < $maxAttempts) {
+        $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM av_assets WHERE asset_id = ?");
+        $checkStmt->execute([$newId]);
+        if ($checkStmt->fetchColumn() == 0) {
+            return $newId;
+        }
+        $nextSequence++;
+        $newId = (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
+        $attempts++;
+    }
+    
+    throw new Exception('Unable to generate unique asset ID after multiple attempts');
+}
 $formData = [
     'class' => '',
     'brand' => '',
@@ -59,13 +92,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
+            $assetId = generateAssetId($pdo, 22);
+            
             $stmt = $pdo->prepare("
                 INSERT INTO av_assets (
-                    class, brand, model, serial_num, location, status,
+                    asset_id, class, brand, model, serial_num, location, status,
                     `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                     `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
                 ) VALUES (
-                    :class, :brand, :model, :serial_num, :location, :status,
+                    :asset_id, :class, :brand, :model, :serial_num, :location, :status,
                     :po_date, :po_num, :do_date, :do_num,
                     :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
                 )
@@ -76,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
 
             $stmt->execute([
+                ':asset_id' => $assetId,
                 ':class' => $formData['class'],
                 ':brand' => $formData['brand'],
                 ':model' => $formData['model'],
@@ -95,7 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Asset trail: record AV asset creation
             try {
-                $newAssetId = (int)$pdo->lastInsertId();
                 $trailStmt = $pdo->prepare("
                     INSERT INTO asset_trails (
                         asset_type, asset_id, action_type, changed_by,
@@ -108,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     )
                 ");
                 $trailStmt->execute([
-                    ':asset_id' => $newAssetId,
+                    ':asset_id' => $assetId,
                     ':changed_by' => $_SESSION['user_id'] ?? null,
                     ':description' => 'Created AV asset with serial ' . $formData['serial_num'],
                     ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,

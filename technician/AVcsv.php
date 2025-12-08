@@ -13,6 +13,24 @@ $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
 $allowedStatuses = ['ACTIVE','RESERVED','FAULTY','DISPOSED','MAINTENANCE','LOST','DEPLOY'];
+
+function generateAssetId($pdo, $categoryCode) {
+    $year = date('y');
+    $prefix = $categoryCode . $year;
+    
+    $stmt = $pdo->prepare("SELECT asset_id FROM av_assets WHERE asset_id LIKE ? ORDER BY asset_id DESC LIMIT 1");
+    $stmt->execute([$prefix . '%']);
+    $lastId = $stmt->fetchColumn();
+    
+    if ($lastId) {
+        $lastSequence = (int)substr($lastId, -3);
+        $nextSequence = $lastSequence + 1;
+    } else {
+        $nextSequence = 1;
+    }
+    
+    return (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
+}
 $requiredHeaders = ['class', 'brand', 'model', 'serial_num', 'status'];
 $optionalHeaders = ['location', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
 $headerMap = [
@@ -90,15 +108,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (empty($errors)) {
                     try {
-                        $pdo->beginTransaction();
-                        $lineNumber = 2;
+                        $year = date('y');
+                        $prefix = '22' . $year;
+                        $stmt = $pdo->prepare("SELECT asset_id FROM av_assets WHERE asset_id LIKE ? ORDER BY asset_id DESC LIMIT 1");
+                        $stmt->execute([$prefix . '%']);
+                        $lastId = $stmt->fetchColumn();
+                        $currentSequence = $lastId ? (int)substr($lastId, -3) : 0;
+                        
+                        $csvAssetIds = [];
+                        $tempLineNumber = 2;
+                        $tempHandle = fopen($file['tmp_name'], 'r');
+                        fgetcsv($tempHandle);
+                        $tempSequence = $currentSequence;
+                        
+                        while (($tempRow = fgetcsv($tempHandle)) !== false) {
+                            $tempValues = array_map('trim', $tempRow);
+                            if (count(array_filter($tempValues, fn($value) => $value !== '')) === 0) {
+                                $tempLineNumber++;
+                                continue;
+                            }
+                            
+                            $tempRowData = [];
+                            foreach ($headers as $index => $columnName) {
+                                if ($columnName && isset($tempRow[$index])) {
+                                    $tempRowData[$columnName] = trim($tempRow[$index]);
+                                }
+                            }
+                            
+                            if (!empty($tempRowData['asset_id']) && is_numeric($tempRowData['asset_id'])) {
+                                $csvAssetIds[] = (int)$tempRowData['asset_id'];
+                            } else {
+                                $tempSequence++;
+                                $csvAssetIds[] = (int)($prefix . str_pad($tempSequence, 3, '0', STR_PAD_LEFT));
+                            }
+                            $tempLineNumber++;
+                        }
+                        fclose($tempHandle);
+                        
+                        if (!empty($csvAssetIds)) {
+                            $placeholders = implode(',', array_fill(0, count($csvAssetIds), '?'));
+                            $checkStmt = $pdo->prepare("SELECT asset_id FROM av_assets WHERE asset_id IN ($placeholders)");
+                            $checkStmt->execute($csvAssetIds);
+                            $existingIds = $checkStmt->fetchAll(PDO::FETCH_COLUMN);
+                            
+                            if (!empty($existingIds)) {
+                                $errors[] = 'Import rejected: The following Asset IDs already exist in the database: ' . implode(', ', $existingIds) . '. Please remove these duplicates from your CSV file or use different Asset IDs.';
+                            }
+                        }
+                        
+                        if (empty($errors)) {
+                            rewind($handle);
+                            fgetcsv($handle);
+                            $pdo->beginTransaction();
+                            $lineNumber = 2;
+                            $currentSequence = $lastId ? (int)substr($lastId, -3) : 0;
+                        
                         $insertStmt = $pdo->prepare("
                             INSERT INTO av_assets (
-                                class, brand, model, serial_num, location, status,
+                                asset_id, class, brand, model, serial_num, location, status,
                                 `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
                                 `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
                             ) VALUES (
-                                :class, :brand, :model, :serial_num, :location, :status,
+                                :asset_id, :class, :brand, :model, :serial_num, :location, :status,
                                 :po_date, :po_num, :do_date, :do_num,
                                 :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
                             )
@@ -185,11 +256,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $statusValue = $rowData['status'];
                             
+                            $currentSequence++;
+                            $assetId = (int)($prefix . str_pad($currentSequence, 3, '0', STR_PAD_LEFT));
                             $poDate = $rowData['p.o_date'] ?: null;
                             $invoiceDate = $rowData['invoice_date'] ?: null;
                             $purchaseCost = $rowData['purchase_cost'] !== '' ? $rowData['purchase_cost'] : null;
 
                             $insertStmt->execute([
+                                ':asset_id' => $assetId,
                                 ':class' => $rowData['class'],
                                 ':brand' => $rowData['brand'],
                                 ':model' => $rowData['model'],
@@ -207,8 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':created_by' => $_SESSION['user_id'],
                             ]);
 
-                            $newAssetId = (int)$pdo->lastInsertId();
-                            $importedAssetIds[] = $newAssetId;
+                            $importedAssetIds[] = $assetId;
 
                             $importedCount++;
                             $lineNumber++;
@@ -240,8 +313,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ]);
                         }
                     } catch (PDOException $e) {
-                        $pdo->rollBack();
-                        $errors[] = 'Unable to import CSV right now. Please try again.';
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        if (empty($errors)) {
+                            $errors[] = 'Unable to import CSV right now. Please try again.';
+                        }
+                    } catch (Exception $e) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        if (empty($errors)) {
+                            $errors[] = 'Import failed: ' . $e->getMessage();
+                        }
                     }
                 }
 

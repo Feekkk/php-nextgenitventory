@@ -13,6 +13,24 @@ $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
 $allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'ACTIVE'];
+
+function generateAssetId($pdo, $categoryCode) {
+    $year = date('y');
+    $prefix = $categoryCode . $year;
+    
+    $stmt = $pdo->prepare("SELECT asset_id FROM laptop_desktop_assets WHERE asset_id LIKE ? ORDER BY asset_id DESC LIMIT 1");
+    $stmt->execute([$prefix . '%']);
+    $lastId = $stmt->fetchColumn();
+    
+    if ($lastId) {
+        $lastSequence = (int)substr($lastId, -3);
+        $nextSequence = $lastSequence + 1;
+    } else {
+        $nextSequence = 1;
+    }
+    
+    return (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
+}
 $requiredHeaders = ['serial_num', 'brand', 'model', 'status'];
 
 if (!function_exists('convertExcelDate')) {
@@ -134,9 +152,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (empty($errors)) {
                     try {
-                        $pdo->beginTransaction();
-                        $lineNumber = 2;
-                        $insertStmt = $pdo->prepare("
+                        $year = date('y');
+                        $prefix = '11' . $year;
+                        $stmt = $pdo->prepare("SELECT asset_id FROM laptop_desktop_assets WHERE asset_id LIKE ? ORDER BY asset_id DESC LIMIT 1");
+                        $stmt->execute([$prefix . '%']);
+                        $lastId = $stmt->fetchColumn();
+                        $currentSequence = $lastId ? (int)substr($lastId, -3) : 0;
+                        
+                        $csvAssetIds = [];
+                        $tempLineNumber = 2;
+                        $tempHandle = fopen($file['tmp_name'], 'r');
+                        $tempHeaderRow = fgetcsv($tempHandle);
+                        $tempHeaders = array_map($normalize, $tempHeaderRow);
+                        $tempSequence = $currentSequence;
+                        
+                        while (($tempRow = fgetcsv($tempHandle)) !== false) {
+                            $tempValues = array_map('trim', $tempRow);
+                            if (count(array_filter($tempValues, fn($value) => $value !== '')) === 0) {
+                                $tempLineNumber++;
+                                continue;
+                            }
+                            
+                            $tempRowData = [];
+                            foreach ($tempHeaders as $index => $columnName) {
+                                if ($columnName && isset($tempRow[$index])) {
+                                    $tempRowData[$columnName] = trim($tempRow[$index]);
+                                }
+                            }
+                            
+                            if (!empty($tempRowData['asset_id']) && is_numeric($tempRowData['asset_id'])) {
+                                $csvAssetIds[] = (int)$tempRowData['asset_id'];
+                            } else {
+                                $tempSequence++;
+                                $csvAssetIds[] = (int)($prefix . str_pad($tempSequence, 3, '0', STR_PAD_LEFT));
+                            }
+                            $tempLineNumber++;
+                        }
+                        fclose($tempHandle);
+                        
+                        if (!empty($csvAssetIds)) {
+                            $placeholders = implode(',', array_fill(0, count($csvAssetIds), '?'));
+                            $checkStmt = $pdo->prepare("SELECT asset_id FROM laptop_desktop_assets WHERE asset_id IN ($placeholders)");
+                            $checkStmt->execute($csvAssetIds);
+                            $existingIds = $checkStmt->fetchAll(PDO::FETCH_COLUMN);
+                            
+                            if (!empty($existingIds)) {
+                                $errors[] = 'Import rejected: The following Asset IDs already exist in the database: ' . implode(', ', $existingIds) . '. Please remove these duplicates from your CSV file or use different Asset IDs.';
+                            }
+                        }
+                        
+                        if (empty($errors)) {
+                            rewind($handle);
+                            fgetcsv($handle);
+                            $pdo->beginTransaction();
+                            $lineNumber = 2;
+                            $currentSequence = $lastId ? (int)substr($lastId, -3) : 0;
+                            
+                            $insertStmt = $pdo->prepare("
                             INSERT INTO laptop_desktop_assets (
                                 asset_id, serial_num, brand, model, category, status, staff_id,
                                 assignment_type, location, processor, memory, os, storage, gpu, warranty_expiry, part_number,
@@ -294,7 +366,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $statusValue = $rowData['status'];
                             
-                            $assetId = $rowData['asset_id'] !== '' ? (int)$rowData['asset_id'] : null;
+                            if ($rowData['asset_id'] !== '') {
+                                $assetId = (int)$rowData['asset_id'];
+                            } else {
+                                $currentSequence++;
+                                $assetId = (int)($prefix . str_pad($currentSequence, 3, '0', STR_PAD_LEFT));
+                            }
                             $poDate = $rowData['p.o_date'] ?: null;
                             $doDate = $rowData['d.o_date'] ?: null;
                             $invoiceDate = $rowData['invoice_date'] ?: null;
@@ -332,8 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':remarks' => $rowData['remarks'] ?: null,
                             ]);
 
-                            $newAssetId = $assetId ?? (int)$pdo->lastInsertId();
-                            $importedAssetIds[] = $newAssetId;
+                            $importedAssetIds[] = $assetId;
 
                             $importedCount++;
                             $lineNumber++;
@@ -365,23 +441,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ]);
                         }
                     } catch (PDOException $e) {
-                        $pdo->rollBack();
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
                         error_log('LAPTOP CSV Import Error: ' . $e->getMessage());
                         
-                        $errorMessage = 'Unable to import CSV. ';
-                        if (strpos($e->getMessage(), '1452') !== false && strpos($e->getMessage(), 'staff_id') !== false) {
-                            $errorMessage .= 'One or more Staff IDs in your CSV do not exist in the staff list. ';
-                            $errorMessage .= 'Please check the skipped rows below for details, or add the missing staff members first.';
-                        } elseif (strpos($e->getMessage(), '1062') !== false) {
-                            $errorMessage .= 'Duplicate entry detected. This may be due to duplicate Serial Numbers or Asset IDs. ';
-                            $errorMessage .= 'Please check your CSV for duplicates.';
-                        } elseif (strpos($e->getMessage(), '1451') !== false) {
-                            $errorMessage .= 'Referenced record not found. Please check that all referenced IDs exist in the system.';
-                        } else {
-                            $errorMessage .= 'Database error: ' . htmlspecialchars($e->getMessage());
+                        if (empty($errors)) {
+                            $errorMessage = 'Unable to import CSV. ';
+                            if (strpos($e->getMessage(), '1452') !== false && strpos($e->getMessage(), 'staff_id') !== false) {
+                                $errorMessage .= 'One or more Staff IDs in your CSV do not exist in the staff list. ';
+                                $errorMessage .= 'Please check the skipped rows below for details, or add the missing staff members first.';
+                            } elseif (strpos($e->getMessage(), '1062') !== false) {
+                                $errorMessage .= 'Duplicate entry detected. This may be due to duplicate Serial Numbers or Asset IDs. ';
+                                $errorMessage .= 'Please check your CSV for duplicates.';
+                            } elseif (strpos($e->getMessage(), '1451') !== false) {
+                                $errorMessage .= 'Referenced record not found. Please check that all referenced IDs exist in the system.';
+                            } else {
+                                $errorMessage .= 'Database error: ' . htmlspecialchars($e->getMessage());
+                            }
+                            
+                            $errors[] = $errorMessage;
                         }
-                        
-                        $errors[] = $errorMessage;
+                    } catch (Exception $e) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        if (empty($errors)) {
+                            $errors[] = 'Import failed: ' . $e->getMessage();
+                        }
                     }
                 }
 
