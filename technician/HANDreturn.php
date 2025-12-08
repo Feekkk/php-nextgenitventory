@@ -742,7 +742,7 @@ if ($assetTypeParam === 'laptop_desktop') {
                             statusSelect.value = 'MAINTENANCE';
                         } else if (statusSelect.querySelector('option[value="UNDER MAINTENANCE"]')) {
                             statusSelect.value = 'UNDER MAINTENANCE';
-                        }
+                }
                     } else if (this.value === 'Damaged') {
                         // Suggest FAULTY or MAINTENANCE for damaged
                         if (statusSelect.querySelector('option[value="FAULTY"]')) {

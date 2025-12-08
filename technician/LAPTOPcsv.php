@@ -116,6 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'category' => 'category',
                         'part_no' => 'part_number',
                         'part_number' => 'part_number',
+                        'handover_date' => 'handover_date',
+                        'handoverdate' => 'handover_date',
                     ];
                     
                     if (isset($columnMapping[$value])) {
@@ -258,12 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'invoice_num' => '',
                                 'purchase_cost' => '',
                                 'remarks' => '',
+                                'handover_date' => '',
                             ];
 
                             foreach ($headers as $index => $columnName) {
                                 if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
                                     $value = trim($row[$index]);
-                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry']) && is_numeric($value) && $value > 0) {
+                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry', 'handover_date']) && is_numeric($value) && $value > 0) {
                                         $value = convertExcelDate($value);
                                     }
                                     if ($columnName === 'status') {
@@ -334,6 +337,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $date = DateTime::createFromFormat('Y-m-d', $rowData['warranty_expiry']);
                                 if (!$date || $date->format('Y-m-d') !== $rowData['warranty_expiry']) {
                                     $rowErrors[] = "Invalid Warranty Expiry format: '{$rowData['warranty_expiry']}'. Expected format: YYYY-MM-DD (e.g., 2026-01-15)";
+                                }
+                            }
+
+                            if ($rowData['handover_date'] !== '') {
+                                $date = DateTime::createFromFormat('Y-m-d', $rowData['handover_date']);
+                                if (!$date || $date->format('Y-m-d') !== $rowData['handover_date']) {
+                                    $rowErrors[] = "Invalid Handover Date format: '{$rowData['handover_date']}'. Expected format: YYYY-MM-DD (e.g., 2024-01-15)";
                                 }
                             }
 
@@ -409,6 +419,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':remarks' => $rowData['remarks'] ?: null,
                             ]);
 
+                            // Create handover record if status is DEPLOY and staff_id is provided
+                            if ($statusValue === 'DEPLOY' && $staffId !== null) {
+                                try {
+                                    // Use handover_date from CSV if available, otherwise use today's date
+                                    $handoverDate = date('Y-m-d');
+                                    
+                                    if (!empty($rowData['handover_date'])) {
+                                        $handoverDateValue = $rowData['handover_date'];
+                                        // Validate the date format
+                                        $parsedDate = DateTime::createFromFormat('Y-m-d', $handoverDateValue);
+                                        if ($parsedDate && $parsedDate->format('Y-m-d') === $handoverDateValue) {
+                                            $handoverDate = $handoverDateValue;
+                                        }
+                                    }
+                                    
+                                    $handoverLocation = $rowData['location'] ?: null;
+                                    
+                                    $handoverStmt = $pdo->prepare("
+                                        INSERT INTO handover (
+                                            staff_id, asset_type, asset_id,
+                                            handover_date, handover_location, condition_agreement,
+                                            handover_notes, digital_signoff, status, created_by
+                                        ) VALUES (
+                                            :staff_id, :asset_type, :asset_id,
+                                            :handover_date, :handover_location, :condition_agreement,
+                                            :handover_notes, :digital_signoff, :status, :created_by
+                                        )
+                                    ");
+                                    
+                                    $handoverStmt->execute([
+                                        ':staff_id' => (int)$staffId,
+                                        ':asset_type' => 'laptop_desktop',
+                                        ':asset_id' => $assetId,
+                                        ':handover_date' => $handoverDate,
+                                        ':handover_location' => $handoverLocation,
+                                        ':condition_agreement' => 1,
+                                        ':handover_notes' => "Asset imported via CSV with DEPLOY status. Serial: {$rowData['serial_num']}",
+                                        ':digital_signoff' => 'CSV Import',
+                                        ':status' => 'active',
+                                        ':created_by' => $_SESSION['user_id']
+                                    ]);
+                                } catch (PDOException $e) {
+                                    // Log error but don't fail the import
+                                    error_log('Failed to create handover record for asset ' . $assetId . ': ' . $e->getMessage());
+                                }
+                            }
+
                             $importedAssetIds[] = $assetId;
 
                             $importedCount++;
@@ -439,6 +496,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
                                 ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
                             ]);
+                        }
                         }
                     } catch (PDOException $e) {
                         if ($pdo->inTransaction()) {
