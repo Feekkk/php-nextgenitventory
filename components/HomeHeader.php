@@ -36,21 +36,37 @@ if (isset($_SESSION['user_id'])) {
 /* Sidebar styles */
 .sidebar {
     position: fixed;
-    top: 0;
-    left: -280px;
-    width: 280px;
-    height: 100vh;
-    background: #ffffff;
-    color: var(--text-dark);
+    top: 84px;
+    left: 50%;
+    transform: translate(-50%, -130%);
+    width: min(1040px, 92vw);
+    max-height: 78vh;
+    background: rgba(255, 255, 255, 0.9);
+    color: #1f2937;
     z-index: 1100;
-    transition: left 0.3s ease;
-    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.08);
+    transition: transform 0.35s ease, opacity 0.35s ease;
+    box-shadow:
+        0 18px 60px rgba(15, 23, 42, 0.12),
+        0 0 0 1px rgba(226, 232, 240, 0.9),
+        0 14px 30px rgba(148, 163, 184, 0.22);
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    border-right: 1px solid var(--border-color);
+    overflow: hidden;
+    border-radius: 20px;
+    backdrop-filter: blur(14px);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: 18px;
+    background: radial-gradient(circle at 20% 20%, rgba(17, 24, 39, 0.03), transparent 35%),
+                radial-gradient(circle at 80% 10%, rgba(59, 130, 246, 0.06), transparent 30%),
+                rgba(255, 255, 255, 0.6);
+    pointer-events: none;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -58,92 +74,107 @@ if (isset($_SESSION['user_id'])) {
 }
 
 .sidebar.open {
-    left: 0;
+    transform: translate(-50%, 0);
+    opacity: 1;
+    pointer-events: all;
 }
 
 .sidebar .sidebar-header {
-    padding: 25px 20px;
-    background: #ffffff;
-    border-bottom: 1px solid var(--border-color);
+    padding: 18px 20px;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.9));
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
     display: flex;
     align-items: center;
     gap: 12px;
+    position: relative;
+    z-index: 1;
 }
 
 .sidebar .sidebar-header img {
     height: 38px;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.18));
 }
 
 .sidebar .sidebar-header span {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #0f172a;
     letter-spacing: 0.3px;
 }
 
 .close-sidebar-btn {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-    font-size: 1.4rem;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    color: #0f172a;
+    font-size: 1.2rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    z-index: 2;
 }
 
 .close-sidebar-btn:hover {
-    background: #1a1a2e;
-    border-color: #1a1a2e;
-    color: #ffffff;
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #fff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
 }
 
-/* Sidebar footer status */
 .sidebar-status {
-    margin: 20px;
-    padding: 16px;
+    margin: 0 16px 16px;
+    padding: 14px 16px;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(108, 92, 231, 0.12), rgba(0, 206, 201, 0.12));
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+    background: linear-gradient(135deg, rgba(244, 246, 249, 0.9), rgba(255, 255, 255, 0.9));
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    color: #0f172a;
+    position: relative;
+    z-index: 1;
 }
 
 .sidebar-status h4 {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: #1a1a2e;
+    color: #0f172a;
 }
 
 .sidebar-status p {
     margin: 6px 0 0 0;
-    font-size: 0.85rem;
-    color: #2d3436;
+    font-size: 0.86rem;
+    color: #334155;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
 .status-indicator {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    background: #00b894;
-    box-shadow: 0 0 8px rgba(0, 184, 148, 0.7);
+    background: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
 }
 
 .sidebar ul {
     list-style: none;
-    padding: 20px 0;
+    padding: 14px 16px 22px;
     margin: 0;
     flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    position: relative;
+    z-index: 1;
 }
 
 .sidebar ul li {
@@ -153,43 +184,48 @@ if (isset($_SESSION['user_id'])) {
 .sidebar ul li a {
     display: flex;
     align-items: center;
-    padding: 14px 24px;
-    color: var(--text-muted);
+    padding: 14px 16px;
+    color: #111827;
     text-decoration: none;
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 0.96rem;
+    font-weight: 600;
     transition: all 0.2s ease;
-    border-left: 3px solid transparent;
     gap: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .sidebar ul li a i {
     font-size: 1.1rem;
-    width: 20px;
+    width: 22px;
     text-align: center;
-    color: var(--text-muted);
-    transition: color 0.2s ease;
+    color: #6366f1;
+    transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .sidebar ul li a:hover {
-    background: #1a1a2e;
-    color: #ffffff;
-    border-left-color: #1a1a2e;
+    background: linear-gradient(120deg, #ffffff, #f8fafc);
+    border-color: #cbd5e1;
+    box-shadow: 0 10px 30px rgba(148, 163, 184, 0.24);
+    transform: translateY(-1px);
 }
 
 .sidebar ul li a:hover i {
-    color: #ffffff;
+    color: #0f172a;
+    transform: translateY(-1px);
 }
 
 .sidebar ul li a.active {
-    background: #1a1a2e;
-    color: #ffffff;
-    border-left-color: #1a1a2e;
-    font-weight: 600;
+    background: linear-gradient(120deg, #eef2ff, #e0f2fe);
+    color: #0f172a;
+    border-color: #a5b4fc;
+    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.18);
 }
 
 .sidebar ul li a.active i {
-    color: #ffffff;
+    color: #4338ca;
 }
 
 .sidebar .menu-item {
@@ -202,21 +238,25 @@ if (isset($_SESSION['user_id'])) {
     font-weight: 900;
     margin-left: auto;
     font-size: 0.9rem;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, color 0.2s ease;
+    color: rgba(15, 23, 42, 0.6);
 }
 
 .sidebar .menu-item.has-dropdown.open > a::after {
     transform: rotate(180deg);
+    color: #111827;
 }
 
 .sidebar .submenu {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease;
-    background: rgba(26, 26, 46, 0.05);
+    transition: max-height 0.35s ease;
+    background: rgba(248, 250, 252, 0.9);
     list-style: none;
-    padding: 0;
-    margin: 0;
+    padding: 0 10px;
+    margin: 8px 0 0;
+    border-radius: 12px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
 .sidebar .menu-item.open .submenu {
@@ -228,20 +268,22 @@ if (isset($_SESSION['user_id'])) {
 }
 
 .sidebar .submenu li a {
-    padding-left: 50px;
+    padding: 12px 14px 12px 44px;
     font-size: 0.9rem;
-    border-left: none;
+    border: none;
+    background: transparent;
+    color: #1f2937;
 }
 
 .sidebar .submenu li a:hover {
-    background: #1a1a2e;
-    color: #ffffff;
+    background: rgba(226, 232, 240, 0.7);
+    color: #0f172a;
 }
 
 .sidebar .submenu li a.active {
-    background: #1a1a2e;
-    color: #ffffff;
-    border-left: 3px solid #1a1a2e;
+    background: rgba(226, 232, 240, 0.9);
+    color: #0f172a;
+    border: 1px solid rgba(165, 180, 252, 0.8);
 }
 
 /* Header styles */
@@ -249,7 +291,7 @@ if (isset($_SESSION['user_id'])) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.9);
     color: var(--text-dark);
     height: 70px;
     padding: 0 30px;
@@ -259,30 +301,33 @@ if (isset($_SESSION['user_id'])) {
     right: 0;
     z-index: 1050;
     font-family: 'Inter', sans-serif;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 10px 35px rgba(15, 23, 42, 0.06);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    backdrop-filter: blur(10px);
 }
 
 .menu-btn {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-dark);
+    background: linear-gradient(120deg, #ffffff, #f8fafc);
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    color: #0f172a;
     font-size: 1.2rem;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
     margin-right: 15px;
+    box-shadow: 0 10px 25px rgba(148, 163, 184, 0.25);
 }
 
 .menu-btn:hover {
-    background: #1a1a2e;
-    border-color: #1a1a2e;
-    color: #ffffff;
+    background: linear-gradient(120deg, #e2e8f0, #ffffff);
+    border-color: #94a3b8;
+    color: #0f172a;
+    box-shadow: 0 12px 30px rgba(148, 163, 184, 0.35);
 }
 
 .header-content {
@@ -327,20 +372,22 @@ if (isset($_SESSION['user_id'])) {
     align-items: center;
     gap: 10px;
     padding: 8px 16px;
-    background: #f8f9fa;
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.9);
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .user-menu:hover {
-    background: #1a1a2e;
-    border-color: #1a1a2e;
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    box-shadow: 0 10px 25px rgba(148, 163, 184, 0.25);
 }
 
 .user-menu:hover .user-name {
-    color: #ffffff;
+    color: #0f172a;
 }
 
 .user-avatar {
@@ -383,8 +430,8 @@ if (isset($_SESSION['user_id'])) {
 .blur-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(12px);
     z-index: 1090;
     display: none;
     opacity: 0;
@@ -397,10 +444,51 @@ if (isset($_SESSION['user_id'])) {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
     .sidebar {
         width: 260px;
         left: -260px;
+        top: 0;
+        transform: none;
+        max-height: 100vh;
+        border-radius: 0 16px 16px 0;
+        opacity: 1;
+        pointer-events: all;
+        background: #ffffff;
+        color: var(--text-dark);
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .sidebar::before {
+        display: none;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .sidebar ul {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar ul li a {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        box-shadow: none;
+    }
+
+    .sidebar ul li a:hover,
+    .sidebar ul li a.active {
+        background: #1a1a2e;
+        color: #ffffff;
+        border-left: 3px solid #1a1a2e;
+        border-radius: 0;
+    }
+
+    .sidebar .submenu {
+        background: rgba(26, 26, 46, 0.05);
+        border: none;
     }
 
     .header {
