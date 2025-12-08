@@ -55,7 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $handover_location = trim($_POST['handoverLocation'] ?? '');
     $asset_type = $currentAssetType;
     $asset_id = (string)$currentAssetId;
-    $accessories = trim($_POST['accessories'] ?? '');
     $condition_agreement = isset($_POST['conditionAgreement']) ? 1 : 0;
     $handover_notes = trim($_POST['handoverNotes'] ?? '');
     $digital_signoff = trim($_POST['signOff'] ?? '');
@@ -81,11 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $insertStmt = $pdo->prepare("
                     INSERT INTO handover (
-                        staff_id, asset_type, asset_id, accessories,
+                        staff_id, asset_type, asset_id,
                         handover_date, handover_location, condition_agreement,
                         handover_notes, digital_signoff, created_by
                     ) VALUES (
-                        :staff_id, :asset_type, :asset_id, :accessories,
+                        :staff_id, :asset_type, :asset_id,
                         :handover_date, :handover_location, :condition_agreement,
                         :handover_notes, :digital_signoff, :created_by
                     )
@@ -95,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':staff_id' => (int)$staff_id,
                     ':asset_type' => $asset_type,
                     ':asset_id' => (int)$asset_id,
-                    ':accessories' => $accessories ?: null,
                     ':handover_date' => $handover_date,
                     ':handover_location' => $handover_location,
                     ':condition_agreement' => $condition_agreement,
@@ -178,7 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'brand' => $asset['brand'] ?? '',
                     'model' => $asset['model'] ?? '',
                     'category' => $asset['category'] ?? '',
-                    'accessories' => $accessories,
                     'handover_date' => $handover_date,
                     'handover_location' => $handover_location,
                     'handover_notes' => $handover_notes,
@@ -859,10 +856,6 @@ if (isset($_GET['action'])) {
                     </div>
 
                     <div class="form-grid">
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="accessories">Included Accessories</label>
-                            <input type="text" id="accessories" name="accessories" placeholder="e.g., Charger, Bag, Docking Station">
-                        </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
                             <div class="checkbox-group">
                                 <input type="checkbox" id="conditionAgreement" name="conditionAgreement" required disabled>
