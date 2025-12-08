@@ -240,7 +240,6 @@ CREATE TABLE IF NOT EXISTS `handover` (
     `staff_id` INT(11) NOT NULL,
     `asset_type` ENUM('laptop_desktop', 'av', 'network') NOT NULL,
     `asset_id` INT(11) NOT NULL,
-    `accessories` TEXT DEFAULT NULL,
     `handover_date` DATE NOT NULL,
     `handover_location` VARCHAR(255) DEFAULT NULL,
     `condition_agreement` BOOLEAN DEFAULT FALSE,
