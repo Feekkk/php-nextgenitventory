@@ -684,8 +684,8 @@ function formatStatusIcon($status)
     </footer>
 
     <script>
-        const inStockStatuses = ['ACTIVE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'UNDER MAINTENANCE', 'MAINTENANCE', 'NON-ACTIVE', 'LOST'];
-        const outStockStatuses = ['DEPLOY', 'IN-USE', 'LOST'];
+        const inStockStatuses = ['ACTIVE', 'RESERVED', 'FAULTY', 'DISPOSED', 'MAINTENANCE'];
+        const outStockStatuses = ['LOST', 'DEPLOY'];
         let currentStockType = 'in-stock';
 
         const stockTabs = document.querySelectorAll('.stock-tab');
