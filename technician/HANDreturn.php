@@ -247,9 +247,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
             ]);
             
             $pdo->commit();
-            $successMessage = 'Asset return processed successfully.';
             
-            // Refresh data
+            // Refresh data to get updated information
             if ($assetTypeParam === 'laptop_desktop') {
                 $stmt = $pdo->prepare("SELECT asset_id, serial_num, brand, model, category, status FROM laptop_desktop_assets WHERE asset_id = ?");
             } elseif ($assetTypeParam === 'av') {
@@ -273,14 +272,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
                 ");
                 $stmt->execute([$handoverDetails['handover_id']]);
                 $handoverDetails = $stmt->fetch(PDO::FETCH_ASSOC);
-            } else {
-                // Mark as returned with basic info
-                if ($handoverDetails) {
-                    $handoverDetails['status'] = 'returned';
-                    $handoverDetails['return_date'] = $returnDate;
-                    $handoverDetails['return_condition'] = $returnCondition;
-                    $handoverDetails['return_notes'] = $returnNotes;
+            }
+            
+            // Generate PDF and send email
+            if ($handoverDetails && !empty($handoverDetails['email'])) {
+                require_once '../services/return_pdf_generator.php';
+                require_once '../services/mail_config.php';
+                
+                // Prepare PDF data (use refreshed handover details for component info)
+                $pdfData = [
+                    'staff_name' => $handoverDetails['staff_name'] ?? '',
+                    'staff_id' => $handoverDetails['staff_id'] ?? '',
+                    'staff_designation' => $handoverDetails['staff_designation'] ?? '',
+                    'staff_department' => $handoverDetails['faculty'] ?? '',
+                    'asset_id' => $assetDetails['asset_id'] ?? '',
+                    'category' => $assetDetails['category'] ?? '',
+                    'brand' => $assetDetails['brand'] ?? '',
+                    'model' => $assetDetails['model'] ?? '',
+                    'serial_num' => $assetDetails['serial_num'] ?? $assetDetails['serial'] ?? '',
+                    'return_date' => $handoverDetails['return_date'] ? date('d.m.Y', strtotime($handoverDetails['return_date'])) : date('d.m.Y', strtotime($returnDate)),
+                    'handover_date' => $handoverDetails['handover_date'] ?? '',
+                    'return_notes' => $handoverDetails['return_notes'] ?? $returnNotes,
+                    'desktop_condition' => $handoverDetails['desktop_condition'] ?? $desktopCondition,
+                    'desktop_status' => $handoverDetails['desktop_status'] ?? $desktopStatus,
+                    'harddisk_condition' => $handoverDetails['harddisk_condition'] ?? $harddiskCondition,
+                    'harddisk_status' => $handoverDetails['harddisk_status'] ?? $harddiskStatus,
+                    'monitor_condition' => $handoverDetails['monitor_condition'] ?? $monitorCondition,
+                    'monitor_status' => $handoverDetails['monitor_status'] ?? $monitorStatus,
+                    'mouse_condition' => $handoverDetails['mouse_condition'] ?? $mouseCondition,
+                    'mouse_status' => $handoverDetails['mouse_status'] ?? $mouseStatus,
+                    'keyboard_condition' => $handoverDetails['keyboard_condition'] ?? $keyboardCondition,
+                    'keyboard_status' => $handoverDetails['keyboard_status'] ?? $keyboardStatus,
+                    'received_by_name' => $handoverDetails['received_by_name'] ?? $receivedByName,
+                    'received_by_designation' => $handoverDetails['received_by_designation'] ?? $receivedByDesignation
+                ];
+                
+                $pdfContent = generateReturnPDF($pdfData);
+                
+                if ($pdfContent) {
+                    $tempFile = sys_get_temp_dir() . '/return_' . ($handoverDetails['handover_id'] ?? '') . '_' . time() . '.pdf';
+                    file_put_contents($tempFile, $pdfContent);
+                    
+                    $emailBody = "
+                        <html>
+                        <head>
+                            <style>
+                                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                                .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; }
+                                .content { padding: 20px; }
+                                .footer { background: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class='header'>
+                                <h2>Asset Return Confirmation</h2>
+                            </div>
+                            <div class='content'>
+                                <p>Dear {$handoverDetails['staff_name']},</p>
+                                <p>This email confirms that the following asset has been returned:</p>
+                                <ul>
+                                    <li><strong>Asset ID:</strong> {$assetDetails['asset_id']}</li>
+                                    <li><strong>Type:</strong> " . ucwords(str_replace('_', ' ', $assetTypeParam)) . "</li>
+                                    <li><strong>Category:</strong> " . ($assetDetails['category'] ?? 'N/A') . "</li>
+                                    <li><strong>Brand:</strong> " . ($assetDetails['brand'] ?? 'N/A') . "</li>
+                                    <li><strong>Model:</strong> " . ($assetDetails['model'] ?? 'N/A') . "</li>
+                                    <li><strong>Serial Number:</strong> " . ($assetDetails['serial_num'] ?? $assetDetails['serial'] ?? 'N/A') . "</li>
+                                    <li><strong>Return Date:</strong> " . date('d M Y', strtotime($returnDate)) . "</li>
+                                    <li><strong>Return Condition:</strong> {$returnCondition}</li>
+                                </ul>
+                                <p>Please find attached the complete return document for your records.</p>
+                                <p>If you have any questions or concerns, please contact the IT Department.</p>
+                            </div>
+                            <div class='footer'>
+                                <p>UNIKL RCMP IT Inventory System</p>
+                                <p>This is an automated email. Please do not reply.</p>
+                            </div>
+                        </body>
+                        </html>
+                    ";
+                    
+                    $attachments = [[
+                        'path' => $tempFile,
+                        'name' => 'Return_Document_' . ($handoverDetails['handover_id'] ?? $assetIdParam) . '_' . date('Ymd') . '.pdf',
+                        'type' => 'application/pdf'
+                    ]];
+                    
+                    $emailSent = sendEmail(
+                        $handoverDetails['email'],
+                        'Asset Return Confirmation - Asset ID: ' . $assetDetails['asset_id'],
+                        $emailBody,
+                        $attachments
+                    );
+                    
+                    if ($emailSent) {
+                        $successMessage = 'Asset return processed successfully! Confirmation email with PDF has been sent.';
+                    } else {
+                        $successMessage = 'Asset return processed successfully! However, email could not be sent.';
+                    }
+                    
+                    if (file_exists($tempFile)) {
+                        unlink($tempFile);
+                    }
+                } else {
+                    $successMessage = 'Asset return processed successfully! However, PDF could not be generated.';
                 }
+            } else {
+                $successMessage = 'Asset return processed successfully.';
             }
             
         } catch (PDOException $e) {
