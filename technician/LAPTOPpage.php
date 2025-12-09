@@ -598,6 +598,17 @@ function formatCategoryClass($category)
             color: #ffffff;
         }
 
+        .btn-action.repair {
+            color: #d35400;
+            border-color: rgba(211, 84, 0, 0.25);
+        }
+
+        .btn-action.repair:hover {
+            background: #d35400;
+            color: #ffffff;
+            border-color: #d35400;
+        }
+
         .action-tooltip {
             position: absolute;
             bottom: 100%;
@@ -823,6 +834,11 @@ function formatCategoryClass($category)
                                             <button class="btn-action return" onclick="window.location.href='HANDreturn.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Return asset">
                                                 <i class="fa-solid fa-rotate-left"></i>
                                                 <span class="action-tooltip">Return</span>
+                                            </button>
+                                        <?php elseif ($rawStatus === 'FAULTY') : ?>
+                                            <button class="btn-action repair" onclick="window.location.href='../pages/FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Repair asset">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                                <span class="action-tooltip">Repair</span>
                                             </button>
                                         <?php endif; ?>
                                     </div>

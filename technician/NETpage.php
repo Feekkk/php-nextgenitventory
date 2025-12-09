@@ -502,6 +502,17 @@ function formatStatusIcon($status)
             border-color: #1a1a2e;
         }
 
+        .btn-action.repair {
+            color: #d35400;
+            border-color: rgba(211, 84, 0, 0.25);
+        }
+
+        .btn-action.repair:hover {
+            background: #d35400;
+            color: #ffffff;
+            border-color: #d35400;
+        }
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -649,6 +660,7 @@ function formatStatusIcon($status)
                     <?php else : ?>
                         <?php foreach ($netAssets as $asset) : ?>
                             <?php
+                                $rawStatus = strtoupper(trim((string)($asset['status'] ?? '')));
                                 $statusClass = formatStatusClass($asset['status'] ?? '');
                                 $statusLabel = formatStatusLabel($asset['status'] ?? '');
                                 $locationParts = array_filter([$asset['building'] ?? '', $asset['level'] ?? '']);
@@ -699,6 +711,11 @@ function formatStatusIcon($status)
                                         <button class="btn-action" onclick="window.location.href='../pages/NETview.php?id=<?php echo $asset['asset_id']; ?>'">
                                             <i class="fa-solid fa-eye"></i> View
                                         </button>
+                                        <?php if ($rawStatus === 'FAULTY') : ?>
+                                            <button class="btn-action repair" onclick="window.location.href='../pages/FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=network'">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i> Repair
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
