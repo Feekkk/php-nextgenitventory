@@ -54,7 +54,7 @@ if ($assetDetails && $assetTypeParam && $assetIdParam) {
                s.staff_name, s.email, s.faculty
         FROM handover h
         LEFT JOIN staff_list s ON h.staff_id = s.staff_id
-        WHERE h.asset_type = ? AND h.asset_id = ? AND h.status = 'active'
+        WHERE h.asset_type = ? AND h.asset_id = ? AND (h.status = 'active' OR h.status = 'returned')
         ORDER BY h.handover_date DESC
         LIMIT 1
     ");
@@ -95,6 +95,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
     $returnNotes = trim($_POST['return_notes'] ?? '');
     $conditionCheck = isset($_POST['condition_check']) ? (int)$_POST['condition_check'] : 0;
     $newAssetStatus = trim($_POST['new_status'] ?? '');
+    $staffIc = trim($_POST['staff_ic'] ?? '');
+    
+    // Component conditions and statuses
+    $desktopCondition = trim($_POST['desktop_condition'] ?? 'OK');
+    $desktopStatus = trim($_POST['desktop_status'] ?? 'RETURN');
+    $harddiskCondition = trim($_POST['harddisk_condition'] ?? 'OK');
+    $harddiskStatus = trim($_POST['harddisk_status'] ?? 'RETURN');
+    $monitorCondition = trim($_POST['monitor_condition'] ?? 'OK');
+    $monitorStatus = trim($_POST['monitor_status'] ?? 'RETURN');
+    $mouseCondition = trim($_POST['mouse_condition'] ?? 'OK');
+    $mouseStatus = trim($_POST['mouse_status'] ?? 'RETURN');
+    $keyboardCondition = trim($_POST['keyboard_condition'] ?? 'OK');
+    $keyboardStatus = trim($_POST['keyboard_status'] ?? 'RETURN');
+    
+    // Get technician info for received_by
+    $technicianStmt = $pdo->prepare("SELECT tech_name FROM technician WHERE id = ?");
+    $technicianStmt->execute([$_SESSION['user_id']]);
+    $technicianInfo = $technicianStmt->fetch(PDO::FETCH_ASSOC);
+    $receivedByName = $technicianInfo['tech_name'] ?? 'IT Department';
+    $receivedByDesignation = 'IT TECHNICIAN';
     
     // Validation
     if (empty($returnDate)) {
@@ -129,6 +149,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
                     SET status = 'returned',
                         return_date = ?,
                         returned_by = ?,
+                        return_condition = ?,
+                        return_notes = ?,
+                        staff_ic = ?,
+                        received_by_name = ?,
+                        received_by_designation = ?,
+                        desktop_condition = ?,
+                        desktop_status = ?,
+                        harddisk_condition = ?,
+                        harddisk_status = ?,
+                        monitor_condition = ?,
+                        monitor_status = ?,
+                        mouse_condition = ?,
+                        mouse_status = ?,
+                        keyboard_condition = ?,
+                        keyboard_status = ?,
                         handover_notes = CONCAT(COALESCE(handover_notes, ''), 
                             CASE WHEN handover_notes IS NOT NULL AND handover_notes != '' THEN '\n\n--- RETURN ---\n' ELSE '--- RETURN ---\n' END,
                             'Return Date: ', ?, '\n',
@@ -139,6 +174,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
                 $updateHandoverStmt->execute([
                     $returnDate,
                     $_SESSION['user_id'],
+                    $returnCondition,
+                    $returnNotes ?: null,
+                    $staffIc ?: null,
+                    $receivedByName,
+                    $receivedByDesignation,
+                    $desktopCondition,
+                    $desktopStatus,
+                    $harddiskCondition,
+                    $harddiskStatus,
+                    $monitorCondition,
+                    $monitorStatus,
+                    $mouseCondition,
+                    $mouseStatus,
+                    $keyboardCondition,
+                    $keyboardStatus,
                     $returnDate,
                     $returnCondition,
                     $returnNotes ?: null,
@@ -215,10 +265,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
                 $assetDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             }
             
-            // Mark as returned
-            if ($handoverDetails) {
-                $handoverDetails['status'] = 'returned';
-                $handoverDetails['return_date'] = $returnDate;
+            // Refresh handover details with new return information
+            if ($handoverDetails && isset($handoverDetails['handover_id']) && $handoverDetails['handover_id']) {
+                $stmt = $pdo->prepare("
+                    SELECT h.*, 
+                           s.staff_name, s.email, s.faculty
+                    FROM handover h
+                    LEFT JOIN staff_list s ON h.staff_id = s.staff_id
+                    WHERE h.handover_id = ?
+                ");
+                $stmt->execute([$handoverDetails['handover_id']]);
+                $handoverDetails = $stmt->fetch(PDO::FETCH_ASSOC);
+            } else {
+                // Mark as returned with basic info
+                if ($handoverDetails) {
+                    $handoverDetails['status'] = 'returned';
+                    $handoverDetails['return_date'] = $returnDate;
+                    $handoverDetails['return_condition'] = $returnCondition;
+                    $handoverDetails['return_notes'] = $returnNotes;
+                }
             }
             
         } catch (PDOException $e) {
@@ -668,6 +733,97 @@ if ($assetTypeParam === 'laptop_desktop') {
                 </select>
                                 </div>
                                 <div class="form-group full-width">
+                                    <label>Component Condition & Status</label>
+                                    <div style="overflow-x: auto; margin-top: 10px;">
+                                        <table style="width: 100%; border-collapse: collapse; border: 1px solid rgba(0,0,0,0.1);">
+                                            <thead>
+                                                <tr style="background: rgba(26, 26, 46, 0.05);">
+                                                    <th style="padding: 10px; text-align: left; border: 1px solid rgba(0,0,0,0.1);">Item</th>
+                                                    <th style="padding: 10px; text-align: center; border: 1px solid rgba(0,0,0,0.1);">Condition</th>
+                                                    <th style="padding: 10px; text-align: center; border: 1px solid rgba(0,0,0,0.1);">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1);"><strong>Desktop</strong></td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="desktop_condition" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="OK" selected>OK</option>
+                                                            <option value="Damage">Damage</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="desktop_status" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="RETURN" selected>RETURN</option>
+                                                            <option value="MISSING">MISSING</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 10px 10px 10px 30px; border: 1px solid rgba(0,0,0,0.1);">Hard disk</td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="harddisk_condition" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="OK" selected>OK</option>
+                                                            <option value="Damage">Damage</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="harddisk_status" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="RETURN" selected>RETURN</option>
+                                                            <option value="MISSING">MISSING</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 10px 10px 10px 30px; border: 1px solid rgba(0,0,0,0.1);">Monitor</td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="monitor_condition" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="OK" selected>OK</option>
+                                                            <option value="Damage">Damage</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="monitor_status" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="RETURN" selected>RETURN</option>
+                                                            <option value="MISSING">MISSING</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 10px 10px 10px 30px; border: 1px solid rgba(0,0,0,0.1);">Mouse</td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="mouse_condition" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="OK" selected>OK</option>
+                                                            <option value="Damage">Damage</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="mouse_status" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="RETURN" selected>RETURN</option>
+                                                            <option value="MISSING">MISSING</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 10px 10px 10px 30px; border: 1px solid rgba(0,0,0,0.1);">Keyboard</td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="keyboard_condition" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="OK" selected>OK</option>
+                                                            <option value="Damage">Damage</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style="padding: 10px; border: 1px solid rgba(0,0,0,0.1); text-align: center;">
+                                                        <select name="keyboard_status" style="width: 100%; padding: 6px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;">
+                                                            <option value="RETURN" selected>RETURN</option>
+                                                            <option value="MISSING">MISSING</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="form-group full-width">
                                     <label for="return_notes">Return Notes</label>
                                     <textarea id="return_notes" name="return_notes" 
                                               placeholder="Add any notes about the return, damage, or issues found..."></textarea>
@@ -691,12 +847,88 @@ if ($assetTypeParam === 'laptop_desktop') {
                         </div>
                     </form>
                 <?php else : ?>
-                    <div class="alert" style="background: rgba(108, 117, 125, 0.1); border: 1px solid rgba(108, 117, 125, 0.2); color: #6c757d;">
-                        <strong>This asset has already been returned.</strong>
-                        <?php if (isset($handoverDetails['return_date']) && $handoverDetails['return_date']) : ?>
-                            <p style="margin: 10px 0 0 0;">Return Date: <?php echo date('d M Y', strtotime($handoverDetails['return_date'])); ?></p>
+                    <div class="info-section">
+                        <h3>Return Information</h3>
+                        <div class="info-grid">
+                            <?php if (isset($handoverDetails['return_date']) && $handoverDetails['return_date']) : ?>
+                                <div class="info-item">
+                                    <span class="info-label">Return Date</span>
+                                    <span class="info-value"><?php echo date('d M Y', strtotime($handoverDetails['return_date'])); ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($handoverDetails['return_condition'])) : ?>
+                                <div class="info-item">
+                                    <span class="info-label">Return Condition</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($handoverDetails['return_condition']); ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($handoverDetails['received_by_name'])) : ?>
+                                <div class="info-item">
+                                    <span class="info-label">Received By</span>
+                                    <span class="info-value"><?php echo htmlspecialchars($handoverDetails['received_by_name']); ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($handoverDetails['return_notes'])) : ?>
+                                <div class="info-item" style="grid-column: 1 / -1;">
+                                    <span class="info-label">Return Notes</span>
+                                    <span class="info-value" style="white-space: pre-wrap;"><?php echo htmlspecialchars($handoverDetails['return_notes']); ?></span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!empty($handoverDetails['desktop_condition']) || !empty($handoverDetails['harddisk_condition'])) : ?>
+                            <div style="margin-top: 20px;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #1a1a2e;">Component Status</h4>
+                                <div style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse; border: 1px solid rgba(0,0,0,0.1);">
+                                        <thead>
+                                            <tr style="background: rgba(26, 26, 46, 0.05);">
+                                                <th style="padding: 8px; text-align: left; border: 1px solid rgba(0,0,0,0.1); font-size: 0.85rem;">Item</th>
+                                                <th style="padding: 8px; text-align: center; border: 1px solid rgba(0,0,0,0.1); font-size: 0.85rem;">Condition</th>
+                                                <th style="padding: 8px; text-align: center; border: 1px solid rgba(0,0,0,0.1); font-size: 0.85rem;">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (!empty($handoverDetails['desktop_condition'])) : ?>
+                                                <tr>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1);"><strong>Desktop</strong></td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['desktop_condition']); ?></td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['desktop_status'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endif; ?>
+                                            <?php if (!empty($handoverDetails['harddisk_condition'])) : ?>
+                                                <tr>
+                                                    <td style="padding: 8px 8px 8px 30px; border: 1px solid rgba(0,0,0,0.1);">Hard disk</td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['harddisk_condition']); ?></td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['harddisk_status'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endif; ?>
+                                            <?php if (!empty($handoverDetails['monitor_condition'])) : ?>
+                                                <tr>
+                                                    <td style="padding: 8px 8px 8px 30px; border: 1px solid rgba(0,0,0,0.1);">Monitor</td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['monitor_condition']); ?></td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['monitor_status'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endif; ?>
+                                            <?php if (!empty($handoverDetails['mouse_condition'])) : ?>
+                                                <tr>
+                                                    <td style="padding: 8px 8px 8px 30px; border: 1px solid rgba(0,0,0,0.1);">Mouse</td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['mouse_condition']); ?></td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['mouse_status'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endif; ?>
+                                            <?php if (!empty($handoverDetails['keyboard_condition'])) : ?>
+                                                <tr>
+                                                    <td style="padding: 8px 8px 8px 30px; border: 1px solid rgba(0,0,0,0.1);">Keyboard</td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['keyboard_condition']); ?></td>
+                                                    <td style="padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center;"><?php echo htmlspecialchars($handoverDetails['keyboard_status'] ?? 'N/A'); ?></td>
+                                                </tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         <?php endif; ?>
-            </div>
+                    </div>
                 <?php endif; ?>
             </div>
         <?php else : ?>
