@@ -31,7 +31,7 @@ try {
     $netCount = $stmt->fetch()['count'] ?? 0;
     
     $totalAssets = $laptopCount + $avCount + $netCount;
-
+    
     // Status distribution across all assets
     $statusSql = "
         SELECT status, COUNT(*) as count FROM (
@@ -328,7 +328,7 @@ try {
                 <h2>Recent Activity</h2>
                 <ul class="activity-list">
                     <?php if (empty($recentActivity)): ?>
-                        <li class="activity-item">No recent activity</li>
+                    <li class="activity-item">No recent activity</li>
                     <?php else: ?>
                         <?php foreach ($recentActivity as $activity): ?>
                             <li class="activity-item">

@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'handover_by_designation' => 'IT Staff'
                 ];
                 
-                require_once '../services/pdf_generator.php';
+                require_once '../services/handover_pdf_generator.php';
                 require_once '../services/mail_config.php';
                 
                 $pdfContent = generateHandoverPDF($pdfData);
