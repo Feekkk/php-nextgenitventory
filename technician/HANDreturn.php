@@ -95,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
     $returnNotes = trim($_POST['return_notes'] ?? '');
     $conditionCheck = isset($_POST['condition_check']) ? (int)$_POST['condition_check'] : 0;
     $newAssetStatus = trim($_POST['new_status'] ?? '');
-    $staffIc = trim($_POST['staff_ic'] ?? '');
     
     // Component conditions and statuses
     $desktopCondition = trim($_POST['desktop_condition'] ?? 'OK');
@@ -151,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
                         returned_by = ?,
                         return_condition = ?,
                         return_notes = ?,
-                        staff_ic = ?,
                         received_by_name = ?,
                         received_by_designation = ?,
                         desktop_condition = ?,
@@ -176,7 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
                     $_SESSION['user_id'],
                     $returnCondition,
                     $returnNotes ?: null,
-                    $staffIc ?: null,
                     $receivedByName,
                     $receivedByDesignation,
                     $desktopCondition,

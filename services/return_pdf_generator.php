@@ -212,8 +212,7 @@ class ReturnPDFGenerator {
         // Return Statement
         $this->pdf->SetFont('helvetica', '', 10);
         $staffName = $data['staff_name'] ?? '';
-        $icNumber = $data['staff_ic'] ?? '_________';
-        $returnStatement = "I {$staffName}, with IC/Passport No: {$icNumber} return the hardware/peripherals as stated above in good/adverse conditions and checked perfectly by IT representative.";
+        $returnStatement = "I {$staffName}, return the hardware/peripherals as stated above in good/adverse conditions and checked perfectly by IT representative.";
         $this->pdf->MultiCell(0, 5, $returnStatement, 0, 'L');
         
         $this->pdf->Ln(10);
