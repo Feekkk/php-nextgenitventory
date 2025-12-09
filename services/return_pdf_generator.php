@@ -125,7 +125,7 @@ class ReturnPDFGenerator {
         $values = [
             $data['staff_name'] ?? '',
             $data['staff_id'] ?? '',
-            $data['staff_designation'] ?? '',
+            $data['staff_department'] ?? '',
             $data['staff_department'] ?? ''
         ];
         
@@ -242,7 +242,7 @@ class ReturnPDFGenerator {
         $this->pdf->Cell($col2Width - 50, 6, $data['received_by_name'] ?? 'IT Department', 0, 1, 'L');
         
         $this->pdf->Cell(50, 6, 'Designation:', 0, 0, 'L');
-        $this->pdf->Cell($col1Width - 50, 6, $data['staff_designation'] ?? '', 0, 0, 'L');
+        $this->pdf->Cell($col1Width - 50, 6, $data['staff_department'] ?? '', 0, 0, 'L');
         
         $this->pdf->SetX($startX + $col1Width + 10);
         $this->pdf->Cell(50, 6, 'Designation:', 0, 0, 'L');
