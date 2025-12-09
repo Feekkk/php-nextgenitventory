@@ -121,11 +121,10 @@ class ReturnPDFGenerator {
         $this->pdf->SetTextColor(0, 0, 0);
         
         $colWidths = [45, 40, 50, 0];
-        $headers = ['Name', 'Staff ID', 'Designation', 'Department'];
+        $headers = ['Name', 'Staff ID', 'Department'];
         $values = [
             $data['staff_name'] ?? '',
             $data['staff_id'] ?? '',
-            $data['staff_department'] ?? '',
             $data['staff_department'] ?? ''
         ];
         
