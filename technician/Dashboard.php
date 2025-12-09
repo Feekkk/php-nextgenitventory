@@ -88,7 +88,7 @@ try {
         SELECT asset_type, asset_id, action_type, field_name, new_value, created_at, tech_id, changed_by
         FROM asset_trails
         ORDER BY created_at DESC
-        LIMIT 6
+        LIMIT 4
     ";
     $stmt = $pdo->query($activitySql);
     $recentActivity = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -154,8 +154,8 @@ try {
 
         .quick-links-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
             margin-top: 16px;
         }
 
@@ -163,20 +163,28 @@ try {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
-            padding: 18px;
+            justify-content: center;
+            gap: 10px;
+            padding: 24px 20px;
             border-radius: 14px;
             background: #f8fafc;
             border: 1px solid rgba(0, 0, 0, 0.05);
             text-decoration: none;
             color: #0f172a;
             font-weight: 600;
+            font-size: 0.95rem;
             transition: all 0.2s ease;
+            min-height: 100px;
         }
 
         .quick-link-btn i {
-            font-size: 1.5rem;
+            font-size: 2rem;
             color: #6c5ce7;
+        }
+        
+        .quick-link-btn span {
+            font-size: 0.95rem;
+            text-align: center;
         }
 
         .quick-link-btn:hover {
