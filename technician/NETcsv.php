@@ -143,7 +143,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $tempLineNumber = 2;
                         $tempHandle = fopen($file['tmp_name'], 'r');
                         $tempHeaderRow = fgetcsv($tempHandle, 0, $delimiter);
-                        $tempHeaders = array_map($normalize, $tempHeaderRow);
+                        $tempHeaders = [];
+                        foreach ($tempHeaderRow as $index => $header) {
+                            $normalized = normalizeHeaderKey($header);
+                            $tempHeaders[$index] = $headerMap[$normalized] ?? '';
+                        }
                         $tempSequence = $currentSequence;
                         
                         while (($tempRow = fgetcsv($tempHandle, 0, $delimiter)) !== false) {
@@ -344,6 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
                                 ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
                             ]);
+                        }
                         }
                     } catch (PDOException $e) {
                         if ($pdo->inTransaction()) {
