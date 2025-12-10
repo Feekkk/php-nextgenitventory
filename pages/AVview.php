@@ -37,6 +37,32 @@ if ($assetId > 0) {
             ");
             $trailStmt->execute([':id' => $assetId]);
             $assetTrails = $trailStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $hasCreateEntry = false;
+            foreach ($assetTrails as $trail) {
+                if (strtoupper($trail['action_type']) === 'CREATE') {
+                    $hasCreateEntry = true;
+                    break;
+                }
+            }
+            
+            if (!$hasCreateEntry && !empty($asset['created_at'])) {
+                $createdByName = $asset['created_by_name'] ?? null;
+                $createdById = $asset['created_by'] ?? null;
+                
+                $createEntry = [
+                    'action_type' => 'CREATE',
+                    'field_name' => null,
+                    'old_value' => null,
+                    'new_value' => 'Asset created in system',
+                    'description' => 'Asset was initially added to the inventory system' . ($createdByName ? ' by ' . $createdByName : ''),
+                    'created_at' => $asset['created_at'],
+                    'tech_name' => $createdByName,
+                    'tech_id' => null,
+                    'changed_by' => $createdById
+                ];
+                array_unshift($assetTrails, $createEntry);
+            }
         }
     } catch (PDOException $e) {
         $error = 'Unable to load asset details. Please try again later.';
