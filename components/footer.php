@@ -157,7 +157,7 @@
                 <h4>Contact</h4>
                 <ul>
                     <li><i class="fa-solid fa-envelope" style="color: #fff;"></i> it@unikl.edu.my</li>
-                    <li><i class="fa-solid fa-phone" style="color: #fff;"></i> +60 X-XXXX XXXX</li>
+                    <li><i class="fa-solid fa-phone" style="color: #fff;"></i> +605 243 2635</li>
                     <li><i class="fa-solid fa-location-dot" style="color: #fff;"></i> Perak, Malaysia</li>
                 </ul>
             </div>
