@@ -405,9 +405,9 @@
             <li class="menu-item has-dropdown">
                 <a href="#" class="dropdown-toggle"><i class="fa fa-boxes"></i> Inventory</a>
                 <ul class="submenu">
-                    <li><a href="../technician/LAPTOPpage.php"><i class="fa fa-laptop"></i> Laptop</a></li>
-                    <li><a href="../technician/AVpage.php"><i class="fa fa-tv"></i> AV</a></li>
-                    <li><a href="../technician/NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
+                    <li><a href="../pages/LAPTOPpage.php"><i class="fa fa-laptop"></i> Laptop</a></li>
+                    <li><a href="../pages/AVpage.php"><i class="fa fa-tv"></i> AV</a></li>
+                    <li><a href="../pages/NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
                 </ul>
             </li>
             <li><a href="Report.php"><i class="fa fa-chart-bar"></i> Reports</a></li>

@@ -8,40 +8,44 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $pdo = getDBConnection();
-$avAssets = [];
-$avAssetsError = '';
-$classes = [];
+$laptopAssets = [];
+$laptopAssetsError = '';
+$categories = [];
 $statuses = [];
 $brands = [];
+$assignmentTypes = [];
 $locations = [];
 
 try {
     $stmt = $pdo->query("
-        SELECT aa.*, t.tech_name AS created_by_name
-        FROM av_assets aa
-        LEFT JOIN technician t ON aa.created_by = t.id
-        ORDER BY aa.created_at DESC, aa.asset_id DESC
+        SELECT la.*, sl.staff_name AS assigned_to_name
+        FROM laptop_desktop_assets la
+        LEFT JOIN staff_list sl ON la.staff_id = sl.staff_id
+        ORDER BY la.created_at DESC, la.asset_id DESC
     ");
-    $avAssets = $stmt->fetchAll();
+    $laptopAssets = $stmt->fetchAll();
     
-    $classStmt = $pdo->query("SELECT DISTINCT class FROM av_assets WHERE class IS NOT NULL AND class != '' ORDER BY class");
-    $classes = $classStmt->fetchAll(PDO::FETCH_COLUMN);
+    $categoryStmt = $pdo->query("SELECT DISTINCT category FROM laptop_desktop_assets WHERE category IS NOT NULL AND category != '' ORDER BY category");
+    $categories = $categoryStmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $statusStmt = $pdo->query("SELECT DISTINCT status FROM av_assets WHERE status IS NOT NULL AND status != '' ORDER BY status");
+    $statusStmt = $pdo->query("SELECT DISTINCT status FROM laptop_desktop_assets WHERE status IS NOT NULL AND status != '' ORDER BY status");
     $statuses = $statusStmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $brandStmt = $pdo->query("SELECT DISTINCT brand FROM av_assets WHERE brand IS NOT NULL AND brand != '' ORDER BY brand");
+    $brandStmt = $pdo->query("SELECT DISTINCT brand FROM laptop_desktop_assets WHERE brand IS NOT NULL AND brand != '' ORDER BY brand");
     $brands = $brandStmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $locationStmt = $pdo->query("SELECT DISTINCT location FROM av_assets WHERE location IS NOT NULL AND location != '' ORDER BY location");
+    $assignmentStmt = $pdo->query("SELECT DISTINCT assignment_type FROM laptop_desktop_assets WHERE assignment_type IS NOT NULL AND assignment_type != '' ORDER BY assignment_type");
+    $assignmentTypes = $assignmentStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $locationStmt = $pdo->query("SELECT DISTINCT location FROM laptop_desktop_assets WHERE location IS NOT NULL AND location != '' ORDER BY location");
     $locations = $locationStmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
-    $avAssetsError = 'Unable to load AV assets right now. Please try again later.';
+    $laptopAssetsError = 'Unable to load laptop/desktop assets right now. Please try again later.';
 }
 
 function formatAssetId($id)
 {
-    return sprintf('AV-%05d', $id);
+    return sprintf('LAP-%05d', $id);
 }
 
 function formatStatusClass($status)
@@ -72,7 +76,6 @@ function formatStatusIcon($status)
 {
     $status = strtoupper(trim($status ?? ''));
     $iconMap = [
-        'AVAILABLE' => 'fa-circle-check',
         'ACTIVE' => 'fa-circle-check',
         'DEPLOY' => 'fa-circle-check',
         'IN-USE' => 'fa-laptop',
@@ -83,9 +86,38 @@ function formatStatusIcon($status)
         'MAINTENANCE' => 'fa-wrench',
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
-        'UNAVAILABLE' => 'fa-circle-xmark',
     ];
     return $iconMap[$status] ?? 'fa-circle-question';
+}
+
+function formatCategoryClass($category)
+{
+    $category = trim((string)($category ?? ''));
+    if ($category === '') {
+        return 'other';
+    }
+    
+    $categoryUpper = strtoupper($category);
+    $categoryNormalized = str_replace([' ', '_'], '-', strtolower($category));
+    
+    $categoryMap = [
+        'NOTEBOOK' => 'notebook',
+        'NOTEBOOK-STANDBY' => 'notebook-standby',
+        'DESKTOP AIO' => 'desktop-aio',
+        'DESKTOP-AIO' => 'desktop-aio',
+        'DESKTOP AIO-SHARING' => 'desktop-aio-sharing',
+        'DESKTOP-AIO-SHARING' => 'desktop-aio-sharing'
+    ];
+    
+    if (isset($categoryMap[$categoryUpper])) {
+        return $categoryMap[$categoryUpper];
+    }
+    
+    if (in_array($categoryNormalized, ['notebook', 'notebook-standby', 'desktop-aio', 'desktop-aio-sharing'], true)) {
+        return $categoryNormalized;
+    }
+    
+    return 'other';
 }
 ?>
 <!DOCTYPE html>
@@ -93,7 +125,7 @@ function formatStatusIcon($status)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio / Visual Assets - UniKL RCMP IT Inventory</title>
+    <title>Laptop & Desktop Assets - UniKL RCMP IT Inventory</title>
     <link rel="icon" type="image/png" href="../public/rcmp.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -126,6 +158,17 @@ function formatStatusIcon($status)
             display: flex;
             gap: 15px;
             align-items: center;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .actions-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .dropdown-wrapper {
             position: relative;
         }
 
@@ -231,6 +274,27 @@ function formatStatusIcon($status)
             box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
         }
 
+        .btn-queue {
+            padding: 10px 20px;
+            background: #0984e3;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(9, 132, 227, 0.2);
+        }
+
+        .btn-queue:hover {
+            background: #0770c4;
+            box-shadow: 0 6px 16px rgba(9, 132, 227, 0.3);
+        }
+
         .btn-add i.fa-chevron-down {
             font-size: 0.8rem;
         }
@@ -332,6 +396,11 @@ function formatStatusIcon($status)
             background: rgba(26, 26, 46, 0.03);
         }
 
+        .assets-table th:last-child,
+        .assets-table td:last-child {
+            text-align: center;
+        }
+
         .asset-id {
             font-weight: 600;
             color: #1a1a2e;
@@ -345,23 +414,28 @@ function formatStatusIcon($status)
             font-weight: 500;
         }
 
-        .asset-type.projector {
-            background: rgba(108, 92, 231, 0.1);
-            color: #6c5ce7;
+        .asset-type.notebook {
+            background: rgba(9, 132, 227, 0.15);
+            color: #0984e3;
         }
 
-        .asset-type.speaker {
-            background: rgba(0, 206, 201, 0.1);
+        .asset-type.notebook-standby {
+            background: rgba(116, 185, 255, 0.15);
+            color: #74b9ff;
+        }
+
+        .asset-type.desktop-aio {
+            background: rgba(0, 206, 201, 0.15);
             color: #00cec9;
         }
 
-        .asset-type.display {
-            background: rgba(253, 121, 168, 0.1);
-            color: #fd79a8;
+        .asset-type.desktop-aio-sharing {
+            background: rgba(108, 92, 231, 0.15);
+            color: #6c5ce7;
         }
 
         .asset-type.other {
-            background: rgba(99, 110, 114, 0.1);
+            background: rgba(99, 110, 114, 0.15);
             color: #636e72;
         }
 
@@ -466,23 +540,55 @@ function formatStatusIcon($status)
         .action-buttons {
             display: flex;
             gap: 8px;
+            justify-content: center;
         }
 
         .btn-action {
-            padding: 6px 12px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 50%;
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: #ffffff;
-            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #2d3436;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
         .btn-action:hover {
             background: #1a1a2e;
             color: #ffffff;
             border-color: #1a1a2e;
+            transform: scale(1.05);
+        }
+
+        .btn-action.view {
+            color: #0984e3;
+        }
+
+        .btn-action.view:hover {
+            color: #ffffff;
+        }
+
+        .btn-action.handover {
+            color: #00b894;
+        }
+
+        .btn-action.handover:hover {
+            color: #ffffff;
+        }
+
+        .btn-action.return {
+            color: #e17055;
+        }
+
+        .btn-action.return:hover {
+            color: #ffffff;
         }
 
         .btn-action.repair {
@@ -494,6 +600,38 @@ function formatStatusIcon($status)
             background: #d35400;
             color: #ffffff;
             border-color: #d35400;
+        }
+
+        .action-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            background: #1a1a2e;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .action-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1a1a2e;
+        }
+
+        .btn-action:hover .action-tooltip {
+            opacity: 1;
         }
 
         .empty-state {
@@ -555,23 +693,25 @@ function formatStatusIcon($status)
 
     <div class="assets-page-container">
         <div class="page-header">
-            <h1 class="page-title">Audio / Visual Assets</h1>
+            <h1 class="page-title">Laptop & Desktop Assets</h1>
             <div class="page-actions">
-                <div>
-                    <button class="btn-add" id="btn-add" type="button">
-                        <i class="fa-solid fa-plus"></i>
-                        Add Assets
-                        <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-menu" id="addDropdown">
-                        <button type="button" onclick="window.location.href='AVadd.php'">
-                            <i class="fa-solid fa-file-circle-plus"></i>
-                            Add single asset
+                <div class="actions-group">
+                    <div class="dropdown-wrapper">
+                        <button class="btn-add" id="btn-add" type="button">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Assets
+                            <i class="fa-solid fa-chevron-down"></i>
                         </button>
-                        <button type="button" class="import" onclick="window.location.href='AVcsv.php'">
-                            <i class="fa-solid fa-file-import"></i>
-                            Import via CSV
-                        </button>
+                        <div class="dropdown-menu" id="addDropdown">
+                            <button type="button" onclick="window.location.href='LAPTOPadd.php'">
+                                <i class="fa-solid fa-file-circle-plus"></i>
+                                Add single asset
+                            </button>
+                            <button type="button" class="import" onclick="window.location.href='LAPTOPcsv.php'">
+                                <i class="fa-solid fa-file-import"></i>
+                                Import via CSV
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -591,7 +731,7 @@ function formatStatusIcon($status)
         <div class="search-section">
             <div class="search-box">
                 <i class="fa-solid fa-search"></i>
-                <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Location..." id="searchInput">
+                <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Assigned To..." id="searchInput">
             </div>
         </div>
 
@@ -603,35 +743,36 @@ function formatStatusIcon($status)
                         <th>Type</th>
                         <th>Brand/Model</th>
                         <th>Serial Number</th>
-                        <th>Location</th>
+                        <th>Assigned To</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="assetsTableBody">
-                    <?php if ($avAssetsError) : ?>
+                    <?php if ($laptopAssetsError) : ?>
                         <tr>
                             <td colspan="7">
-                                <div class="data-message"><?php echo htmlspecialchars($avAssetsError); ?></div>
+                                <div class="data-message"><?php echo htmlspecialchars($laptopAssetsError); ?></div>
                             </td>
                         </tr>
-                    <?php elseif (empty($avAssets)) : ?>
+                    <?php elseif (empty($laptopAssets)) : ?>
                         <tr>
                             <td colspan="7">
                                 <div class="empty-state">
-                                    <i class="fa-solid fa-tv"></i>
+                                    <i class="fa-solid fa-laptop"></i>
                                     <p>No assets found</p>
-                                    <span>Start by adding your first AV equipment</span>
+                                    <span>Start by adding your first laptop or desktop asset</span>
                                 </div>
                             </td>
                         </tr>
                     <?php else : ?>
-                        <?php foreach ($avAssets as $asset) : ?>
+                        <?php foreach ($laptopAssets as $asset) : ?>
                             <?php
-                                $rawStatus = strtoupper(trim((string)($asset['status'] ?? '')));
                                 $statusClass = formatStatusClass($asset['status'] ?? '');
                                 $statusLabel = formatStatusLabel($asset['status'] ?? '');
-                                $class = trim((string)($asset['class'] ?? ''));
+                                $rawStatus = strtoupper(trim((string)($asset['status'] ?? '')));
+                                $category = trim((string)($asset['category'] ?? ''));
+                                $categoryClass = formatCategoryClass($category);
                                 $brand = trim((string)($asset['brand'] ?? ''));
                                 $model = trim((string)($asset['model'] ?? ''));
                                 $brandModel = trim($brand . ' ' . $model);
@@ -642,27 +783,29 @@ function formatStatusIcon($status)
                                 if ($serial === '') {
                                     $serial = '-';
                                 }
-                                $location = trim((string)($asset['location'] ?? ''));
-                                if ($location === '') {
-                                    $location = '-';
+                                $assignedTo = trim((string)($asset['assigned_to_name'] ?? ''));
+                                if ($assignedTo === '') {
+                                    $assignedTo = '-';
                                 }
                             ?>
                             <tr data-asset-id="<?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?>"
                                 data-serial="<?php echo htmlspecialchars(strtolower($serial)); ?>"
                                 data-brand="<?php echo htmlspecialchars(strtolower($brand)); ?>"
                                 data-model="<?php echo htmlspecialchars(strtolower($model)); ?>"
-                                data-class="<?php echo htmlspecialchars($class); ?>"
+                                data-category="<?php echo htmlspecialchars($category); ?>"
                                 data-status="<?php echo htmlspecialchars(strtoupper($asset['status'] ?? '')); ?>"
-                                data-location="<?php echo htmlspecialchars(strtolower($location)); ?>">
+                                data-assigned="<?php echo htmlspecialchars(strtolower($assignedTo)); ?>"
+                                data-assignment-type="<?php echo htmlspecialchars(strtolower($asset['assignment_type'] ?? '')); ?>"
+                                data-location="<?php echo htmlspecialchars(strtolower($asset['location'] ?? '')); ?>">
                                 <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
                                 <td>
-                                    <span class="asset-type <?php echo htmlspecialchars(strtolower($class ?: 'other')); ?>">
-                                        <?php echo htmlspecialchars($class ?: 'Other'); ?>
+                                    <span class="asset-type <?php echo htmlspecialchars($categoryClass); ?>">
+                                        <?php echo htmlspecialchars($category ?: 'Other'); ?>
                                     </span>
                                 </td>
                                 <td><?php echo htmlspecialchars($brandModel); ?></td>
                                 <td><?php echo htmlspecialchars($serial); ?></td>
-                                <td><?php echo htmlspecialchars($location); ?></td>
+                                <td><?php echo htmlspecialchars($assignedTo); ?></td>
                                 <td>
                                     <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>" title="<?php echo htmlspecialchars($statusLabel); ?>">
                                         <i class="fa-solid <?php echo htmlspecialchars(formatStatusIcon($asset['status'] ?? '')); ?>"></i>
@@ -671,12 +814,24 @@ function formatStatusIcon($status)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="window.location.href='../pages/AVview.php?id=<?php echo $asset['asset_id']; ?>'">
-                                            <i class="fa-solid fa-eye"></i> View
+                                        <button class="btn-action view" onclick="window.location.href='LAPTOPview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
+                                            <i class="fa-solid fa-eye"></i>
+                                            <span class="action-tooltip">View details</span>
                                         </button>
-                                        <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
-                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')">
-                                                <i class="fa-solid fa-screwdriver-wrench"></i> Repair
+                                        <?php if ($rawStatus === 'ACTIVE') : ?>
+                                            <button class="btn-action handover" onclick="window.location.href='HANDform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Handover asset">
+                                                <i class="fa-solid fa-hand-holding"></i>
+                                                <span class="action-tooltip">Handover</span>
+                                            </button>
+                                        <?php elseif ($rawStatus === 'DEPLOY') : ?>
+                                            <button class="btn-action return" onclick="window.location.href='HANDreturn.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Return asset">
+                                                <i class="fa-solid fa-rotate-left"></i>
+                                                <span class="action-tooltip">Return</span>
+                                            </button>
+                                        <?php elseif ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
+                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Repair asset">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                                <span class="action-tooltip">Repair</span>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -694,8 +849,8 @@ function formatStatusIcon($status)
     </footer>
 
     <script>
-        const inStockStatuses = ['ACTIVE', 'RESERVED', 'FAULTY', 'DISPOSED', 'MAINTENANCE'];
-        const outStockStatuses = ['LOST', 'DEPLOY'];
+        const inStockStatuses = ['ACTIVE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'MAINTENANCE', 'NON-ACTIVE', 'LOST'];
+        const outStockStatuses = ['DEPLOY', 'IN-USE', 'LOST'];
         let currentStockType = 'in-stock';
 
         const stockTabs = document.querySelectorAll('.stock-tab');
@@ -738,13 +893,13 @@ function formatStatusIcon($status)
                     const serial = row.dataset.serial || '';
                     const brand = row.dataset.brand || '';
                     const model = row.dataset.model || '';
-                    const location = row.dataset.location || '';
+                    const assigned = row.dataset.assigned || '';
                     
                     show = assetId.includes(searchTerm) ||
                            serial.includes(searchTerm) ||
                            brand.includes(searchTerm) ||
                            model.includes(searchTerm) ||
-                           location.includes(searchTerm);
+                           assigned.includes(searchTerm);
                 }
                 
                 row.style.display = show ? '' : 'none';

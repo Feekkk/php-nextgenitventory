@@ -558,9 +558,9 @@ if (isset($_SESSION['user_id'])) {
             <li class="menu-item has-dropdown">
                 <a href="#" class="dropdown-toggle"><i class="fa fa-boxes"></i> Inventory</a>
                 <ul class="submenu">
-                    <li><a href="LAPTOPpage.php"><i class="fa fa-laptop"></i> Laptop</a></li>
-                    <li><a href="AVpage.php"><i class="fa fa-tv"></i> AV</a></li>
-                    <li><a href="NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
+                    <li><a href="../pages/LAPTOPpage.php"><i class="fa fa-laptop"></i> Laptop</a></li>
+                    <li><a href="../pages/AVpage.php"><i class="fa fa-tv"></i> AV</a></li>
+                    <li><a href="../pages/NETpage.php"><i class="fa fa-network-wired"></i> Network</a></li>
                 </ul>
             </li>
             <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>

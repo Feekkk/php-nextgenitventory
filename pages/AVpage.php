@@ -8,48 +8,47 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $pdo = getDBConnection();
-$netAssets = [];
-$netAssetsError = '';
+$avAssets = [];
+$avAssetsError = '';
+$classes = [];
 $statuses = [];
 $brands = [];
-$buildings = [];
-$levels = [];
+$locations = [];
 
 try {
     $stmt = $pdo->query("
-        SELECT na.*, t.tech_name AS created_by_name
-        FROM net_assets na
-        LEFT JOIN technician t ON na.created_by = t.id
-        ORDER BY na.created_at DESC, na.asset_id DESC
+        SELECT aa.*, t.tech_name AS created_by_name
+        FROM av_assets aa
+        LEFT JOIN technician t ON aa.created_by = t.id
+        ORDER BY aa.created_at DESC, aa.asset_id DESC
     ");
-    $netAssets = $stmt->fetchAll();
+    $avAssets = $stmt->fetchAll();
     
-    $statusStmt = $pdo->query("SELECT DISTINCT status FROM net_assets WHERE status IS NOT NULL AND status != '' ORDER BY status");
+    $classStmt = $pdo->query("SELECT DISTINCT class FROM av_assets WHERE class IS NOT NULL AND class != '' ORDER BY class");
+    $classes = $classStmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    $statusStmt = $pdo->query("SELECT DISTINCT status FROM av_assets WHERE status IS NOT NULL AND status != '' ORDER BY status");
     $statuses = $statusStmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $brandStmt = $pdo->query("SELECT DISTINCT brand FROM net_assets WHERE brand IS NOT NULL AND brand != '' ORDER BY brand");
+    $brandStmt = $pdo->query("SELECT DISTINCT brand FROM av_assets WHERE brand IS NOT NULL AND brand != '' ORDER BY brand");
     $brands = $brandStmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $buildingStmt = $pdo->query("SELECT DISTINCT building FROM net_assets WHERE building IS NOT NULL AND building != '' ORDER BY building");
-    $buildings = $buildingStmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    $levelStmt = $pdo->query("SELECT DISTINCT level FROM net_assets WHERE level IS NOT NULL AND level != '' ORDER BY level");
-    $levels = $levelStmt->fetchAll(PDO::FETCH_COLUMN);
+    $locationStmt = $pdo->query("SELECT DISTINCT location FROM av_assets WHERE location IS NOT NULL AND location != '' ORDER BY location");
+    $locations = $locationStmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
-    $netAssetsError = 'Unable to load network assets right now. Please try again later.';
+    $avAssetsError = 'Unable to load AV assets right now. Please try again later.';
 }
 
 function formatAssetId($id)
 {
-    return sprintf('NET-%05d', $id);
+    return sprintf('AV-%05d', $id);
 }
 
 function formatStatusClass($status)
 {
     $status = strtoupper(trim($status ?? ''));
     $map = [
-        'AVAILABLE' => 'available',
-        'ONLINE' => 'online',
+        'ACTIVE' => 'active',
         'DEPLOY' => 'deploy',
         'IN-USE' => 'in-use',
         'MAINTENANCE' => 'maintenance',
@@ -57,10 +56,8 @@ function formatStatusClass($status)
         'DISPOSE' => 'dispose',
         'FAULTY' => 'faulty',
         'RESERVED' => 'reserved',
-        'OFFLINE' => 'offline',
         'NON-ACTIVE' => 'non-active',
         'LOST' => 'lost',
-        'UNAVAILABLE' => 'unavailable',
     ];
     return $map[$status] ?? 'unknown';
 }
@@ -76,15 +73,14 @@ function formatStatusIcon($status)
     $status = strtoupper(trim($status ?? ''));
     $iconMap = [
         'AVAILABLE' => 'fa-circle-check',
+        'ACTIVE' => 'fa-circle-check',
         'DEPLOY' => 'fa-circle-check',
-        'ONLINE' => 'fa-circle-check',
         'IN-USE' => 'fa-laptop',
         'FAULTY' => 'fa-triangle-exclamation',
         'DISPOSE' => 'fa-trash',
         'DISPOSED' => 'fa-trash',
         'RESERVED' => 'fa-bookmark',
         'MAINTENANCE' => 'fa-wrench',
-        'OFFLINE' => 'fa-circle-xmark',
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
         'UNAVAILABLE' => 'fa-circle-xmark',
@@ -97,7 +93,7 @@ function formatStatusIcon($status)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Assets - UniKL RCMP IT Inventory</title>
+    <title>Audio / Visual Assets - UniKL RCMP IT Inventory</title>
     <link rel="icon" type="image/png" href="../public/rcmp.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -349,17 +345,17 @@ function formatStatusIcon($status)
             font-weight: 500;
         }
 
-        .asset-type.router {
+        .asset-type.projector {
             background: rgba(108, 92, 231, 0.1);
             color: #6c5ce7;
         }
 
-        .asset-type.switch {
+        .asset-type.speaker {
             background: rgba(0, 206, 201, 0.1);
             color: #00cec9;
         }
 
-        .asset-type.access-point {
+        .asset-type.display {
             background: rgba(253, 121, 168, 0.1);
             color: #fd79a8;
         }
@@ -387,8 +383,8 @@ function formatStatusIcon($status)
         }
 
         .status-badge.available,
-        .status-badge.deploy,
-        .status-badge.online {
+        .status-badge.active,
+        .status-badge.deploy {
             background: rgba(0, 184, 148, 0.15);
             color: #00b894;
         }
@@ -415,12 +411,6 @@ function formatStatusIcon($status)
             color: #0984e3;
         }
 
-        .status-badge.offline,
-        .status-badge.unavailable {
-            background: rgba(214, 48, 49, 0.15);
-            color: #d63031;
-        }
-
         .status-badge.non-active {
             background: rgba(99, 110, 114, 0.15);
             color: #636e72;
@@ -431,9 +421,9 @@ function formatStatusIcon($status)
             color: #d63031;
         }
 
-        .status-badge.spare {
-            background: rgba(255, 159, 67, 0.15);
-            color: #d35400;
+        .status-badge.unavailable {
+            background: rgba(214, 48, 49, 0.15);
+            color: #d63031;
         }
 
         .status-badge.unknown {
@@ -476,39 +466,23 @@ function formatStatusIcon($status)
         .action-buttons {
             display: flex;
             gap: 8px;
-            justify-content: center;
         }
 
         .btn-action {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border-radius: 50%;
+            padding: 6px 12px;
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: #ffffff;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #2d3436;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
+            font-size: 0.85rem;
         }
 
         .btn-action:hover {
             background: #1a1a2e;
             color: #ffffff;
             border-color: #1a1a2e;
-            transform: scale(1.05);
-        }
-
-        .btn-action.view {
-            color: #0984e3;
-        }
-
-        .btn-action.view:hover {
-            color: #ffffff;
         }
 
         .btn-action.repair {
@@ -520,49 +494,6 @@ function formatStatusIcon($status)
             background: #d35400;
             color: #ffffff;
             border-color: #d35400;
-        }
-
-        .btn-action.in-stock {
-            color: #00b894;
-            border-color: rgba(0, 184, 148, 0.25);
-        }
-
-        .btn-action.in-stock:hover {
-            background: #00b894;
-            color: #ffffff;
-            border-color: #00b894;
-        }
-
-        .action-tooltip {
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            margin-bottom: 8px;
-            padding: 6px 12px;
-            background: #1a1a2e;
-            color: #ffffff;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            z-index: 1000;
-        }
-
-        .action-tooltip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 5px solid transparent;
-            border-top-color: #1a1a2e;
-        }
-
-        .btn-action:hover .action-tooltip {
-            opacity: 1;
         }
 
         .empty-state {
@@ -585,18 +516,6 @@ function formatStatusIcon($status)
         .empty-state span {
             font-size: 0.9rem;
             color: #636e72;
-        }
-
-        .asset-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            font-size: 0.85rem;
-            color: #636e72;
-        }
-
-        .asset-meta span:first-child {
-            font-weight: 600;
         }
 
         .data-message {
@@ -636,7 +555,7 @@ function formatStatusIcon($status)
 
     <div class="assets-page-container">
         <div class="page-header">
-            <h1 class="page-title">Network Assets</h1>
+            <h1 class="page-title">Audio / Visual Assets</h1>
             <div class="page-actions">
                 <div>
                     <button class="btn-add" id="btn-add" type="button">
@@ -645,11 +564,11 @@ function formatStatusIcon($status)
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-menu" id="addDropdown">
-                        <button type="button" onclick="window.location.href='NETadd.php'">
+                        <button type="button" onclick="window.location.href='AVadd.php'">
                             <i class="fa-solid fa-file-circle-plus"></i>
                             Add single asset
                         </button>
-                        <button type="button" class="import" onclick="window.location.href='NETcsv.php'">
+                        <button type="button" class="import" onclick="window.location.href='AVcsv.php'">
                             <i class="fa-solid fa-file-import"></i>
                             Import via CSV
                         </button>
@@ -672,7 +591,7 @@ function formatStatusIcon($status)
         <div class="search-section">
             <div class="search-box">
                 <i class="fa-solid fa-search"></i>
-                <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, MAC, IP, Location..." id="searchInput">
+                <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Location..." id="searchInput">
             </div>
         </div>
 
@@ -681,99 +600,83 @@ function formatStatusIcon($status)
                 <thead>
                     <tr>
                         <th>Asset ID</th>
-                        <th>Brand / Model</th>
+                        <th>Type</th>
+                        <th>Brand/Model</th>
                         <th>Serial Number</th>
-                        <th>MAC Address</th>
-                        <th>IP Address</th>
                         <th>Location</th>
                         <th>Status</th>
-                        <th>Remarks</th>
-                        <th>Created By</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="assetsTableBody">
-                    <?php if ($netAssetsError) : ?>
+                    <?php if ($avAssetsError) : ?>
                         <tr>
-                            <td colspan="10">
-                                <div class="data-message"><?php echo htmlspecialchars($netAssetsError); ?></div>
+                            <td colspan="7">
+                                <div class="data-message"><?php echo htmlspecialchars($avAssetsError); ?></div>
                             </td>
                         </tr>
-                    <?php elseif (empty($netAssets)) : ?>
+                    <?php elseif (empty($avAssets)) : ?>
                         <tr>
-                            <td colspan="10">
+                            <td colspan="7">
                                 <div class="empty-state">
-                                    <i class="fa-solid fa-network-wired"></i>
+                                    <i class="fa-solid fa-tv"></i>
                                     <p>No assets found</p>
-                                    <span>Start by adding your first network equipment</span>
+                                    <span>Start by adding your first AV equipment</span>
                                 </div>
                             </td>
                         </tr>
                     <?php else : ?>
-                        <?php foreach ($netAssets as $asset) : ?>
+                        <?php foreach ($avAssets as $asset) : ?>
                             <?php
                                 $rawStatus = strtoupper(trim((string)($asset['status'] ?? '')));
                                 $statusClass = formatStatusClass($asset['status'] ?? '');
                                 $statusLabel = formatStatusLabel($asset['status'] ?? '');
-                                $locationParts = array_filter([$asset['building'] ?? '', $asset['level'] ?? '']);
-                                $locationLabel = !empty($locationParts) ? implode(', ', $locationParts) : '-';
-                                $createdMeta = $asset['created_at'] ? date('d M Y, H:i', strtotime($asset['created_at'])) : '-';
-                                $remarks = $asset['remarks'] ?? '';
+                                $class = trim((string)($asset['class'] ?? ''));
                                 $brand = trim((string)($asset['brand'] ?? ''));
                                 $model = trim((string)($asset['model'] ?? ''));
                                 $brandModel = trim($brand . ' ' . $model);
                                 if ($brandModel === '') {
                                     $brandModel = '-';
                                 }
-                                $serial = trim((string)($asset['serial'] ?? ''));
+                                $serial = trim((string)($asset['serial_num'] ?? ''));
                                 if ($serial === '') {
                                     $serial = '-';
+                                }
+                                $location = trim((string)($asset['location'] ?? ''));
+                                if ($location === '') {
+                                    $location = '-';
                                 }
                             ?>
                             <tr data-asset-id="<?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?>"
                                 data-serial="<?php echo htmlspecialchars(strtolower($serial)); ?>"
                                 data-brand="<?php echo htmlspecialchars(strtolower($brand)); ?>"
                                 data-model="<?php echo htmlspecialchars(strtolower($model)); ?>"
+                                data-class="<?php echo htmlspecialchars($class); ?>"
                                 data-status="<?php echo htmlspecialchars(strtoupper($asset['status'] ?? '')); ?>"
-                                data-mac="<?php echo htmlspecialchars(strtolower($asset['mac_add'] ?? '')); ?>"
-                                data-ip="<?php echo htmlspecialchars(strtolower($asset['ip_add'] ?? '')); ?>"
-                                data-building="<?php echo htmlspecialchars(strtolower($asset['building'] ?? '')); ?>"
-                                data-level="<?php echo htmlspecialchars(strtolower($asset['level'] ?? '')); ?>">
+                                data-location="<?php echo htmlspecialchars(strtolower($location)); ?>">
                                 <td class="asset-id"><?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?></td>
+                                <td>
+                                    <span class="asset-type <?php echo htmlspecialchars(strtolower($class ?: 'other')); ?>">
+                                        <?php echo htmlspecialchars($class ?: 'Other'); ?>
+                                    </span>
+                                </td>
                                 <td><?php echo htmlspecialchars($brandModel); ?></td>
                                 <td><?php echo htmlspecialchars($serial); ?></td>
-                                <td><?php echo htmlspecialchars($asset['mac_add'] ?: '-'); ?></td>
-                                <td><?php echo htmlspecialchars($asset['ip_add'] ?: '-'); ?></td>
-                                <td><?php echo htmlspecialchars($locationLabel); ?></td>
+                                <td><?php echo htmlspecialchars($location); ?></td>
                                 <td>
                                     <span class="status-badge <?php echo htmlspecialchars($statusClass); ?>" title="<?php echo htmlspecialchars($statusLabel); ?>">
                                         <i class="fa-solid <?php echo htmlspecialchars(formatStatusIcon($asset['status'] ?? '')); ?>"></i>
                                         <span class="status-tooltip"><?php echo htmlspecialchars($statusLabel); ?></span>
                                     </span>
                                 </td>
-                                <td><?php echo htmlspecialchars($remarks !== '' ? $remarks : '-'); ?></td>
-                                <td>
-                                    <div class="asset-meta">
-                                        <span><?php echo htmlspecialchars($asset['created_by_name'] ?? 'Unknown'); ?></span>
-                                        <span><?php echo htmlspecialchars($createdMeta); ?></span>
-                                    </div>
-                                </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action view" onclick="window.location.href='../pages/NETview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
-                                            <i class="fa-solid fa-eye"></i>
-                                            <span class="action-tooltip">View details</span>
+                                        <button class="btn-action" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'">
+                                            <i class="fa-solid fa-eye"></i> View
                                         </button>
-                                        <?php if ($rawStatus === 'ONLINE') : ?>
-                                            <button class="btn-action in-stock" onclick="markInStock(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as in stock">
-                                                <i class="fa-solid fa-warehouse"></i>
-                                                <span class="action-tooltip">In Stock</span>
-                                            </button>
-                                        <?php endif; ?>
                                         <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
-                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'network')" aria-label="Repair asset">
-                                                <i class="fa-solid fa-screwdriver-wrench"></i>
-                                                <span class="action-tooltip">Repair</span>
+                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i> Repair
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -791,8 +694,8 @@ function formatStatusIcon($status)
     </footer>
 
     <script>
-        const inStockStatuses = [ 'OFFLINE', 'FAULTY', 'MAINTENANCE', 'DISPOSE'];
-        const outStockStatuses = ['ONLINE'];
+        const inStockStatuses = ['ACTIVE', 'RESERVED', 'FAULTY', 'DISPOSED', 'MAINTENANCE'];
+        const outStockStatuses = ['LOST', 'DEPLOY'];
         let currentStockType = 'in-stock';
 
         const stockTabs = document.querySelectorAll('.stock-tab');
@@ -835,19 +738,13 @@ function formatStatusIcon($status)
                     const serial = row.dataset.serial || '';
                     const brand = row.dataset.brand || '';
                     const model = row.dataset.model || '';
-                    const mac = row.dataset.mac || '';
-                    const ip = row.dataset.ip || '';
-                    const building = row.dataset.building || '';
-                    const level = row.dataset.level || '';
+                    const location = row.dataset.location || '';
                     
                     show = assetId.includes(searchTerm) ||
                            serial.includes(searchTerm) ||
                            brand.includes(searchTerm) ||
                            model.includes(searchTerm) ||
-                           mac.includes(searchTerm) ||
-                           ip.includes(searchTerm) ||
-                           building.includes(searchTerm) ||
-                           level.includes(searchTerm);
+                           location.includes(searchTerm);
                 }
                 
                 row.style.display = show ? '' : 'none';
@@ -869,33 +766,6 @@ function formatStatusIcon($status)
                 dropdown.classList.remove('open');
             }
         });
-
-        function markInStock(assetId) {
-            if (!confirm('Mark this asset as in stock? Status will be changed to OFFLINE and building will be set to IT office.')) {
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('asset_id', assetId);
-
-            fetch('../services/mark_in_stock.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Asset marked as in stock successfully!');
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while marking the asset as in stock.');
-            });
-        }
 
         function openRepairForm(assetId, assetType) {
             const formData = new FormData();

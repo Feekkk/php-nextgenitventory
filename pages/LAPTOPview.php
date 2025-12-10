@@ -767,7 +767,7 @@ function getTrailActionClass($actionType) {
     <div class="view-page-container">
         <div class="page-header">
             <h1 class="page-title">Laptop/Desktop Asset Details</h1>
-            <a href="../technician/LAPTOPpage.php" class="btn-back">
+            <a href="LAPTOPpage.php" class="btn-back">
                 <i class="fa-solid fa-arrow-left"></i>
                 Back to Assets
             </a>
