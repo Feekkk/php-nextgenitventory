@@ -278,3 +278,37 @@ CREATE TABLE IF NOT EXISTS `handover` (
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
     FOREIGN KEY (`returned_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Repair / Faulty Intake Table
+CREATE TABLE IF NOT EXISTS `repair_faulty` (
+    `repair_id` INT(11) NOT NULL AUTO_INCREMENT,
+    `asset_type` ENUM('laptop_desktop', 'av', 'network') NOT NULL,
+    `asset_id` INT(11) NOT NULL,
+    `reported_by` INT(11) DEFAULT NULL,
+    `reported_by_name` VARCHAR(100) DEFAULT NULL,
+    `severity` ENUM('Low', 'Medium', 'High', 'Critical') DEFAULT NULL,
+    `issue_description` TEXT NOT NULL,
+    `actions_performed` TEXT DEFAULT NULL,
+    `parts_used` VARCHAR(255) DEFAULT NULL,
+    `estimated_cost` DECIMAL(10,2) DEFAULT NULL,
+    `vendor` VARCHAR(255) DEFAULT NULL,
+    `repair_status` ENUM('In Repair', 'Completed', 'On Hold') DEFAULT 'In Repair',
+    `return_target_date` DATE DEFAULT NULL,
+    `return_actual_date` DATE DEFAULT NULL,
+    `remarks` TEXT DEFAULT NULL,
+    `created_by` INT(11) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`repair_id`),
+    INDEX `idx_asset_type` (`asset_type`),
+    INDEX `idx_asset_id` (`asset_id`),
+    INDEX `idx_reported_by` (`reported_by`),
+    INDEX `idx_severity` (`severity`),
+    INDEX `idx_repair_status` (`repair_status`),
+    INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_return_target_date` (`return_target_date`),
+    INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_asset_composite` (`asset_type`, `asset_id`),
+    FOREIGN KEY (`reported_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
