@@ -169,16 +169,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $repairId = $pdo->lastInsertId();
             
-            // Update asset status to MAINTENANCE if not already
+            // Get old status before update
+            $oldStatus = $assetDetails['status'] ?? 'Unknown';
+            
+            // Set default status based on asset type
+            $defaultStatus = '';
             if ($postAssetType === 'laptop_desktop') {
-                $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = 'MAINTENANCE' WHERE asset_id = ? AND status != 'MAINTENANCE'");
-                $updateStmt->execute([$postAssetId]);
+                $defaultStatus = 'ACTIVE';
+                $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = ? WHERE asset_id = ?");
+                $updateStmt->execute([$defaultStatus, $postAssetId]);
             } elseif ($postAssetType === 'av') {
-                $updateStmt = $pdo->prepare("UPDATE av_assets SET status = 'MAINTENANCE' WHERE asset_id = ? AND status != 'MAINTENANCE'");
-                $updateStmt->execute([$postAssetId]);
+                $defaultStatus = 'ACTIVE';
+                $updateStmt = $pdo->prepare("UPDATE av_assets SET status = ? WHERE asset_id = ?");
+                $updateStmt->execute([$defaultStatus, $postAssetId]);
             } elseif ($postAssetType === 'network') {
-                $updateStmt = $pdo->prepare("UPDATE net_assets SET status = 'MAINTENANCE' WHERE asset_id = ? AND status != 'MAINTENANCE'");
-                $updateStmt->execute([$postAssetId]);
+                $defaultStatus = 'OFFLINE';
+                $updateStmt = $pdo->prepare("UPDATE net_assets SET status = ? WHERE asset_id = ?");
+                $updateStmt->execute([$defaultStatus, $postAssetId]);
             }
             
             // Create asset trail entry
@@ -189,17 +196,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         old_value, new_value, description
                     ) VALUES (
                         :asset_type, :asset_id, 'UPDATE', :changed_by, 'status',
-                        :old_value, 'MAINTENANCE', :description
+                        :old_value, :new_value, :description
                     )
                 ");
                 
-                $oldStatus = $assetDetails['status'] ?? 'Unknown';
                 $trailStmt->execute([
                     ':asset_type' => $postAssetType,
                     ':asset_id' => (int)$postAssetId,
                     ':changed_by' => $_SESSION['user_id'] ?? null,
                     ':old_value' => $oldStatus,
-                    ':description' => 'Asset status changed to MAINTENANCE due to repair request. Repair ID: ' . $repairId
+                    ':new_value' => $defaultStatus,
+                    ':description' => 'Asset status changed to ' . $defaultStatus . ' after repair request. Repair ID: ' . $repairId
                 ]);
             } catch (PDOException $e) {
                 error_log('Error creating asset trail: ' . $e->getMessage());
@@ -238,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .page-container {
             max-width: 1100px;
             margin: 0 auto;
-            padding: 30px 20px 60px;
+            padding: 110px 20px 60px;
         }
         .card {
             background: #ffffff;
