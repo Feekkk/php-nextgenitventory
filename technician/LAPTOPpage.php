@@ -835,8 +835,8 @@ function formatCategoryClass($category)
                                                 <i class="fa-solid fa-rotate-left"></i>
                                                 <span class="action-tooltip">Return</span>
                                             </button>
-                                        <?php elseif ($rawStatus === 'FAULTY') : ?>
-                                            <button class="btn-action repair" onclick="window.location.href='../pages/FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Repair asset">
+                                        <?php elseif ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE' || $rawStatus === 'UNDER MAINTENANCE') : ?>
+                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
                                                 <span class="action-tooltip">Repair</span>
                                             </button>
@@ -928,6 +928,29 @@ function formatCategoryClass($category)
                 dropdown.classList.remove('open');
             }
         });
+
+        function openRepairForm(assetId, assetType) {
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+            formData.append('asset_type', assetType);
+
+            fetch('../services/set_maintenance_status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = `../pages/FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating asset status. Please try again.');
+            });
+        }
     </script>
 </body>
 </html>

@@ -681,8 +681,8 @@ function formatStatusIcon($status)
                                         <button class="btn-action" onclick="window.location.href='../pages/AVview.php?id=<?php echo $asset['asset_id']; ?>'">
                                             <i class="fa-solid fa-eye"></i> View
                                         </button>
-                                        <?php if ($rawStatus === 'FAULTY') : ?>
-                                            <button class="btn-action repair" onclick="window.location.href='../pages/FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'">
+                                        <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE' || $rawStatus === 'UNDER MAINTENANCE') : ?>
+                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i> Repair
                                             </button>
                                         <?php endif; ?>
@@ -773,6 +773,29 @@ function formatStatusIcon($status)
                 dropdown.classList.remove('open');
             }
         });
+
+        function openRepairForm(assetId, assetType) {
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+            formData.append('asset_type', assetType);
+
+            fetch('../services/set_maintenance_status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = `../pages/FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating asset status. Please try again.');
+            });
+        }
     </script>
 </body>
 </html>
