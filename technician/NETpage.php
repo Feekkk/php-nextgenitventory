@@ -53,7 +53,6 @@ function formatStatusClass($status)
         'DEPLOY' => 'deploy',
         'IN-USE' => 'in-use',
         'MAINTENANCE' => 'maintenance',
-        'UNDER MAINTENANCE' => 'under-maintenance',
         'DISPOSED' => 'disposed',
         'DISPOSE' => 'dispose',
         'FAULTY' => 'faulty',
@@ -84,7 +83,6 @@ function formatStatusIcon($status)
         'DISPOSE' => 'fa-trash',
         'DISPOSED' => 'fa-trash',
         'RESERVED' => 'fa-bookmark',
-        'UNDER MAINTENANCE' => 'fa-wrench',
         'MAINTENANCE' => 'fa-wrench',
         'OFFLINE' => 'fa-circle-xmark',
         'NON-ACTIVE' => 'fa-circle-pause',
@@ -401,11 +399,6 @@ function formatStatusIcon($status)
         }
 
         .status-badge.maintenance,
-        .status-badge.under-maintenance {
-            background: rgba(253, 121, 168, 0.15);
-            color: #fd79a8;
-        }
-
         .status-badge.disposed,
         .status-badge.dispose {
             background: rgba(99, 110, 114, 0.15);
@@ -777,7 +770,7 @@ function formatStatusIcon($status)
                                                 <span class="action-tooltip">In Stock</span>
                                             </button>
                                         <?php endif; ?>
-                                        <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE' || $rawStatus === 'UNDER MAINTENANCE') : ?>
+                                        <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
                                             <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'network')" aria-label="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
                                                 <span class="action-tooltip">Repair</span>

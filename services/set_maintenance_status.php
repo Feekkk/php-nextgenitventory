@@ -52,7 +52,7 @@ try {
     
     $oldStatus = strtoupper(trim($asset['status'] ?? ''));
     
-    if ($oldStatus === 'MAINTENANCE' || $oldStatus === 'UNDER MAINTENANCE') {
+    if ($oldStatus === 'MAINTENANCE') {
         $pdo->rollBack();
         echo json_encode([
             'success' => true,
@@ -62,8 +62,8 @@ try {
         exit;
     }
     
-    if ($oldStatus !== 'FAULTY' && $oldStatus !== 'MAINTENANCE' && $oldStatus !== 'UNDER MAINTENANCE') {
-        throw new Exception("Cannot set asset to maintenance. Current status is '{$oldStatus}'. Only assets with FAULTY, MAINTENANCE, or UNDER MAINTENANCE status can access the repair form.");
+    if ($oldStatus !== 'FAULTY' && $oldStatus !== 'MAINTENANCE') {
+        throw new Exception("Cannot set asset to maintenance. Current status is '{$oldStatus}'. Only assets with FAULTY or MAINTENANCE status can access the repair form.");
     }
     
     $updateStmt = $pdo->prepare("UPDATE {$tableName} SET status = 'MAINTENANCE' WHERE asset_id = ?");

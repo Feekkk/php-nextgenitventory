@@ -12,7 +12,7 @@ $errors = [];
 $successMessage = '';
 $skippedRows = [];
 $importedCount = 0;
-$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'UNDER MAINTENANCE', 'NON-ACTIVE', 'LOST', 'ACTIVE'];
+$allowedStatuses = ['DEPLOY', 'FAULTY', 'DISPOSE', 'RESERVED', 'MAINTENANCE', 'NON-ACTIVE', 'LOST', 'ACTIVE'];
 
 function generateAssetId($pdo, $categoryCode) {
     $year = date('y');

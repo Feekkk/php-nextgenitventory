@@ -79,7 +79,7 @@ function formatStatusClass($status) {
         'FAULTY' => 'maintenance',
         'DISPOSE' => 'disposed',
         'RESERVED' => 'in-use',
-        'UNDER MAINTENANCE' => 'maintenance',
+        'MAINTENANCE' => 'maintenance',
         'NON-ACTIVE' => 'disposed',
         'LOST' => 'disposed',
     ];

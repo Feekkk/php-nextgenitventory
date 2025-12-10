@@ -56,7 +56,6 @@ function formatStatusClass($status)
         'DEPLOY' => 'deploy',
         'IN-USE' => 'in-use',
         'MAINTENANCE' => 'maintenance',
-        'UNDER MAINTENANCE' => 'under-maintenance',
         'DISPOSED' => 'disposed',
         'DISPOSE' => 'dispose',
         'FAULTY' => 'faulty',
@@ -84,7 +83,6 @@ function formatStatusIcon($status)
         'DISPOSE' => 'fa-trash',
         'DISPOSED' => 'fa-trash',
         'RESERVED' => 'fa-bookmark',
-        'UNDER MAINTENANCE' => 'fa-wrench',
         'MAINTENANCE' => 'fa-wrench',
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
@@ -471,11 +469,6 @@ function formatCategoryClass($category)
         }
 
         .status-badge.maintenance,
-        .status-badge.under-maintenance {
-            background: rgba(253, 121, 168, 0.15);
-            color: #fd79a8;
-        }
-
         .status-badge.disposed,
         .status-badge.dispose {
             background: rgba(99, 110, 114, 0.15);
@@ -835,7 +828,7 @@ function formatCategoryClass($category)
                                                 <i class="fa-solid fa-rotate-left"></i>
                                                 <span class="action-tooltip">Return</span>
                                             </button>
-                                        <?php elseif ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE' || $rawStatus === 'UNDER MAINTENANCE') : ?>
+                                        <?php elseif ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
                                             <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
                                                 <span class="action-tooltip">Repair</span>
@@ -856,7 +849,7 @@ function formatCategoryClass($category)
     </footer>
 
     <script>
-        const inStockStatuses = ['ACTIVE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'UNDER MAINTENANCE', 'MAINTENANCE', 'NON-ACTIVE', 'LOST'];
+        const inStockStatuses = ['ACTIVE', 'FAULTY', 'DISPOSE', 'DISPOSED', 'RESERVED', 'MAINTENANCE', 'NON-ACTIVE', 'LOST'];
         const outStockStatuses = ['DEPLOY', 'IN-USE', 'LOST'];
         let currentStockType = 'in-stock';
 

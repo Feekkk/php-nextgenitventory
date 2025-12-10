@@ -572,7 +572,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <li>Ensure the header row matches the template exactly (e.g., "ASSET_ID", "SERIAL_NUMBER").</li>
                         <li>Required columns: CLASS, BRAND, MODEL, SERIAL_NUMBER, STATUS.</li>
                         <li>Optional columns: ASSET_ID, LOCATION, REMARKS, PO_DATE, PO_NUMBER, DO_DATE, DO_NO, INVOICE_DATE, INVOICE_NO, PURCHASE_COST.</li>
-                        <li>Valid STATUS values: DEPLOY, FAULTY, DISPOSE, RESERVED, UNDER MAINTENANCE, NON-ACTIVE, LOST, AVAILABLE, UNAVAILABLE.</li>
+                        <li>Valid STATUS values: DEPLOY, FAULTY, DISPOSE, RESERVED, MAINTENANCE, NON-ACTIVE, LOST, AVAILABLE, UNAVAILABLE.</li>
                         <li>Date columns (PO_DATE, DO_DATE, INVOICE_DATE) should use YYYY-MM-DD format.</li>
                         <li>Strip sensitive credentials from exports before uploading.</li>
                     </ul>

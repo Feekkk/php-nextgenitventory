@@ -287,7 +287,7 @@ inventory/
 #### AV Assets
 - **Required columns**: `CLASS`, `BRAND`, `MODEL`, `SERIAL_NUMBER`, `STATUS`
 - **Optional columns**: `ASSET_ID`, `LOCATION`, `REMARKS`, `PO_DATE`, `PO_NUMBER`, `DO_DATE`, `DO_NO`, `INVOICE_DATE`, `INVOICE_NO`, `PURCHASE_COST`
-- **Valid STATUS values**: `DEPLOY`, `FAULTY`, `DISPOSE`, `RESERVED`, `UNDER MAINTENANCE`, `NON-ACTIVE`, `LOST`, `AVAILABLE`, `UNAVAILABLE`
+- **Valid STATUS values**: `DEPLOY`, `FAULTY`, `DISPOSE`, `RESERVED`, `MAINTENANCE`, `NON-ACTIVE`, `LOST`, `AVAILABLE`, `UNAVAILABLE`
 - **Date format**: `YYYY-MM-DD` for all date fields
 
 #### Network Assets
@@ -326,7 +326,7 @@ inventory/
 - Activity log
 
 **Status Options:**
-- DEPLOY, FAULTY, DISPOSE, RESERVED, UNDER MAINTENANCE, NON-ACTIVE, LOST, AVAILABLE, UNAVAILABLE
+- DEPLOY, FAULTY, DISPOSE, RESERVED, MAINTENANCE, NON-ACTIVE, LOST, AVAILABLE, UNAVAILABLE
 
 ### 2. Audio-Visual (AV) Assets
 

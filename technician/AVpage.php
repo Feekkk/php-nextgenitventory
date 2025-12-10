@@ -52,7 +52,6 @@ function formatStatusClass($status)
         'DEPLOY' => 'deploy',
         'IN-USE' => 'in-use',
         'MAINTENANCE' => 'maintenance',
-        'UNDER MAINTENANCE' => 'under-maintenance',
         'DISPOSED' => 'disposed',
         'DISPOSE' => 'dispose',
         'FAULTY' => 'faulty',
@@ -81,7 +80,6 @@ function formatStatusIcon($status)
         'DISPOSE' => 'fa-trash',
         'DISPOSED' => 'fa-trash',
         'RESERVED' => 'fa-bookmark',
-        'UNDER MAINTENANCE' => 'fa-wrench',
         'MAINTENANCE' => 'fa-wrench',
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
@@ -397,11 +395,6 @@ function formatStatusIcon($status)
         }
 
         .status-badge.maintenance,
-        .status-badge.under-maintenance {
-            background: rgba(253, 121, 168, 0.15);
-            color: #fd79a8;
-        }
-
         .status-badge.disposed,
         .status-badge.dispose {
             background: rgba(99, 110, 114, 0.15);
@@ -681,7 +674,7 @@ function formatStatusIcon($status)
                                         <button class="btn-action" onclick="window.location.href='../pages/AVview.php?id=<?php echo $asset['asset_id']; ?>'">
                                             <i class="fa-solid fa-eye"></i> View
                                         </button>
-                                        <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE' || $rawStatus === 'UNDER MAINTENANCE') : ?>
+                                        <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
                                             <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i> Repair
                                             </button>

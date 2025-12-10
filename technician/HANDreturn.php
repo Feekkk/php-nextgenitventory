@@ -391,7 +391,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
 // Get status options based on asset type
 $statusOptions = [];
 if ($assetTypeParam === 'laptop_desktop') {
-    $statusOptions = ['ACTIVE', 'FAULTY', 'UNDER MAINTENANCE', 'RESERVED', 'NON-ACTIVE'];
+    $statusOptions = ['ACTIVE', 'FAULTY', 'MAINTENANCE', 'RESERVED', 'NON-ACTIVE'];
 } elseif ($assetTypeParam === 'av') {
     $statusOptions = ['ACTIVE', 'FAULTY', 'MAINTENANCE', 'RESERVED', 'DISPOSED'];
 } elseif ($assetTypeParam === 'network') {
@@ -1066,17 +1066,13 @@ if ($assetTypeParam === 'laptop_desktop') {
                             statusSelect.value = 'FAULTY';
                         } else if (statusSelect.querySelector('option[value="MAINTENANCE"]')) {
                             statusSelect.value = 'MAINTENANCE';
-                        } else if (statusSelect.querySelector('option[value="UNDER MAINTENANCE"]')) {
-                            statusSelect.value = 'UNDER MAINTENANCE';
-                }
+                        }
                     } else if (this.value === 'Damaged') {
                         // Suggest FAULTY or MAINTENANCE for damaged
                         if (statusSelect.querySelector('option[value="FAULTY"]')) {
                             statusSelect.value = 'FAULTY';
                         } else if (statusSelect.querySelector('option[value="MAINTENANCE"]')) {
                             statusSelect.value = 'MAINTENANCE';
-                        } else if (statusSelect.querySelector('option[value="UNDER MAINTENANCE"]')) {
-                            statusSelect.value = 'UNDER MAINTENANCE';
                         }
                     }
                 });
