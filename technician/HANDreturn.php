@@ -944,12 +944,12 @@ if ($assetTypeParam === 'laptop_desktop') {
                     <div class="info-section">
                         <h3>Return Information</h3>
                         <div class="info-grid">
-                            <?php if (isset($handoverDetails['return_date']) && $handoverDetails['return_date']) : ?>
+                        <?php if (isset($handoverDetails['return_date']) && $handoverDetails['return_date']) : ?>
                                 <div class="info-item">
                                     <span class="info-label">Return Date</span>
                                     <span class="info-value"><?php echo date('d M Y', strtotime($handoverDetails['return_date'])); ?></span>
                                 </div>
-                            <?php endif; ?>
+                        <?php endif; ?>
                             <?php if (!empty($handoverDetails['return_condition'])) : ?>
                                 <div class="info-item">
                                     <span class="info-label">Return Condition</span>
@@ -1022,7 +1022,7 @@ if ($assetTypeParam === 'laptop_desktop') {
                                 </div>
                             </div>
                         <?php endif; ?>
-                    </div>
+            </div>
                 <?php endif; ?>
             </div>
         <?php else : ?>

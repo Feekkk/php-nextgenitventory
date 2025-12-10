@@ -12,6 +12,7 @@ $asset = null;
 $error = '';
 
 $assetId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$assetTrails = [];
 
 if ($assetId > 0) {
     try {
@@ -26,6 +27,16 @@ if ($assetId > 0) {
         
         if (!$asset) {
             $error = 'Asset not found.';
+        } else {
+            $trailStmt = $pdo->prepare("
+                SELECT at.*, t.tech_name, t.tech_id
+                FROM asset_trails at
+                LEFT JOIN technician t ON at.changed_by = t.id
+                WHERE at.asset_type = 'laptop_desktop' AND at.asset_id = :id
+                ORDER BY at.created_at ASC
+            ");
+            $trailStmt->execute([':id' => $assetId]);
+            $assetTrails = $trailStmt->fetchAll(PDO::FETCH_ASSOC);
         }
     } catch (PDOException $e) {
         $error = 'Unable to load asset details. Please try again later.';
@@ -357,6 +368,128 @@ function formatCurrency($amount) {
             font-weight: 500;
             color: #2d3436;
         }
+
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(26, 26, 46, 0.1);
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #636e72;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: #6c5ce7;
+        }
+
+        .tab-btn.active {
+            color: #6c5ce7;
+            border-bottom-color: #6c5ce7;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .trail-item {
+            padding: 20px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #6c5ce7;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .trail-item::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 24px;
+            width: 12px;
+            height: 12px;
+            background: #6c5ce7;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .trail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .trail-action {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1.05rem;
+        }
+
+        .trail-date {
+            font-size: 0.9rem;
+            color: #636e72;
+        }
+
+        .trail-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .trail-field {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .trail-field-label {
+            font-weight: 600;
+            color: #636e72;
+            min-width: 120px;
+        }
+
+        .trail-field-value {
+            flex: 1;
+            color: #2d3436;
+        }
+
+        .trail-changed-by {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+            color: #636e72;
+        }
+
+        .trail-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #636e72;
+        }
+
+        .trail-empty i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: rgba(99, 110, 114, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -430,190 +563,248 @@ function formatCurrency($amount) {
                     </div>
                 </div>
 
-                <div class="details-grid">
-                    <div class="detail-section">
-                        <h3 class="section-title">Asset Information</h3>
-                        <div class="detail-item">
-                            <div class="detail-label">Brand</div>
-                            <div class="detail-value <?php echo empty($asset['brand']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['brand'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Model</div>
-                            <div class="detail-value <?php echo empty($asset['model']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['model'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Serial Number</div>
-                            <div class="detail-value <?php echo empty($asset['serial_num']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['serial_num'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Category</div>
-                            <div class="detail-value <?php echo empty($asset['category']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['category'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Status</div>
-                            <div class="detail-value">
-                                <span class="status-badge <?php echo htmlspecialchars(formatStatusClass($asset['status'] ?? '')); ?>">
-                                    <?php echo htmlspecialchars(formatStatusLabel($asset['status'] ?? '')); ?>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Assigned To</div>
-                            <div class="detail-value <?php echo empty($asset['assigned_to_name']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['assigned_to_name'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Assignment Type</div>
-                            <div class="detail-value <?php echo empty($asset['assignment_type']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['assignment_type'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Location</div>
-                            <div class="detail-value <?php echo empty($asset['location']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['location'] ?: '-'); ?>
-                            </div>
-                        </div>
-                    </div>
+                <div class="tab-navigation">
+                    <button class="tab-btn active" onclick="switchTab('info')">
+                        <i class="fa-solid fa-info-circle"></i> Asset Information
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('trails')">
+                        <i class="fa-solid fa-history"></i> Asset Trails
+                    </button>
+                </div>
 
-                    <div class="detail-section">
-                        <h3 class="section-title">Hardware Specifications</h3>
-                        <div class="detail-item">
-                            <div class="detail-label">Processor</div>
-                            <div class="detail-value <?php echo empty($asset['processor']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['processor'] ?: '-'); ?>
+                <div id="tab-info" class="tab-content active">
+                    <div class="details-grid">
+                        <div class="detail-section">
+                            <h3 class="section-title">Asset Information</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Brand</div>
+                                <div class="detail-value <?php echo empty($asset['brand']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['brand'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Model</div>
+                                <div class="detail-value <?php echo empty($asset['model']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['model'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Serial Number</div>
+                                <div class="detail-value <?php echo empty($asset['serial_num']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['serial_num'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Category</div>
+                                <div class="detail-value <?php echo empty($asset['category']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['category'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Status</div>
+                                <div class="detail-value">
+                                    <span class="status-badge <?php echo htmlspecialchars(formatStatusClass($asset['status'] ?? '')); ?>">
+                                        <?php echo htmlspecialchars(formatStatusLabel($asset['status'] ?? '')); ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Assigned To</div>
+                                <div class="detail-value <?php echo empty($asset['assigned_to_name']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['assigned_to_name'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Assignment Type</div>
+                                <div class="detail-value <?php echo empty($asset['assignment_type']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['assignment_type'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Location</div>
+                                <div class="detail-value <?php echo empty($asset['location']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['location'] ?: '-'); ?>
+                                </div>
                             </div>
                         </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Memory (RAM)</div>
-                            <div class="detail-value <?php echo empty($asset['memory']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['memory'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Storage</div>
-                            <div class="detail-value <?php echo empty($asset['storage']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['storage'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">GPU</div>
-                            <div class="detail-value <?php echo empty($asset['gpu']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['gpu'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Operating System</div>
-                            <div class="detail-value <?php echo empty($asset['os']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['os'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Part Number</div>
-                            <div class="detail-value <?php echo empty($asset['part_number']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['part_number'] ?: '-'); ?>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="detail-section">
-                        <h3 class="section-title">Warranty & Supplier</h3>
-                        <div class="detail-item">
-                            <div class="detail-label">Warranty Expiry</div>
-                            <div class="detail-value <?php echo empty($asset['warranty_expiry']) ? 'empty' : ''; ?>">
-                                <?php echo formatDate($asset['warranty_expiry']); ?>
+                        <div class="detail-section">
+                            <h3 class="section-title">Hardware Specifications</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Processor</div>
+                                <div class="detail-value <?php echo empty($asset['processor']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['processor'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Memory (RAM)</div>
+                                <div class="detail-value <?php echo empty($asset['memory']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['memory'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Storage</div>
+                                <div class="detail-value <?php echo empty($asset['storage']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['storage'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">GPU</div>
+                                <div class="detail-value <?php echo empty($asset['gpu']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['gpu'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Operating System</div>
+                                <div class="detail-value <?php echo empty($asset['os']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['os'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Part Number</div>
+                                <div class="detail-value <?php echo empty($asset['part_number']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['part_number'] ?: '-'); ?>
+                                </div>
                             </div>
                         </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Supplier</div>
-                            <div class="detail-value <?php echo empty($asset['supplier']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['supplier'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Period</div>
-                            <div class="detail-value <?php echo empty($asset['period']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['period'] ?: '-'); ?>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="detail-section">
-                        <h3 class="section-title">Purchase Information</h3>
-                        <div class="detail-item">
-                            <div class="detail-label">P.O. Date</div>
-                            <div class="detail-value <?php echo empty($asset['PO_DATE']) ? 'empty' : ''; ?>">
-                                <?php echo formatDate($asset['PO_DATE']); ?>
+                        <div class="detail-section">
+                            <h3 class="section-title">Warranty & Supplier</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Warranty Expiry</div>
+                                <div class="detail-value <?php echo empty($asset['warranty_expiry']) ? 'empty' : ''; ?>">
+                                    <?php echo formatDate($asset['warranty_expiry']); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Supplier</div>
+                                <div class="detail-value <?php echo empty($asset['supplier']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['supplier'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Period</div>
+                                <div class="detail-value <?php echo empty($asset['period']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['period'] ?: '-'); ?>
+                                </div>
                             </div>
                         </div>
-                        <div class="detail-item">
-                            <div class="detail-label">P.O. Number</div>
-                            <div class="detail-value <?php echo empty($asset['PO_NUM']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['PO_NUM'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">D.O. Date</div>
-                            <div class="detail-value <?php echo empty($asset['DO_DATE']) ? 'empty' : ''; ?>">
-                                <?php echo formatDate($asset['DO_DATE']); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">D.O. Number</div>
-                            <div class="detail-value <?php echo empty($asset['DO_NUM']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['DO_NUM'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Invoice Date</div>
-                            <div class="detail-value <?php echo empty($asset['INVOICE_DATE']) ? 'empty' : ''; ?>">
-                                <?php echo formatDate($asset['INVOICE_DATE']); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Invoice Number</div>
-                            <div class="detail-value <?php echo empty($asset['INVOICE_NUM']) ? 'empty' : ''; ?>">
-                                <?php echo htmlspecialchars($asset['INVOICE_NUM'] ?: '-'); ?>
-                            </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Purchase Cost</div>
-                            <div class="detail-value <?php echo empty($asset['PURCHASE_COST']) ? 'empty' : ''; ?>">
-                                <?php echo formatCurrency($asset['PURCHASE_COST']); ?>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="detail-section">
-                        <h3 class="section-title">Additional Information</h3>
-                        <div class="detail-item">
-                            <div class="detail-label">Activity Log</div>
-                            <div class="detail-value <?php echo empty($asset['activity_log']) ? 'empty' : ''; ?>" style="white-space: pre-wrap;">
-                                <?php echo htmlspecialchars($asset['activity_log'] ?: '-'); ?>
+                        <div class="detail-section">
+                            <h3 class="section-title">Purchase Information</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">P.O. Date</div>
+                                <div class="detail-value <?php echo empty($asset['PO_DATE']) ? 'empty' : ''; ?>">
+                                    <?php echo formatDate($asset['PO_DATE']); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">P.O. Number</div>
+                                <div class="detail-value <?php echo empty($asset['PO_NUM']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['PO_NUM'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">D.O. Date</div>
+                                <div class="detail-value <?php echo empty($asset['DO_DATE']) ? 'empty' : ''; ?>">
+                                    <?php echo formatDate($asset['DO_DATE']); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">D.O. Number</div>
+                                <div class="detail-value <?php echo empty($asset['DO_NUM']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['DO_NUM'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Invoice Date</div>
+                                <div class="detail-value <?php echo empty($asset['INVOICE_DATE']) ? 'empty' : ''; ?>">
+                                    <?php echo formatDate($asset['INVOICE_DATE']); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Invoice Number</div>
+                                <div class="detail-value <?php echo empty($asset['INVOICE_NUM']) ? 'empty' : ''; ?>">
+                                    <?php echo htmlspecialchars($asset['INVOICE_NUM'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Purchase Cost</div>
+                                <div class="detail-value <?php echo empty($asset['PURCHASE_COST']) ? 'empty' : ''; ?>">
+                                    <?php echo formatCurrency($asset['PURCHASE_COST']); ?>
+                                </div>
                             </div>
                         </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Remarks</div>
-                            <div class="detail-value <?php echo empty($asset['remarks']) ? 'empty' : ''; ?>" style="white-space: pre-wrap;">
-                                <?php echo htmlspecialchars($asset['remarks'] ?: '-'); ?>
+
+                        <div class="detail-section">
+                            <h3 class="section-title">Additional Information</h3>
+                            <div class="detail-item">
+                                <div class="detail-label">Activity Log</div>
+                                <div class="detail-value <?php echo empty($asset['activity_log']) ? 'empty' : ''; ?>" style="white-space: pre-wrap;">
+                                    <?php echo htmlspecialchars($asset['activity_log'] ?: '-'); ?>
+                                </div>
                             </div>
-                        </div>
-                        <div class="detail-item">
-                            <div class="detail-label">Created At</div>
-                            <div class="detail-value <?php echo empty($asset['created_at']) ? 'empty' : ''; ?>">
-                                <?php echo $asset['created_at'] ? date('d M Y, H:i', strtotime($asset['created_at'])) : '-'; ?>
+                            <div class="detail-item">
+                                <div class="detail-label">Remarks</div>
+                                <div class="detail-value <?php echo empty($asset['remarks']) ? 'empty' : ''; ?>" style="white-space: pre-wrap;">
+                                    <?php echo htmlspecialchars($asset['remarks'] ?: '-'); ?>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Created At</div>
+                                <div class="detail-value <?php echo empty($asset['created_at']) ? 'empty' : ''; ?>">
+                                    <?php echo $asset['created_at'] ? date('d M Y, H:i', strtotime($asset['created_at'])) : '-'; ?>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div id="tab-trails" class="tab-content">
+                    <?php if (empty($assetTrails)) : ?>
+                        <div class="trail-empty">
+                            <i class="fa-solid fa-inbox"></i>
+                            <p>No trail history found for this asset.</p>
+                        </div>
+                    <?php else : ?>
+                        <?php foreach ($assetTrails as $trail) : ?>
+                            <div class="trail-item">
+                                <div class="trail-header">
+                                    <div class="trail-action"><?php echo htmlspecialchars(str_replace('_', ' ', $trail['action_type'])); ?></div>
+                                    <div class="trail-date"><?php echo date('d M Y, H:i', strtotime($trail['created_at'])); ?></div>
+                                </div>
+                                <div class="trail-details">
+                                    <?php if (!empty($trail['field_name'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Field:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $trail['field_name']))); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($trail['old_value'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Old Value:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['old_value']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($trail['new_value'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">New Value:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['new_value']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($trail['description'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Description:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['description']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="trail-changed-by">
+                                    Changed by: <?php echo htmlspecialchars($trail['tech_name'] ?: ($trail['tech_id'] ? 'Tech #' . $trail['tech_id'] : 'System')); ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -622,6 +813,19 @@ function formatCurrency($amount) {
     <footer>
         <?php include_once("../components/Footer.php"); ?>
     </footer>
+
+    <script>
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+    </script>
 </body>
 </html>
 

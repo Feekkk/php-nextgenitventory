@@ -12,6 +12,7 @@ $asset = null;
 $error = '';
 
 $assetId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$assetTrails = [];
 
 if ($assetId > 0) {
     try {
@@ -26,6 +27,16 @@ if ($assetId > 0) {
         
         if (!$asset) {
             $error = 'Asset not found.';
+        } else {
+            $trailStmt = $pdo->prepare("
+                SELECT at.*, t.tech_name, t.tech_id
+                FROM asset_trails at
+                LEFT JOIN technician t ON at.changed_by = t.id
+                WHERE at.asset_type = 'network' AND at.asset_id = :id
+                ORDER BY at.created_at ASC
+            ");
+            $trailStmt->execute([':id' => $assetId]);
+            $assetTrails = $trailStmt->fetchAll(PDO::FETCH_ASSOC);
         }
     } catch (PDOException $e) {
         $error = 'Unable to load asset details. Please try again later.';
@@ -344,6 +355,128 @@ function formatCurrency($amount) {
             font-weight: 500;
             color: #2d3436;
         }
+
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid rgba(26, 26, 46, 0.1);
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #636e72;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: #6c5ce7;
+        }
+
+        .tab-btn.active {
+            color: #6c5ce7;
+            border-bottom-color: #6c5ce7;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .trail-item {
+            padding: 20px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #6c5ce7;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .trail-item::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 24px;
+            width: 12px;
+            height: 12px;
+            background: #6c5ce7;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .trail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .trail-action {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1.05rem;
+        }
+
+        .trail-date {
+            font-size: 0.9rem;
+            color: #636e72;
+        }
+
+        .trail-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .trail-field {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .trail-field-label {
+            font-weight: 600;
+            color: #636e72;
+            min-width: 120px;
+        }
+
+        .trail-field-value {
+            flex: 1;
+            color: #2d3436;
+        }
+
+        .trail-changed-by {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+            color: #636e72;
+        }
+
+        .trail-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #636e72;
+        }
+
+        .trail-empty i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: rgba(99, 110, 114, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -412,7 +545,17 @@ function formatCurrency($amount) {
                     </div>
                 </div>
 
-                <div class="details-grid">
+                <div class="tab-navigation">
+                    <button class="tab-btn active" onclick="switchTab('info')">
+                        <i class="fa-solid fa-info-circle"></i> Asset Information
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('trails')">
+                        <i class="fa-solid fa-history"></i> Asset Trails
+                    </button>
+                </div>
+
+                <div id="tab-info" class="tab-content active">
+                    <div class="details-grid">
                     <div class="detail-section">
                         <h3 class="section-title">Asset Information</h3>
                         <div class="detail-item">
@@ -543,6 +686,54 @@ function formatCurrency($amount) {
                         </div>
                     </div>
                 </div>
+                </div>
+
+                <div id="tab-trails" class="tab-content">
+                    <?php if (empty($assetTrails)) : ?>
+                        <div class="trail-empty">
+                            <i class="fa-solid fa-inbox"></i>
+                            <p>No trail history found for this asset.</p>
+                        </div>
+                    <?php else : ?>
+                        <?php foreach ($assetTrails as $trail) : ?>
+                            <div class="trail-item">
+                                <div class="trail-header">
+                                    <div class="trail-action"><?php echo htmlspecialchars(str_replace('_', ' ', $trail['action_type'])); ?></div>
+                                    <div class="trail-date"><?php echo date('d M Y, H:i', strtotime($trail['created_at'])); ?></div>
+                                </div>
+                                <div class="trail-details">
+                                    <?php if (!empty($trail['field_name'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Field:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $trail['field_name']))); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($trail['old_value'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Old Value:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['old_value']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($trail['new_value'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">New Value:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['new_value']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($trail['description'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Description:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['description']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="trail-changed-by">
+                                    Changed by: <?php echo htmlspecialchars($trail['tech_name'] ?: ($trail['tech_id'] ? 'Tech #' . $trail['tech_id'] : 'System')); ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
             </div>
         <?php endif; ?>
     </div>
@@ -550,6 +741,19 @@ function formatCurrency($amount) {
     <footer>
         <?php include_once("../components/Footer.php"); ?>
     </footer>
+
+    <script>
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+    </script>
 </body>
 </html>
 
