@@ -819,12 +819,12 @@ function formatCategoryClass($category)
                                             <span class="action-tooltip">View details</span>
                                         </button>
                                         <?php if ($rawStatus === 'ACTIVE') : ?>
-                                            <button class="btn-action handover" onclick="window.location.href='HANDform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Handover asset">
+                                            <button class="btn-action handover" onclick="window.location.href='../technician/HANDform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Handover asset">
                                                 <i class="fa-solid fa-hand-holding"></i>
                                                 <span class="action-tooltip">Handover</span>
                                             </button>
                                         <?php elseif ($rawStatus === 'DEPLOY') : ?>
-                                            <button class="btn-action return" onclick="window.location.href='HANDreturn.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Return asset">
+                                            <button class="btn-action return" onclick="window.location.href='../technician/HANDreturn.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Return asset">
                                                 <i class="fa-solid fa-rotate-left"></i>
                                                 <span class="action-tooltip">Return</span>
                                             </button>
@@ -934,7 +934,7 @@ function formatCategoryClass($category)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    window.location.href = `../pages/FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
+                    window.location.href = `FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
                 } else {
                     alert('Error: ' + data.message);
                 }

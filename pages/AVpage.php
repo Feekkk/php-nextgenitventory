@@ -779,7 +779,7 @@ function formatStatusIcon($status)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    window.location.href = `../pages/FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
+                    window.location.href = `FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
                 } else {
                     alert('Error: ' + data.message);
                 }
