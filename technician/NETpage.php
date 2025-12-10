@@ -483,23 +483,39 @@ function formatStatusIcon($status)
         .action-buttons {
             display: flex;
             gap: 8px;
+            justify-content: center;
         }
 
         .btn-action {
-            padding: 6px 12px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 50%;
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: #ffffff;
-            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
             color: #2d3436;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
         .btn-action:hover {
             background: #1a1a2e;
             color: #ffffff;
             border-color: #1a1a2e;
+            transform: scale(1.05);
+        }
+
+        .btn-action.view {
+            color: #0984e3;
+        }
+
+        .btn-action.view:hover {
+            color: #ffffff;
         }
 
         .btn-action.repair {
@@ -511,6 +527,49 @@ function formatStatusIcon($status)
             background: #d35400;
             color: #ffffff;
             border-color: #d35400;
+        }
+
+        .btn-action.in-stock {
+            color: #00b894;
+            border-color: rgba(0, 184, 148, 0.25);
+        }
+
+        .btn-action.in-stock:hover {
+            background: #00b894;
+            color: #ffffff;
+            border-color: #00b894;
+        }
+
+        .action-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 6px 12px;
+            background: #1a1a2e;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .action-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1a1a2e;
+        }
+
+        .btn-action:hover .action-tooltip {
+            opacity: 1;
         }
 
         .empty-state {
@@ -708,12 +767,20 @@ function formatStatusIcon($status)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="window.location.href='../pages/NETview.php?id=<?php echo $asset['asset_id']; ?>'">
-                                            <i class="fa-solid fa-eye"></i> View
+                                        <button class="btn-action view" onclick="window.location.href='../pages/NETview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
+                                            <i class="fa-solid fa-eye"></i>
+                                            <span class="action-tooltip">View details</span>
                                         </button>
+                                        <?php if ($rawStatus === 'ONLINE') : ?>
+                                            <button class="btn-action in-stock" onclick="markInStock(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as in stock">
+                                                <i class="fa-solid fa-warehouse"></i>
+                                                <span class="action-tooltip">In Stock</span>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($rawStatus === 'FAULTY') : ?>
-                                            <button class="btn-action repair" onclick="window.location.href='../pages/FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=network'">
-                                                <i class="fa-solid fa-screwdriver-wrench"></i> Repair
+                                            <button class="btn-action repair" onclick="window.location.href='../pages/FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=network'" aria-label="Repair asset">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                                <span class="action-tooltip">Repair</span>
                                             </button>
                                         <?php endif; ?>
                                     </div>
@@ -809,6 +876,33 @@ function formatStatusIcon($status)
                 dropdown.classList.remove('open');
             }
         });
+
+        function markInStock(assetId) {
+            if (!confirm('Mark this asset as in stock? Status will be changed to OFFLINE and building will be set to IT office.')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+
+            fetch('../services/mark_in_stock.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Asset marked as in stock successfully!');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while marking the asset as in stock.');
+            });
+        }
     </script>
 </body>
 </html>
