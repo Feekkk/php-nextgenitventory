@@ -14,6 +14,12 @@ $laptopCount = 0;
 $avCount = 0;
 $netCount = 0;
 $statusCounts = [];
+$statusByAsset = [
+    'laptop' => [],
+    'av' => [],
+    'network' => [],
+];
+$statusLabels = [];
 $monthlyAdds = [];
 $activeHandovers = 0;
 $addedThisMonth = 0;
@@ -46,6 +52,21 @@ try {
     ";
     $stmt = $pdo->query($statusSql);
     $statusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Status distribution by asset category (laptop, av, network)
+    $statusByAsset['laptop'] = $pdo->query("SELECT COALESCE(status, 'Unknown') AS status, COUNT(*) AS cnt FROM laptop_desktop_assets GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $statusByAsset['av'] = $pdo->query("SELECT COALESCE(status, 'Unknown') AS status, COUNT(*) AS cnt FROM av_assets GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $statusByAsset['network'] = $pdo->query("SELECT COALESCE(status, 'Unknown') AS status, COUNT(*) AS cnt FROM net_assets GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Build unified status labels
+    $statusLabelSet = [];
+    foreach ($statusByAsset as $group) {
+        foreach (array_keys($group) as $st) {
+            $statusLabelSet[$st] = true;
+        }
+    }
+    $statusLabels = array_values(array_keys($statusLabelSet));
+    sort($statusLabels);
 
     // Last 6 months additions (including current month)
     $monthlySql = "
@@ -313,21 +334,25 @@ try {
             <div class="dashboard-card quick-links">
                 <h2>Quick Links</h2>
                 <div class="quick-links-list">
-                    <a href="HANDform.php" class="quick-link-btn">
-                        <i class="fa-solid fa-handshake"></i>
-                        <span>Handover Form</span>
+                    <a href="../pages/LAPTOPpage.php" class="quick-link-btn">
+                        <i class="fa-solid fa-laptop"></i>
+                        <span>Laptop / Desktop</span>
                     </a>
-                    <a href="HANDreturn.php" class="quick-link-btn">
-                        <i class="fa-solid fa-undo"></i>
-                        <span>Return</span>
+                    <a href="../pages/AVpage.php" class="quick-link-btn">
+                        <i class="fa-solid fa-tv"></i>
+                        <span>Audio / Visual</span>
+                    </a>
+                    <a href="../pages/NETpage.php" class="quick-link-btn">
+                        <i class="fa-solid fa-network-wired"></i>
+                        <span>Network</span>
                     </a>
                     <a href="History.php" class="quick-link-btn">
                         <i class="fa-solid fa-clock-rotate-left"></i>
-                        <span>History</span>
+                        <span>Audit Trail</span>
                     </a>
                     <a href="Profile.php" class="quick-link-btn">
                         <i class="fa-solid fa-user"></i>
-                        <span>Profile</span>
+                        <span>My Profile</span>
                     </a>
                 </div>
             </div>
@@ -400,7 +425,7 @@ try {
                         <canvas id="assetTypeChart"></canvas>
                     </div>
                     <div class="chart-box">
-                        <h3>Status Distribution</h3>
+                        <h3>Status Distribution by Category</h3>
                         <canvas id="statusChart"></canvas>
                     </div>
                     <div class="chart-box">
@@ -421,8 +446,10 @@ try {
         const assetTypeLabels = <?php echo json_encode(array_keys($assetTypeData)); ?>;
         const assetTypeValues = <?php echo json_encode(array_values($assetTypeData)); ?>;
 
-        const statusLabels = <?php echo json_encode(array_keys($statusCounts)); ?>;
-        const statusValues = <?php echo json_encode(array_values($statusCounts)); ?>;
+        const statusLabels = <?php echo json_encode($statusLabels); ?>;
+        const laptopStatus = <?php echo json_encode(array_values(array_map(fn($st) => (int)($statusByAsset['laptop'][$st] ?? 0), array_combine($statusLabels, $statusLabels)))); ?>;
+        const avStatus = <?php echo json_encode(array_values(array_map(fn($st) => (int)($statusByAsset['av'][$st] ?? 0), array_combine($statusLabels, $statusLabels)))); ?>;
+        const netStatus = <?php echo json_encode(array_values(array_map(fn($st) => (int)($statusByAsset['network'][$st] ?? 0), array_combine($statusLabels, $statusLabels)))); ?>;
 
         const monthlyLabels = <?php echo json_encode(array_keys($monthlyAdds)); ?>;
         const monthlyValues = <?php echo json_encode(array_values($monthlyAdds)); ?>;
@@ -454,14 +481,29 @@ try {
                 type: 'bar',
                 data: {
                     labels: statusLabels,
-                    datasets: [{
-                        data: statusValues,
-                        backgroundColor: palette,
-                        borderRadius: 6,
-                    }]
+                    datasets: [
+                        {
+                            label: 'Laptop/Desktop',
+                            data: laptopStatus,
+                            backgroundColor: palette[0],
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Audio/Visual',
+                            data: avStatus,
+                            backgroundColor: palette[2],
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Network',
+                            data: netStatus,
+                            backgroundColor: palette[4],
+                            borderRadius: 6,
+                        }
+                    ]
                 },
                 options: {
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { position: 'bottom' } },
                     scales: {
                         y: { beginAtZero: true, ticks: { precision: 0 } }
                     }
