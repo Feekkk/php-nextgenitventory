@@ -63,6 +63,41 @@ if ($assetId > 0) {
                 ];
                 array_unshift($assetTrails, $createEntry);
             }
+            
+            $trailCounts = [
+                'status' => 0,
+                'handover' => 0,
+                'return' => 0,
+                'create' => 0,
+                'update' => 0,
+                'repair' => 0,
+                'total' => count($assetTrails)
+            ];
+            
+            foreach ($assetTrails as $trail) {
+                $actionType = strtoupper(trim($trail['action_type'] ?? ''));
+                $fieldName = strtoupper(trim($trail['field_name'] ?? ''));
+                $description = strtoupper(trim($trail['description'] ?? ''));
+                
+                if ($actionType === 'CREATE') {
+                    $trailCounts['create']++;
+                } elseif (strpos($actionType, 'UPDATE') !== false || strpos($actionType, 'EDIT') !== false || strpos($actionType, 'MODIFY') !== false) {
+                    $trailCounts['update']++;
+                }
+                
+                if ($fieldName === 'STATUS' || strpos($description, 'STATUS') !== false) {
+                    $trailCounts['status']++;
+                }
+                if (strpos($description, 'HANDOVER') !== false || strpos($description, 'ASSIGN') !== false || strpos($description, 'ASSIGNED') !== false) {
+                    $trailCounts['handover']++;
+                }
+                if (strpos($description, 'RETURN') !== false || strpos($description, 'RETURNED') !== false) {
+                    $trailCounts['return']++;
+                }
+                if (strpos($description, 'REPAIR') !== false || strpos($description, 'MAINTENANCE') !== false || strpos($description, 'FAULTY') !== false) {
+                    $trailCounts['repair']++;
+                }
+            }
         }
     } catch (PDOException $e) {
         $error = 'Unable to load asset details. Please try again later.';
@@ -99,6 +134,28 @@ function formatDate($date) {
 function formatCurrency($amount) {
     if (!$amount || $amount == 0) return '-';
     return 'MYR ' . number_format($amount, 2);
+}
+
+function getTrailActionIcon($actionType) {
+    $action = strtoupper(trim($actionType ?? ''));
+    $icons = [
+        'CREATE' => 'fa-circle-plus',
+        'UPDATE' => 'fa-pen',
+        'DELETE' => 'fa-trash',
+        'STATUS' => 'fa-circle-check',
+        'EDIT' => 'fa-edit',
+        'MODIFY' => 'fa-wrench',
+    ];
+    return $icons[$action] ?? 'fa-circle-info';
+}
+
+function getTrailActionClass($actionType) {
+    $action = strtoupper(trim($actionType ?? ''));
+    if (strpos($action, 'CREATE') !== false) return 'create';
+    if (strpos($action, 'UPDATE') !== false || strpos($action, 'EDIT') !== false || strpos($action, 'MODIFY') !== false) return 'update';
+    if (strpos($action, 'DELETE') !== false) return 'delete';
+    if (strpos($action, 'STATUS') !== false) return 'status';
+    return 'update';
 }
 ?>
 <!DOCTYPE html>
@@ -421,24 +478,32 @@ function formatCurrency($amount) {
         }
 
         .trail-item {
-            padding: 20px;
-            margin-bottom: 15px;
-            background: #f8f9fa;
-            border-left: 4px solid #6c5ce7;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            background: #ffffff;
+            border-left: 3px solid #6c5ce7;
             border-radius: 8px;
-            position: relative;
+            transition: all 0.2s ease;
         }
 
-        .trail-item::before {
-            content: '';
-            position: absolute;
-            left: -8px;
-            top: 24px;
-            width: 12px;
-            height: 12px;
-            background: #6c5ce7;
-            border-radius: 50%;
-            border: 2px solid #fff;
+        .trail-item:hover {
+            background: #f8f9fa;
+        }
+
+        .trail-item.create {
+            border-left-color: #00b894;
+        }
+
+        .trail-item.update {
+            border-left-color: #0984e3;
+        }
+
+        .trail-item.delete {
+            border-left-color: #d63031;
+        }
+
+        .trail-item.status {
+            border-left-color: #6c5ce7;
         }
 
         .trail-header {
@@ -447,17 +512,54 @@ function formatCurrency($amount) {
             align-items: center;
             margin-bottom: 12px;
             flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .trail-action-wrapper {
+            display: flex;
+            align-items: center;
             gap: 10px;
         }
 
+        .trail-action-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .trail-item.create .trail-action-icon {
+            background: rgba(0, 184, 148, 0.1);
+            color: #00b894;
+        }
+
+        .trail-item.update .trail-action-icon {
+            background: rgba(9, 132, 227, 0.1);
+            color: #0984e3;
+        }
+
+        .trail-item.delete .trail-action-icon {
+            background: rgba(214, 48, 49, 0.1);
+            color: #d63031;
+        }
+
+        .trail-item.status .trail-action-icon {
+            background: rgba(108, 92, 231, 0.1);
+            color: #6c5ce7;
+        }
+
         .trail-action {
-            font-weight: 700;
+            font-weight: 600;
             color: #1a1a2e;
-            font-size: 1.05rem;
+            font-size: 0.95rem;
         }
 
         .trail-date {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #636e72;
         }
 
@@ -465,31 +567,57 @@ function formatCurrency($amount) {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            margin-bottom: 10px;
         }
 
         .trail-field {
             display: flex;
-            gap: 10px;
-            align-items: flex-start;
+            gap: 8px;
+            align-items: baseline;
+            font-size: 0.9rem;
         }
 
         .trail-field-label {
-            font-weight: 600;
+            font-weight: 500;
             color: #636e72;
-            min-width: 120px;
+            min-width: 80px;
         }
 
         .trail-field-value {
-            flex: 1;
             color: #2d3436;
+            flex: 1;
+        }
+
+        .trail-field-value.old-value {
+            color: #d63031;
+            text-decoration: line-through;
+            opacity: 0.6;
+            margin-right: 8px;
+        }
+
+        .trail-field-value.new-value {
+            color: #00b894;
+            font-weight: 500;
         }
 
         .trail-changed-by {
-            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
             padding-top: 10px;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-            font-size: 0.9rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            font-size: 0.85rem;
             color: #636e72;
+        }
+
+        .trail-changed-by i {
+            color: #6c5ce7;
+            font-size: 0.8rem;
+        }
+
+        .trail-changed-by-name {
+            font-weight: 500;
+            color: #1a1a2e;
         }
 
         .trail-empty {
@@ -502,6 +630,91 @@ function formatCurrency($amount) {
             font-size: 3rem;
             margin-bottom: 15px;
             color: rgba(99, 110, 114, 0.3);
+        }
+
+        .trail-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .trail-stat-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            background: #ffffff;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+        }
+
+        .trail-stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .trail-stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .trail-stat-card.status .trail-stat-icon {
+            background: rgba(108, 92, 231, 0.15);
+            color: #6c5ce7;
+        }
+
+        .trail-stat-card.handover .trail-stat-icon {
+            background: rgba(9, 132, 227, 0.15);
+            color: #0984e3;
+        }
+
+        .trail-stat-card.return .trail-stat-icon {
+            background: rgba(0, 184, 148, 0.15);
+            color: #00b894;
+        }
+
+        .trail-stat-card.create .trail-stat-icon {
+            background: rgba(0, 184, 148, 0.15);
+            color: #00b894;
+        }
+
+        .trail-stat-card.update .trail-stat-icon {
+            background: rgba(9, 132, 227, 0.15);
+            color: #0984e3;
+        }
+
+        .trail-stat-card.repair .trail-stat-icon {
+            background: rgba(253, 121, 168, 0.15);
+            color: #fd79a8;
+        }
+
+        .trail-stat-count {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .trail-stat-label {
+            font-size: 0.85rem;
+            color: #636e72;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
         }
     </style>
 </head>
@@ -721,11 +934,87 @@ function formatCurrency($amount) {
                             <p>No trail history found for this asset.</p>
                         </div>
                     <?php else : ?>
-                        <?php foreach ($assetTrails as $trail) : ?>
-                            <div class="trail-item">
+                        <?php if (isset($trailCounts)) : ?>
+                            <div class="trail-stats">
+                                <?php if ($trailCounts['status'] > 0) : ?>
+                                    <div class="trail-stat-card status">
+                                        <div class="trail-stat-icon">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                        </div>
+                                        <div class="trail-stat-count"><?php echo $trailCounts['status']; ?></div>
+                                        <div class="trail-stat-label">Status Changes</div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($trailCounts['handover'] > 0) : ?>
+                                    <div class="trail-stat-card handover">
+                                        <div class="trail-stat-icon">
+                                            <i class="fa-solid fa-hand-holding"></i>
+                                        </div>
+                                        <div class="trail-stat-count"><?php echo $trailCounts['handover']; ?></div>
+                                        <div class="trail-stat-label">Handovers</div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($trailCounts['return'] > 0) : ?>
+                                    <div class="trail-stat-card return">
+                                        <div class="trail-stat-icon">
+                                            <i class="fa-solid fa-rotate-left"></i>
+                                        </div>
+                                        <div class="trail-stat-count"><?php echo $trailCounts['return']; ?></div>
+                                        <div class="trail-stat-label">Returns</div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($trailCounts['repair'] > 0) : ?>
+                                    <div class="trail-stat-card repair">
+                                        <div class="trail-stat-icon">
+                                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                                        </div>
+                                        <div class="trail-stat-count"><?php echo $trailCounts['repair']; ?></div>
+                                        <div class="trail-stat-label">Repairs</div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($trailCounts['create'] > 0) : ?>
+                                    <div class="trail-stat-card create">
+                                        <div class="trail-stat-icon">
+                                            <i class="fa-solid fa-circle-plus"></i>
+                                        </div>
+                                        <div class="trail-stat-count"><?php echo $trailCounts['create']; ?></div>
+                                        <div class="trail-stat-label">Created</div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($trailCounts['update'] > 0) : ?>
+                                    <div class="trail-stat-card update">
+                                        <div class="trail-stat-icon">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </div>
+                                        <div class="trail-stat-count"><?php echo $trailCounts['update']; ?></div>
+                                        <div class="trail-stat-label">Updates</div>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="trail-stat-card" style="border-left: 3px solid #1a1a2e;">
+                                    <div class="trail-stat-icon" style="background: rgba(26, 26, 46, 0.15); color: #1a1a2e;">
+                                        <i class="fa-solid fa-list"></i>
+                                    </div>
+                                    <div class="trail-stat-count"><?php echo $trailCounts['total']; ?></div>
+                                    <div class="trail-stat-label">Total Actions</div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <?php foreach ($assetTrails as $trail) : 
+                            $actionType = $trail['action_type'] ?? '';
+                            $actionClass = getTrailActionClass($actionType);
+                            $actionIcon = getTrailActionIcon($actionType);
+                        ?>
+                            <div class="trail-item <?php echo htmlspecialchars($actionClass); ?>">
                                 <div class="trail-header">
-                                    <div class="trail-action"><?php echo htmlspecialchars(str_replace('_', ' ', $trail['action_type'])); ?></div>
-                                    <div class="trail-date"><?php echo date('d M Y, H:i', strtotime($trail['created_at'])); ?></div>
+                                    <div class="trail-action-wrapper">
+                                        <div class="trail-action-icon">
+                                            <i class="fa-solid <?php echo htmlspecialchars($actionIcon); ?>"></i>
+                                        </div>
+                                        <div class="trail-action"><?php echo htmlspecialchars(str_replace('_', ' ', $actionType)); ?></div>
+                                    </div>
+                                    <div class="trail-date">
+                                        <?php echo date('d M Y, H:i', strtotime($trail['created_at'])); ?>
+                                    </div>
                                 </div>
                                 <div class="trail-details">
                                     <?php if (!empty($trail['field_name'])) : ?>
@@ -734,27 +1023,34 @@ function formatCurrency($amount) {
                                             <span class="trail-field-value"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $trail['field_name']))); ?></span>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($trail['old_value'])) : ?>
+                                    <?php if (!empty($trail['old_value']) && !empty($trail['new_value'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Changed:</span>
+                                            <span class="trail-field-value old-value"><?php echo htmlspecialchars($trail['old_value']); ?></span>
+                                            <i class="fa-solid fa-arrow-right" style="color: #636e72; font-size: 0.75rem; margin: 0 4px;"></i>
+                                            <span class="trail-field-value new-value"><?php echo htmlspecialchars($trail['new_value']); ?></span>
+                                        </div>
+                                    <?php elseif (!empty($trail['old_value'])) : ?>
                                         <div class="trail-field">
                                             <span class="trail-field-label">Old Value:</span>
-                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['old_value']); ?></span>
+                                            <span class="trail-field-value old-value"><?php echo htmlspecialchars($trail['old_value']); ?></span>
                                         </div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($trail['new_value'])) : ?>
+                                    <?php elseif (!empty($trail['new_value'])) : ?>
                                         <div class="trail-field">
                                             <span class="trail-field-label">New Value:</span>
-                                            <span class="trail-field-value"><?php echo htmlspecialchars($trail['new_value']); ?></span>
+                                            <span class="trail-field-value new-value"><?php echo htmlspecialchars($trail['new_value']); ?></span>
                                         </div>
                                     <?php endif; ?>
                                     <?php if (!empty($trail['description'])) : ?>
                                         <div class="trail-field">
-                                            <span class="trail-field-label">Description:</span>
+                                            <span class="trail-field-label">Note:</span>
                                             <span class="trail-field-value"><?php echo htmlspecialchars($trail['description']); ?></span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="trail-changed-by">
-                                    Changed by: <?php echo htmlspecialchars($trail['tech_name'] ?: ($trail['tech_id'] ? 'Tech #' . $trail['tech_id'] : 'System')); ?>
+                                    <i class="fa-solid fa-user"></i>
+                                    <span class="trail-changed-by-name"><?php echo htmlspecialchars($trail['tech_name'] ?: ($trail['tech_id'] ? 'Tech #' . $trail['tech_id'] : 'System')); ?></span>
                                 </div>
                             </div>
                         <?php endforeach; ?>
