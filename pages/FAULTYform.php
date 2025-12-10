@@ -92,8 +92,129 @@ if ($assetDetails) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Placeholder: persist logic can be added later
-    $message = 'Repair request captured (not yet stored).';
+    $postAssetId = trim($_POST['asset_id'] ?? '');
+    $postAssetType = trim($_POST['asset_type'] ?? '');
+    $severity = trim($_POST['severity'] ?? '');
+    $reportedByName = trim($_POST['reported_by'] ?? '');
+    $issueDescription = trim($_POST['issue'] ?? '');
+    $actionsPerformed = trim($_POST['actions'] ?? '');
+    $partsUsed = trim($_POST['parts_used'] ?? '');
+    $cost = trim($_POST['cost'] ?? '');
+    $vendor = trim($_POST['vendor'] ?? '');
+    $repairStatus = trim($_POST['status'] ?? '');
+    $returnTargetDate = trim($_POST['return_target'] ?? '');
+    $remarks = trim($_POST['remarks'] ?? '');
+    
+    // Validation
+    if (empty($postAssetId) || !is_numeric($postAssetId)) {
+        $error = 'Invalid asset ID.';
+    } elseif (empty($postAssetType) || !in_array($postAssetType, ['laptop_desktop', 'av', 'network'])) {
+        $error = 'Invalid asset type.';
+    } elseif (empty($issueDescription)) {
+        $error = 'Issue description is required.';
+    } elseif (empty($reportedByName)) {
+        $error = 'Reported by field is required.';
+    } else {
+        try {
+            // Get technician ID from name (if exists)
+            $reportedById = null;
+            if (!empty($reportedByName)) {
+                $techStmt = $pdo->prepare("SELECT id FROM technician WHERE tech_name = ? OR email = ? LIMIT 1");
+                $techStmt->execute([$reportedByName, $reportedByName]);
+                $techResult = $techStmt->fetch(PDO::FETCH_ASSOC);
+                $reportedById = $techResult['id'] ?? null;
+            }
+            
+            // Convert cost to decimal
+            $estimatedCost = null;
+            if (!empty($cost) && is_numeric($cost)) {
+                $estimatedCost = (float)$cost;
+            }
+            
+            // Convert date
+            $returnTarget = null;
+            if (!empty($returnTargetDate)) {
+                $returnTarget = $returnTargetDate;
+            }
+            
+            // Insert into repair_faulty table
+            $insertStmt = $pdo->prepare("
+                INSERT INTO repair_faulty (
+                    asset_type, asset_id, reported_by, reported_by_name, severity,
+                    issue_description, actions_performed, parts_used, estimated_cost,
+                    vendor, repair_status, return_target_date, remarks, created_by
+                ) VALUES (
+                    :asset_type, :asset_id, :reported_by, :reported_by_name, :severity,
+                    :issue_description, :actions_performed, :parts_used, :estimated_cost,
+                    :vendor, :repair_status, :return_target_date, :remarks, :created_by
+                )
+            ");
+            
+            $insertStmt->execute([
+                ':asset_type' => $postAssetType,
+                ':asset_id' => (int)$postAssetId,
+                ':reported_by' => $reportedById,
+                ':reported_by_name' => $reportedByName ?: null,
+                ':severity' => $severity ?: null,
+                ':issue_description' => $issueDescription,
+                ':actions_performed' => $actionsPerformed ?: null,
+                ':parts_used' => $partsUsed ?: null,
+                ':estimated_cost' => $estimatedCost,
+                ':vendor' => $vendor ?: null,
+                ':repair_status' => $repairStatus ?: 'In Repair',
+                ':return_target_date' => $returnTarget,
+                ':remarks' => $remarks ?: null,
+                ':created_by' => $_SESSION['user_id'] ?? null
+            ]);
+            
+            $repairId = $pdo->lastInsertId();
+            
+            // Update asset status to MAINTENANCE if not already
+            if ($postAssetType === 'laptop_desktop') {
+                $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = 'MAINTENANCE' WHERE asset_id = ? AND status != 'MAINTENANCE'");
+                $updateStmt->execute([$postAssetId]);
+            } elseif ($postAssetType === 'av') {
+                $updateStmt = $pdo->prepare("UPDATE av_assets SET status = 'MAINTENANCE' WHERE asset_id = ? AND status != 'MAINTENANCE'");
+                $updateStmt->execute([$postAssetId]);
+            } elseif ($postAssetType === 'network') {
+                $updateStmt = $pdo->prepare("UPDATE net_assets SET status = 'MAINTENANCE' WHERE asset_id = ? AND status != 'MAINTENANCE'");
+                $updateStmt->execute([$postAssetId]);
+            }
+            
+            // Create asset trail entry
+            try {
+                $trailStmt = $pdo->prepare("
+                    INSERT INTO asset_trails (
+                        asset_type, asset_id, action_type, changed_by, field_name,
+                        old_value, new_value, description
+                    ) VALUES (
+                        :asset_type, :asset_id, 'UPDATE', :changed_by, 'status',
+                        :old_value, 'MAINTENANCE', :description
+                    )
+                ");
+                
+                $oldStatus = $assetDetails['status'] ?? 'Unknown';
+                $trailStmt->execute([
+                    ':asset_type' => $postAssetType,
+                    ':asset_id' => (int)$postAssetId,
+                    ':changed_by' => $_SESSION['user_id'] ?? null,
+                    ':old_value' => $oldStatus,
+                    ':description' => 'Asset status changed to MAINTENANCE due to repair request. Repair ID: ' . $repairId
+                ]);
+            } catch (PDOException $e) {
+                error_log('Error creating asset trail: ' . $e->getMessage());
+            }
+            
+            $message = 'Repair request saved successfully! Repair ID: ' . $repairId;
+            
+            // Clear form data after successful submission
+            $_POST = [];
+            
+        } catch (PDOException $e) {
+            error_log('Error saving repair request: ' . $e->getMessage());
+            $error = 'Failed to save repair request. Please try again.';
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -239,10 +360,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <?php if (!empty($message)) : ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
+                <div class="alert alert-success">
+                    <?php echo htmlspecialchars($message); ?>
+                    <?php if (!empty($assetTypeParam)) : ?>
+                        <div style="margin-top: 12px;">
+                            <button type="button" class="btn btn-secondary" onclick="window.location.href='<?php echo $assetTypeParam === 'laptop_desktop' ? 'LAPTOPpage.php' : ($assetTypeParam === 'av' ? 'AVpage.php' : 'NETpage.php'); ?>'">
+                                Back to Assets
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
 
-            <?php if (empty($error)) : ?>
+            <?php if (empty($error) && empty($message)) : ?>
             <form method="POST">
                 <input type="hidden" name="asset_id" value="<?php echo htmlspecialchars($assetIdParam); ?>">
                 <input type="hidden" name="asset_type" value="<?php echo htmlspecialchars($assetTypeParam); ?>">
