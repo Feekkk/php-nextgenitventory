@@ -157,6 +157,26 @@ function getTrailActionClass($actionType) {
     if (strpos($action, 'STATUS') !== false) return 'status';
     return 'update';
 }
+
+function getStatusTrailClassFromValue($value) {
+    $status = strtoupper(trim($value ?? ''));
+    $map = [
+        'MAINTENANCE' => 'status-maintenance',
+        'FAULTY' => 'status-faulty',
+        'DEPLOY' => 'status-deploy',
+        'ACTIVE' => 'status-active',
+        'AVAILABLE' => 'status-active',
+        'IN-USE' => 'status-inuse',
+        'ONLINE' => 'status-active',
+        'OFFLINE' => 'status-offline',
+        'DISPOSED' => 'status-disposed',
+        'DISPOSE' => 'status-disposed',
+        'RESERVED' => 'status-reserved',
+        'LOST' => 'status-lost',
+        'NON-ACTIVE' => 'status-nonactive',
+    ];
+    return $map[$status] ?? 'status-generic';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -515,6 +535,18 @@ function getTrailActionClass($actionType) {
         .trail-item.status {
             border-left-color: #6c5ce7;
         }
+
+        .trail-item.status-maintenance { border-left-color: #fd79a8; }
+        .trail-item.status-faulty { border-left-color: #d63031; }
+        .trail-item.status-deploy { border-left-color: #00b894; }
+        .trail-item.status-active { border-left-color: #00b894; }
+        .trail-item.status-inuse { border-left-color: #6c5ce7; }
+        .trail-item.status-offline { border-left-color: #e67e22; }
+        .trail-item.status-reserved { border-left-color: #0984e3; }
+        .trail-item.status-disposed { border-left-color: #636e72; }
+        .trail-item.status-lost { border-left-color: #e74c3c; }
+        .trail-item.status-nonactive { border-left-color: #636e72; }
+        .trail-item.status-generic { border-left-color: #6c5ce7; }
 
         .trail-header {
             display: flex;
@@ -1002,6 +1034,14 @@ function getTrailActionClass($actionType) {
                             $actionType = $trail['action_type'] ?? '';
                             $actionClass = getTrailActionClass($actionType);
                             $actionIcon = getTrailActionIcon($actionType);
+                            $isStatusChange = (strtoupper(trim($trail['field_name'] ?? '')) === 'STATUS' || strpos(strtoupper(trim($trail['description'] ?? '')), 'STATUS') !== false);
+                            $statusValue = $trail['new_value'] ?? '';
+                            if ($isStatusChange && $statusValue !== '') {
+                                $actionClass .= ' ' . getStatusTrailClassFromValue($statusValue);
+                            }
+                            $actionLabel = $isStatusChange && $statusValue !== '' 
+                                ? formatStatusLabel($statusValue)
+                                : str_replace('_', ' ', $actionType);
                         ?>
                             <div class="trail-item <?php echo htmlspecialchars($actionClass); ?>">
                                 <div class="trail-header">
@@ -1009,7 +1049,7 @@ function getTrailActionClass($actionType) {
                                         <div class="trail-action-icon">
                                             <i class="fa-solid <?php echo htmlspecialchars($actionIcon); ?>"></i>
                                         </div>
-                                        <div class="trail-action"><?php echo htmlspecialchars(str_replace('_', ' ', $actionType)); ?></div>
+                                        <div class="trail-action"><?php echo htmlspecialchars($actionLabel); ?></div>
                                     </div>
                                     <div class="trail-date">
                                         <?php echo date('d M Y, H:i', strtotime($trail['created_at'])); ?>
