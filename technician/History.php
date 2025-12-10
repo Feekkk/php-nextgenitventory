@@ -10,15 +10,27 @@ if (!isset($_SESSION['user_id'])) {
 
 $pdo = getDBConnection();
 $assetTrails = [];
+$perPage = 10;
+$page = isset($_GET['page']) && is_numeric($_GET['page']) && $_GET['page'] > 0 ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $perPage;
+$totalRows = 0;
+$totalPages = 1;
 
 try {
+    // Count total rows for pagination
+    $countStmt = $pdo->query("SELECT COUNT(*) AS total FROM asset_trails");
+    $totalRows = (int)($countStmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+    $totalPages = max(1, (int)ceil($totalRows / $perPage));
+
     $stmt = $pdo->prepare("
         SELECT at.*, tech.tech_name, tech.tech_id AS technician_code
         FROM asset_trails at
         LEFT JOIN technician tech ON at.changed_by = tech.id
         ORDER BY at.created_at DESC
-        LIMIT 200
+        LIMIT :limit OFFSET :offset
     ");
+    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $assetTrails = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -235,6 +247,41 @@ try {
             border-color: #1a1a2e;
         }
 
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .pagination a, .pagination span {
+            padding: 8px 14px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 9px;
+            background: #ffffff;
+            color: #1a1a2e;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .pagination a:hover {
+            background: #1a1a2e;
+            color: #ffffff;
+            border-color: #1a1a2e;
+        }
+
+        .pagination .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination .current {
+            background: #1a1a2e;
+            color: #ffffff;
+            border-color: #1a1a2e;
+        }
+
         @media (max-width: 768px) {
             .timeline::before {
                 left: 18px;
@@ -352,6 +399,21 @@ try {
                             </div>
                         </div>
                     <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            <div class="pagination">
+                <?php if ($page > 1): ?>
+                    <a href="?page=<?php echo $page - 1; ?>">&laquo; Prev</a>
+                <?php else: ?>
+                    <span class="disabled">&laquo; Prev</span>
+                <?php endif; ?>
+
+                <span class="current">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+
+                <?php if ($page < $totalPages): ?>
+                    <a href="?page=<?php echo $page + 1; ?>">Next &raquo;</a>
+                <?php else: ?>
+                    <span class="disabled">Next &raquo;</span>
                 <?php endif; ?>
             </div>
         </div>
