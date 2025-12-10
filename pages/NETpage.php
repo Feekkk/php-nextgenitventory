@@ -533,6 +533,17 @@ function formatStatusIcon($status)
             border-color: #00b894;
         }
 
+        .btn-action.maintenance {
+            color: #fd79a8;
+            border-color: rgba(253, 121, 168, 0.25);
+        }
+
+        .btn-action.maintenance:hover {
+            background: #fd79a8;
+            color: #ffffff;
+            border-color: #fd79a8;
+        }
+
         .action-tooltip {
             position: absolute;
             bottom: 100%;
@@ -770,6 +781,12 @@ function formatStatusIcon($status)
                                                 <span class="action-tooltip">In Stock</span>
                                             </button>
                                         <?php endif; ?>
+                                        <?php if ($rawStatus === 'OFFLINE') : ?>
+                                            <button class="btn-action maintenance" onclick="openMaintenanceForm(<?php echo $asset['asset_id']; ?>, 'network')" aria-label="Send to maintenance">
+                                                <i class="fa-solid fa-wrench"></i>
+                                                <span class="action-tooltip">Maintenance</span>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
                                             <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'network')" aria-label="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
@@ -894,6 +911,29 @@ function formatStatusIcon($status)
             .catch(error => {
                 console.error('Error:', error);
                 alert('An error occurred while marking the asset as in stock.');
+            });
+        }
+
+        function openMaintenanceForm(assetId, assetType) {
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+            formData.append('asset_type', assetType);
+
+            fetch('../services/set_maintenance_status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = `FAULTYform.php?asset_id=${assetId}&asset_type=${assetType}`;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating asset status. Please try again.');
             });
         }
 
