@@ -101,9 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $partsUsed = trim($_POST['parts_used'] ?? '');
     $cost = trim($_POST['cost'] ?? '');
     $vendor = trim($_POST['vendor'] ?? '');
-    $repairStatus = trim($_POST['status'] ?? '');
-    $returnTargetDate = trim($_POST['return_target'] ?? '');
     $remarks = trim($_POST['remarks'] ?? '');
+    $returnActualDate = date('Y-m-d');
     
     // Validation
     if (empty($postAssetId) || !is_numeric($postAssetId)) {
@@ -131,22 +130,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $estimatedCost = (float)$cost;
             }
             
-            // Convert date
-            $returnTarget = null;
-            if (!empty($returnTargetDate)) {
-                $returnTarget = $returnTargetDate;
-            }
-            
             // Insert into repair_faulty table
             $insertStmt = $pdo->prepare("
                 INSERT INTO repair_faulty (
                     asset_type, asset_id, reported_by, reported_by_name, severity,
                     issue_description, actions_performed, parts_used, estimated_cost,
-                    vendor, repair_status, return_target_date, remarks, created_by
+                    vendor, return_actual_date, remarks, created_by
                 ) VALUES (
                     :asset_type, :asset_id, :reported_by, :reported_by_name, :severity,
                     :issue_description, :actions_performed, :parts_used, :estimated_cost,
-                    :vendor, :repair_status, :return_target_date, :remarks, :created_by
+                    :vendor, :return_actual_date, :remarks, :created_by
                 )
             ");
             
@@ -161,8 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':parts_used' => $partsUsed ?: null,
                 ':estimated_cost' => $estimatedCost,
                 ':vendor' => $vendor ?: null,
-                ':repair_status' => $repairStatus ?: 'In Repair',
-                ':return_target_date' => $returnTarget,
+                ':return_actual_date' => $returnActualDate,
                 ':remarks' => $remarks ?: null,
                 ':created_by' => $_SESSION['user_id'] ?? null
             ]);
@@ -439,19 +431,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="vendor">Vendor / PIC</label>
                         <input type="text" id="vendor" name="vendor" placeholder="Vendor or person in charge">
-                    </div>
-                    <div class="form-group">
-                        <label for="status">Repair Status</label>
-                        <select id="status" name="status">
-                            <option value="">Select status</option>
-                            <option value="In Repair">In Repair</option>
-                            <option value="Completed">Completed</option>
-                            <option value="On Hold">On Hold</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="return_target">Target / Return Date</label>
-                        <input type="date" id="return_target" name="return_target">
                     </div>
                     <div class="form-group full">
                         <label for="remarks">Remarks</label>
