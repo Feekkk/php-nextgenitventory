@@ -554,7 +554,7 @@ if (isset($_SESSION['user_id'])) {
             <span>IT Inventory</span>
         </div>
         <ul>
-            <li><a href="dashboard.php"><i class="fa fa-gauge"></i> Dashboard</a></li>
+            <li><a href="../pages/dashboard.php"><i class="fa fa-gauge"></i> Dashboard</a></li>
             <li class="menu-item has-dropdown">
                 <a href="#" class="dropdown-toggle"><i class="fa fa-boxes"></i> Inventory</a>
                 <ul class="submenu">
@@ -564,9 +564,9 @@ if (isset($_SESSION['user_id'])) {
                 </ul>
             </li>
             <li><a href="#"><i class="fa fa-recycle"></i> Disposal</a></li>
-            <li><a href="History.php"><i class="fa fa-clock-rotate-left"></i> History</a></li>
-            <li><a href="UserManual.php"><i class="fa fa-book"></i> User Manual</a></li>
-            <li><a href="Profile.php"><i class="fa fa-user"></i> Profile</a></li>
+            <li><a href="../pages/History.php"><i class="fa fa-clock-rotate-left"></i> History</a></li>
+            <li><a href="../pages/UserManual.php"><i class="fa fa-book"></i> User Manual</a></li>
+            <li><a href="../pages/Profile.php"><i class="fa fa-user"></i> Profile</a></li>
             <li><a href="../auth/logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
         </ul>
         <div class="sidebar-status">
