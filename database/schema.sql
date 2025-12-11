@@ -311,3 +311,25 @@ CREATE TABLE IF NOT EXISTS `repair_faulty` (
     FOREIGN KEY (`reported_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Warranty Table
+CREATE TABLE IF NOT EXISTS `warranty` (
+    `warranty_id` INT(11) NOT NULL AUTO_INCREMENT,
+    `asset_type` ENUM('av', 'network') NOT NULL,
+    `asset_id` INT(11) NOT NULL,
+    `send_date` DATE NOT NULL,
+    `vendor_name` VARCHAR(255) NOT NULL,
+    `remarks` TEXT DEFAULT NULL,
+    `created_by` INT(11) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`warranty_id`),
+    INDEX `idx_asset_type` (`asset_type`),
+    INDEX `idx_asset_id` (`asset_id`),
+    INDEX `idx_send_date` (`send_date`),
+    INDEX `idx_vendor_name` (`vendor_name`),
+    INDEX `idx_created_by` (`created_by`),
+    INDEX `idx_created_at` (`created_at`),
+    INDEX `idx_asset_composite` (`asset_type`, `asset_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
