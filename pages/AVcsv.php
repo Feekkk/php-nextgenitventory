@@ -312,7 +312,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
                             ]);
                         }
-                    } catch (PDOException $e) {
+                    }
+                } catch (PDOException $e) {
                         if ($pdo->inTransaction()) {
                             $pdo->rollBack();
                         }
