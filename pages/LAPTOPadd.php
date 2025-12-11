@@ -105,6 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Select a valid status.';
     }
 
+    if ($formData['status'] === 'DEPLOY' && ($formData['staff_id'] === '' || !is_numeric($formData['staff_id']))) {
+        $errors[] = 'Staff ID is required when status is DEPLOY.';
+    }
+
     if ($formData['PO_DATE'] === '') {
         $errors[] = 'P.O. Date is required.';
     }
@@ -235,6 +239,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             } catch (PDOException $e) {
                 error_log('Failed to write laptop asset trail: ' . $e->getMessage());
+            }
+
+            if ($formData['status'] === 'DEPLOY' && $staffId !== null) {
+                try {
+                    $handoverStmt = $pdo->prepare("
+                        INSERT INTO handover (
+                            staff_id, asset_type, asset_id, handover_date,
+                            handover_location, status, created_by
+                        ) VALUES (
+                            :staff_id, 'laptop_desktop', :asset_id, :handover_date,
+                            :handover_location, 'active', :created_by
+                        )
+                    ");
+                    $handoverStmt->execute([
+                        ':staff_id' => $staffId,
+                        ':asset_id' => $assetId,
+                        ':handover_date' => date('Y-m-d'),
+                        ':handover_location' => $formData['location'] ?: null,
+                        ':created_by' => $_SESSION['user_id'] ?? null,
+                    ]);
+                } catch (PDOException $e) {
+                    error_log('Failed to create handover record: ' . $e->getMessage());
+                }
             }
 
             $successMessage = 'Laptop/Desktop asset saved successfully.';
@@ -648,6 +675,13 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
                 const field = document.getElementById(fieldId);
                 if (field) {
                     field.disabled = !isDeploy;
+                    if (fieldId === 'staff_id') {
+                        if (isDeploy) {
+                            field.setAttribute('required', 'required');
+                        } else {
+                            field.removeAttribute('required');
+                        }
+                    }
                     if (field.type === 'text' || field.type === 'number' || field.type === 'date') {
                         field.style.backgroundColor = isDeploy ? '' : '#f5f5f5';
                         field.style.cursor = isDeploy ? '' : 'not-allowed';
