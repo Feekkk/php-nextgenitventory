@@ -823,14 +823,27 @@ function formatCategoryClass($category)
                                                 <i class="fa-solid fa-hand-holding"></i>
                                                 <span class="action-tooltip">Handover</span>
                                             </button>
+                                            <button class="btn-action repair" onclick="setToMaintenance(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Set to maintenance">
+                                                <i class="fa-solid fa-wrench"></i>
+                                                <span class="action-tooltip">Set to Maintenance</span>
+                                            </button>
                                         <?php elseif ($rawStatus === 'DEPLOY') : ?>
                                             <button class="btn-action return" onclick="window.location.href='../technician/HANDreturn.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Return asset">
                                                 <i class="fa-solid fa-rotate-left"></i>
                                                 <span class="action-tooltip">Return</span>
                                             </button>
-                                        <?php elseif ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
+                                            <button class="btn-action repair" onclick="setToMaintenance(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Set to maintenance">
+                                                <i class="fa-solid fa-wrench"></i>
+                                                <span class="action-tooltip">Set to Maintenance</span>
+                                            </button>
+                                        <?php elseif ($rawStatus === 'FAULTY') : ?>
                                             <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
+                                                <span class="action-tooltip">Repair</span>
+                                            </button>
+                                        <?php elseif ($rawStatus === 'MAINTENANCE') : ?>
+                                            <button class="btn-action repair" onclick="window.location.href='FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Repair asset">
+                                                <i class="fa-solid fa-toolbox"></i>
                                                 <span class="action-tooltip">Repair</span>
                                             </button>
                                         <?php endif; ?>
@@ -921,6 +934,34 @@ function formatCategoryClass($category)
                 dropdown.classList.remove('open');
             }
         });
+
+        function setToMaintenance(assetId, assetType) {
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+            formData.append('asset_type', assetType);
+
+            fetch('../services/set_maintenance_status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.already_maintenance) {
+                        alert('Asset is already in maintenance status.');
+                    } else {
+                        alert('Asset status has been updated to MAINTENANCE successfully.');
+                        window.location.reload();
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating asset status. Please try again.');
+            });
+        }
 
         function openRepairForm(assetId, assetType) {
             const formData = new FormData();

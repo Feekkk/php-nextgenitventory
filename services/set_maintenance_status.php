@@ -62,8 +62,9 @@ try {
         exit;
     }
     
-    if ($oldStatus !== 'FAULTY' && $oldStatus !== 'MAINTENANCE' && $oldStatus !== 'OFFLINE') {
-        throw new Exception("Cannot set asset to maintenance. Current status is '{$oldStatus}'. Only assets with FAULTY, MAINTENANCE or OFFLINE status can access the repair form.");
+    $allowedStatuses = ['FAULTY', 'MAINTENANCE', 'OFFLINE', 'DEPLOY', 'ACTIVE'];
+    if (!in_array($oldStatus, $allowedStatuses)) {
+        throw new Exception("Cannot set asset to maintenance. Current status is '{$oldStatus}'. Only assets with FAULTY, MAINTENANCE, OFFLINE, DEPLOY, or ACTIVE status can be set to maintenance.");
     }
     
     $updateStmt = $pdo->prepare("UPDATE {$tableName} SET status = 'MAINTENANCE' WHERE asset_id = ?");
