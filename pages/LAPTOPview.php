@@ -194,7 +194,7 @@ function getStatusTrailClassFromValue($value) {
         .view-page-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 110px 20px 80px;
+            padding: 40px 20px 80px;
         }
 
         .page-header {
