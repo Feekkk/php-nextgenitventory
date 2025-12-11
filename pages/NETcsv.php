@@ -44,6 +44,8 @@ $headerMap = [
     'building' => 'building',
     'level' => 'level',
     'status' => 'status',
+    'staffid' => 'staff_id',
+    'staff_id' => 'staff_id',
     'remarks' => 'remarks',
     'podate' => 'p.o_date',
     'ponumber' => 'p.o_num',
@@ -54,7 +56,9 @@ $headerMap = [
     'donumber' => 'd.o_num',
     'invoicedate' => 'invoice_date',
     'invoiceno' => 'invoice_num',
-    'purchasecost' => 'purchase_cost'
+    'purchasecost' => 'purchase_cost',
+    'warrantyexpiry' => 'warranty_expiry',
+    'warranty_expiry' => 'warranty_expiry'
 ];
 
 if (!function_exists('detectCsvDelimiter')) {
@@ -195,14 +199,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $insertStmt = $pdo->prepare("
                             INSERT INTO net_assets (
                                 asset_id, serial, model, brand, mac_add, ip_add,
-                                building, level, status, `PO_DATE`, `PO_NUM`,
+                                building, level, status, staff_id, `PO_DATE`, `PO_NUM`,
                                 `DO_DATE`, `DO_NUM`, `INVOICE_DATE`, `INVOICE_NUM`,
-                                `PURCHASE_COST`, remarks, created_by
+                                `PURCHASE_COST`, warranty_expiry, remarks, created_by
                             ) VALUES (
                                 :asset_id, :serial, :model, :brand, :mac_add, :ip_add,
-                                :building, :level, :status, :po_date, :po_num,
+                                :building, :level, :status, :staff_id, :po_date, :po_num,
                                 :do_date, :do_num, :invoice_date,  :invoice_num,
-                                :purchase_cost, :remarks, :created_by
+                                :purchase_cost, :warranty_expiry, :remarks, :created_by
                             )
                         ");
                         $importedAssetIds = [];
@@ -224,6 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'building' => '',
                                 'level' => '',
                                 'status' => '',
+                                'staff_id' => '',
                                 'p.o_date' => '',
                                 'p.o_num' => '',
                                 'd.o_date' => '',
@@ -231,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'invoice_date' => '',
                                 'invoice_num' => '',
                                 'purchase_cost' => '',
+                                'warranty_expiry' => '',
                                 'remarks' => '',
                             ];
 
@@ -279,6 +285,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
+                            if ($rowData['warranty_expiry'] !== '') {
+                                $date = DateTime::createFromFormat('Y-m-d', $rowData['warranty_expiry']);
+                                if (!$date || $date->format('Y-m-d') !== $rowData['warranty_expiry']) {
+                                    $rowErrors[] = 'Invalid warranty expiry date format (use YYYY-MM-DD)';
+                                }
+                            }
+
                             if ($rowData['purchase_cost'] !== '' && !is_numeric($rowData['purchase_cost'])) {
                                 $rowErrors[] = 'Purchase cost must be a number';
                             }
@@ -295,7 +308,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $assetId = (int)($prefix . str_pad($currentSequence, 3, '0', STR_PAD_LEFT));
                             $poDate = $rowData['p.o_date'] ?: null;
                             $invoiceDate = $rowData['invoice_date'] ?: null;
+                            $warrantyExpiry = $rowData['warranty_expiry'] ?: null;
                             $purchaseCost = $rowData['purchase_cost'] !== '' ? $rowData['purchase_cost'] : null;
+
+                            $staffId = !empty($rowData['staff_id']) && is_numeric($rowData['staff_id']) ? (int)$rowData['staff_id'] : null;
 
                             $insertStmt->execute([
                                 ':asset_id' => $assetId,
@@ -307,6 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':building' => $rowData['building'] ?: null,
                                 ':level' => $rowData['level'] ?: null,
                                 ':status' => $statusValue,
+                                ':staff_id' => $staffId,
                                 ':po_date' => $poDate,
                                 ':po_num' => $rowData['p.o_num'] ?: null,
                                 ':do_date' => $rowData['d.o_date'] ?: null,
@@ -314,6 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':invoice_date' => $invoiceDate,
                                 ':invoice_num' => $rowData['invoice_num'] ?: null,
                                 ':purchase_cost' => $purchaseCost,
+                                ':warranty_expiry' => $warrantyExpiry,
                                 ':remarks' => $rowData['remarks'] ?: null,
                                 ':created_by' => $_SESSION['user_id'],
                             ]);
@@ -608,8 +626,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <ul>
                         <li>Ensure the header row matches the template exactly (e.g., "ASSET ID", "MAC ADDRESS").</li>
                         <li>Required columns: SERIAL, MODEL, BRAND, STATUS.</li>
-                        <li>Optional columns: ASSET ID, MAC ADDRESS, IP ADDRESS, BUILDING, LEVEL, REMARKS, P.O DATE, P.0 NUMBER, D.O DATE, D.O NO, INVOICE DATE, INVOICE NO, PURCHASE COST.</li>
-                        <li>Date columns (P.O DATE, D.O DATE, INVOICE DATE) should use YYYY-MM-DD format.</li>
+                        <li>Optional columns: ASSET ID, MAC ADDRESS, IP ADDRESS, BUILDING, LEVEL, STAFF ID, REMARKS, P.O DATE, P.0 NUMBER, D.O DATE, D.O NO, INVOICE DATE, INVOICE NO, PURCHASE COST, WARRANTY EXPIRY.</li>
+                        <li>Date columns (P.O DATE, D.O DATE, INVOICE DATE, WARRANTY EXPIRY) should use YYYY-MM-DD format.</li>
                         <li>Strip sensitive credentials from exports before uploading.</li>
                     </ul>
                 </div>
@@ -629,6 +647,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <th>BUILDING</th>
                                     <th>LEVEL</th>
                                     <th>STATUS</th>
+                                    <th>STAFF ID</th>
                                     <th>REMARKS</th>
                                     <th>P.O DATE</th>
                                     <th>P.0 NUMBER</th>
@@ -637,6 +656,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <th>INVOICE DATE</th>
                                     <th>INVOICE NO</th>
                                     <th>PURCHASE COST</th>
+                                    <th>WARRANTY EXPIRY</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -650,6 +670,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>Data Center</td>
                                     <td>Level 2</td>
                                     <td>AVAILABLE</td>
+                                    <td></td>
                                     <td>Core switch for lab</td>
                                     <td>2024-01-15</td>
                                     <td>PO-2024-001</td>
@@ -658,6 +679,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <td>2024-01-25</td>
                                     <td>INV-2024-001</td>
                                     <td>15000.00</td>
+                                    <td>2027-01-25</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -945,6 +945,12 @@ function getStatusTrailClassFromValue($value) {
                                 <?php echo formatCurrency($asset['PURCHASE_COST']); ?>
                             </div>
                         </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Warranty Expiry</div>
+                            <div class="detail-value <?php echo empty($asset['warranty_expiry']) ? 'empty' : ''; ?>">
+                                <?php echo formatDate($asset['warranty_expiry']); ?>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="detail-section">

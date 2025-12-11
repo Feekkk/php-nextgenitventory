@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS `net_assets` (
     `INVOICE_DATE` DATE DEFAULT NULL,
     `INVOICE_NUM` VARCHAR(50) DEFAULT NULL,
     `PURCHASE_COST` DECIMAL(10,2) DEFAULT NULL,
+    `warranty_expiry` DATE DEFAULT NULL,
     `remarks` TEXT DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `created_by` INT(11) DEFAULT NULL,
@@ -130,6 +131,7 @@ CREATE TABLE IF NOT EXISTS `net_assets` (
     INDEX `idx_mac_add` (`mac_add`),
     INDEX `idx_ip_add` (`ip_add`),
     INDEX `idx_status` (`status`),
+    INDEX `idx_warranty_expiry` (`warranty_expiry`),
     INDEX `idx_building_level` (`building`, `level`),
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
