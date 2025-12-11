@@ -124,10 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
         $errors[] = 'Please select the condition of the returned asset.';
     }
     
-    if (!$conditionCheck) {
-        $errors[] = 'You must confirm that you have checked the asset condition.';
-    }
-    
     if (empty($newAssetStatus)) {
         $errors[] = 'Please select the new status for the asset.';
     }
@@ -789,31 +785,6 @@ if ($assetTypeParam === 'laptop_desktop') {
                                     <label for="return_date">Return Date <span style="color:#c0392b;">*</span></label>
                                     <input type="date" id="return_date" name="return_date" 
                                            value="<?php echo date('Y-m-d'); ?>" required>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="return_condition">Asset Condition <span style="color:#c0392b;">*</span></label>
-                                    <div class="condition-options">
-                                        <div class="condition-option">
-                                            <input type="radio" id="condition_excellent" name="return_condition" value="Excellent" required>
-                                            <label for="condition_excellent">Excellent - No issues, fully functional</label>
-                                        </div>
-                                        <div class="condition-option">
-                                            <input type="radio" id="condition_good" name="return_condition" value="Good" required>
-                                            <label for="condition_good">Good - Minor wear, fully functional</label>
-                                        </div>
-                                        <div class="condition-option">
-                                            <input type="radio" id="condition_fair" name="return_condition" value="Fair" required>
-                                            <label for="condition_fair">Fair - Some issues, needs attention</label>
-                                        </div>
-                                        <div class="condition-option">
-                                            <input type="radio" id="condition_poor" name="return_condition" value="Poor" required>
-                                            <label for="condition_poor">Poor - Significant damage or issues</label>
-                                        </div>
-                                        <div class="condition-option">
-                                            <input type="radio" id="condition_damaged" name="return_condition" value="Damaged" required>
-                                            <label for="condition_damaged">Damaged - Requires repair</label>
-                                        </div>
-                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="new_status">New Asset Status <span style="color:#c0392b;">*</span></label>

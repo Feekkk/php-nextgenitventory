@@ -250,7 +250,6 @@ CREATE TABLE IF NOT EXISTS `handover` (
     `status` ENUM('active', 'returned', 'completed') DEFAULT 'active',
     `return_date` DATE DEFAULT NULL,
     `returned_by` INT(11) DEFAULT NULL,
-    `return_condition` VARCHAR(50) DEFAULT NULL,
     `return_notes` TEXT DEFAULT NULL,
     `received_by_name` VARCHAR(100) DEFAULT NULL,
     `received_by_designation` VARCHAR(100) DEFAULT NULL,
