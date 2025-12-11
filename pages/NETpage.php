@@ -522,6 +522,17 @@ function formatStatusIcon($status)
             border-color: #d35400;
         }
 
+        .btn-action.warranty {
+            color: #6c5ce7;
+            border-color: rgba(108, 92, 231, 0.25);
+        }
+
+        .btn-action.warranty:hover {
+            background: #6c5ce7;
+            color: #ffffff;
+            border-color: #6c5ce7;
+        }
+
         .btn-action.in-stock {
             color: #00b894;
             border-color: rgba(0, 184, 148, 0.25);
@@ -740,6 +751,8 @@ function formatStatusIcon($status)
                                 if ($serial === '') {
                                     $serial = '-';
                                 }
+                                $warrantyExpiry = $asset['warranty_expiry'] ?? null;
+                                $isUnderWarranty = $warrantyExpiry && $warrantyExpiry !== '0000-00-00' && strtotime($warrantyExpiry) >= strtotime(date('Y-m-d'));
                             ?>
                             <tr data-asset-id="<?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?>"
                                 data-serial="<?php echo htmlspecialchars(strtolower($serial)); ?>"
@@ -775,6 +788,12 @@ function formatStatusIcon($status)
                                             <i class="fa-solid fa-eye"></i>
                                             <span class="action-tooltip">View details</span>
                                         </button>
+                                        <?php if ($isUnderWarranty) : ?>
+                                            <button class="btn-action warranty" onclick="window.location.href='WARRANTY.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=network'" aria-label="Warranty details">
+                                                <i class="fa-solid fa-shield-halved"></i>
+                                                <span class="action-tooltip">Warranty</span>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($rawStatus === 'ONLINE') : ?>
                                             <button class="btn-action in-stock" onclick="markInStock(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as in stock">
                                                 <i class="fa-solid fa-warehouse"></i>
