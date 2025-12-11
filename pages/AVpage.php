@@ -58,6 +58,7 @@ function formatStatusClass($status)
         'RESERVED' => 'reserved',
         'NON-ACTIVE' => 'non-active',
         'LOST' => 'lost',
+        'WARRANTY COVER' => 'warranty',
     ];
     return $map[$status] ?? 'unknown';
 }
@@ -84,6 +85,7 @@ function formatStatusIcon($status)
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
         'UNAVAILABLE' => 'fa-circle-xmark',
+        'WARRANTY COVER' => 'fa-shield-halved',
     ];
     return $iconMap[$status] ?? 'fa-circle-question';
 }
@@ -421,6 +423,11 @@ function formatStatusIcon($status)
             color: #d63031;
         }
 
+        .status-badge.warranty {
+            background: rgba(108, 92, 231, 0.15);
+            color: #6c5ce7;
+        }
+
         .status-badge.unavailable {
             background: rgba(214, 48, 49, 0.15);
             color: #d63031;
@@ -464,37 +471,34 @@ function formatStatusIcon($status)
         }
 
         .action-buttons {
-            display: flex;
-            gap: 8px;
+            display: inline-flex;
+            gap: 6px;
         }
 
         .btn-action {
-            padding: 6px 12px;
+            width: 30px;
+            height: 30px;
             border: 1px solid rgba(0, 0, 0, 0.1);
             background: #ffffff;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
-            color: #2d3436;
-            font-size: 0.85rem;
+            color: #8a94a6;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-action:hover {
-            background: #1a1a2e;
-            color: #ffffff;
-            border-color: #1a1a2e;
+            background: #f4f5f9;
+            color: #2d3436;
+            border-color: #d5d7de;
         }
 
-        .btn-action.repair {
-            color: #d35400;
-            border-color: rgba(211, 84, 0, 0.25);
-        }
-
-        .btn-action.repair:hover {
-            background: #d35400;
-            color: #ffffff;
-            border-color: #d35400;
-        }
+        .btn-action.view { color: #0984e3; }
+        .btn-action.repair { color: #d35400; }
+        .btn-action.warranty { color: #6c5ce7; }
 
         .empty-state {
             text-align: center;
@@ -646,6 +650,9 @@ function formatStatusIcon($status)
                                 if ($location === '') {
                                     $location = '-';
                                 }
+                                $warrantyExpiry = $asset['warranty_expiry'] ?? null;
+                                $isUnderWarranty = ($rawStatus === 'WARRANTY COVER') ||
+                                    ($warrantyExpiry && $warrantyExpiry !== '0000-00-00' && strtotime($warrantyExpiry) >= strtotime(date('Y-m-d')));
                             ?>
                             <tr data-asset-id="<?php echo htmlspecialchars(formatAssetId($asset['asset_id'])); ?>"
                                 data-serial="<?php echo htmlspecialchars(strtolower($serial)); ?>"
@@ -671,12 +678,17 @@ function formatStatusIcon($status)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'">
-                                            <i class="fa-solid fa-eye"></i> View
+                                        <button class="btn-action view" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
+                                            <i class="fa-solid fa-eye"></i>
                                         </button>
+                                        <?php if ($isUnderWarranty) : ?>
+                                            <button class="btn-action warranty" onclick="window.location.href='WARRANTY.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'" aria-label="Warranty details">
+                                                <i class="fa-solid fa-shield-halved"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
-                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')">
-                                                <i class="fa-solid fa-screwdriver-wrench"></i> Repair
+                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')" aria-label="Repair asset">
+                                                <i class="fa-solid fa-screwdriver-wrench"></i>
                                             </button>
                                         <?php endif; ?>
                                     </div>
