@@ -25,24 +25,27 @@ try {
     error_log('Error fetching technician name: ' . $e->getMessage());
 }
 
+$hasActiveHandover = false;
+$handoverStaffId = null;
+
 // Fetch asset details
 if ($assetIdParam && $assetTypeParam && is_numeric($assetIdParam)) {
     try {
         if ($assetTypeParam === 'laptop_desktop') {
             $stmt = $pdo->prepare("
-                SELECT asset_id, serial_num, brand, model, category, status
+                SELECT asset_id, serial_num, brand, model, category, status, staff_id
                 FROM laptop_desktop_assets 
                 WHERE asset_id = ?
             ");
         } elseif ($assetTypeParam === 'av') {
             $stmt = $pdo->prepare("
-                SELECT asset_id, serial_num, brand, model, class as category, status
+                SELECT asset_id, serial_num, brand, model, class as category, status, staff_id
                 FROM av_assets 
                 WHERE asset_id = ?
             ");
         } elseif ($assetTypeParam === 'network') {
             $stmt = $pdo->prepare("
-                SELECT asset_id, serial, brand, model, status
+                SELECT asset_id, serial, brand, model, status, staff_id
                 FROM net_assets 
                 WHERE asset_id = ?
             ");
@@ -56,6 +59,22 @@ if ($assetIdParam && $assetTypeParam && is_numeric($assetIdParam)) {
             
             if (!$assetDetails) {
                 $error = 'Asset not found.';
+            } else {
+                // Check if there's an active handover record for this asset
+                $handoverStmt = $pdo->prepare("
+                    SELECT handover_id, staff_id, status 
+                    FROM handover 
+                    WHERE asset_type = ? AND asset_id = ? AND status = 'active'
+                    ORDER BY handover_date DESC 
+                    LIMIT 1
+                ");
+                $handoverStmt->execute([$assetTypeParam, $assetIdParam]);
+                $handoverRecord = $handoverStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($handoverRecord) {
+                    $hasActiveHandover = true;
+                    $handoverStaffId = $handoverRecord['staff_id'];
+                }
             }
         }
     } catch (PDOException $e) {
@@ -164,24 +183,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Get old status before update
             $oldStatus = $assetDetails['status'] ?? 'Unknown';
             
-            // Set default status based on asset type
+            // Check if asset has an active handover record
+            $checkHandoverStmt = $pdo->prepare("
+                SELECT handover_id, staff_id 
+                FROM handover 
+                WHERE asset_type = ? AND asset_id = ? AND status = 'active'
+                ORDER BY handover_date DESC 
+                LIMIT 1
+            ");
+            $checkHandoverStmt->execute([$postAssetType, $postAssetId]);
+            $activeHandover = $checkHandoverStmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Set status based on asset type and handover status
             $defaultStatus = '';
-            if ($postAssetType === 'laptop_desktop') {
-                $defaultStatus = 'ACTIVE';
-                $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = ? WHERE asset_id = ?");
-                $updateStmt->execute([$defaultStatus, $postAssetId]);
-            } elseif ($postAssetType === 'av') {
-                $defaultStatus = 'ACTIVE';
-                $updateStmt = $pdo->prepare("UPDATE av_assets SET status = ? WHERE asset_id = ?");
-                $updateStmt->execute([$defaultStatus, $postAssetId]);
-            } elseif ($postAssetType === 'network') {
-                $defaultStatus = 'OFFLINE';
-                $updateStmt = $pdo->prepare("UPDATE net_assets SET status = ? WHERE asset_id = ?");
-                $updateStmt->execute([$defaultStatus, $postAssetId]);
+            if ($activeHandover) {
+                // Asset has active handover - set to DEPLOY to maintain assignment
+                if ($postAssetType === 'laptop_desktop') {
+                    $defaultStatus = 'DEPLOY';
+                    $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = ? WHERE asset_id = ?");
+                    $updateStmt->execute([$defaultStatus, $postAssetId]);
+                } elseif ($postAssetType === 'av') {
+                    $defaultStatus = 'DEPLOY';
+                    $updateStmt = $pdo->prepare("UPDATE av_assets SET status = ? WHERE asset_id = ?");
+                    $updateStmt->execute([$defaultStatus, $postAssetId]);
+                } elseif ($postAssetType === 'network') {
+                    $defaultStatus = 'DEPLOY';
+                    $updateStmt = $pdo->prepare("UPDATE net_assets SET status = ? WHERE asset_id = ?");
+                    $updateStmt->execute([$defaultStatus, $postAssetId]);
+                }
+            } else {
+                // No active handover - set to default status
+                if ($postAssetType === 'laptop_desktop') {
+                    $defaultStatus = 'ACTIVE';
+                    $updateStmt = $pdo->prepare("UPDATE laptop_desktop_assets SET status = ? WHERE asset_id = ?");
+                    $updateStmt->execute([$defaultStatus, $postAssetId]);
+                } elseif ($postAssetType === 'av') {
+                    $defaultStatus = 'ACTIVE';
+                    $updateStmt = $pdo->prepare("UPDATE av_assets SET status = ? WHERE asset_id = ?");
+                    $updateStmt->execute([$defaultStatus, $postAssetId]);
+                } elseif ($postAssetType === 'network') {
+                    $defaultStatus = 'OFFLINE';
+                    $updateStmt = $pdo->prepare("UPDATE net_assets SET status = ? WHERE asset_id = ?");
+                    $updateStmt->execute([$defaultStatus, $postAssetId]);
+                }
             }
             
             // Create asset trail entry
             try {
+                $trailDescription = 'Asset status changed to ' . $defaultStatus . ' after repair request. Repair ID: ' . $repairId;
+                if ($activeHandover) {
+                    $trailDescription .= ' (Handover information preserved - asset remains assigned to staff)';
+                }
+                
                 $trailStmt = $pdo->prepare("
                     INSERT INTO asset_trails (
                         asset_type, asset_id, action_type, changed_by, field_name,
@@ -198,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':changed_by' => $_SESSION['user_id'] ?? null,
                     ':old_value' => $oldStatus,
                     ':new_value' => $defaultStatus,
-                    ':description' => 'Asset status changed to ' . $defaultStatus . ' after repair request. Repair ID: ' . $repairId
+                    ':description' => $trailDescription
                 ]);
             } catch (PDOException $e) {
                 error_log('Error creating asset trail: ' . $e->getMessage());
