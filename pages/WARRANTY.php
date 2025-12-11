@@ -14,6 +14,8 @@ $allowedTypes = ['av', 'network'];
 $error = '';
 $message = '';
 $asset = null;
+$latestWarranty = null;
+$assetStatus = '';
 
 if ($assetTypeParam && $assetIdParam && ctype_digit($assetIdParam) && in_array($assetTypeParam, $allowedTypes, true)) {
     try {
@@ -34,6 +36,19 @@ if ($assetTypeParam && $assetIdParam && ctype_digit($assetIdParam) && in_array($
         $asset = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$asset) {
             $error = 'Asset not found.';
+        } else {
+            $assetStatus = strtoupper(trim($asset['status'] ?? ''));
+            $wStmt = $pdo->prepare("
+                SELECT * FROM warranty
+                WHERE asset_type = :type AND asset_id = :id
+                ORDER BY created_at DESC
+                LIMIT 1
+            ");
+            $wStmt->execute([
+                ':type' => $assetTypeParam,
+                ':id' => (int)$assetIdParam
+            ]);
+            $latestWarranty = $wStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         }
     } catch (PDOException $e) {
         $error = 'Unable to load asset.';
@@ -42,36 +57,77 @@ if ($assetTypeParam && $assetIdParam && ctype_digit($assetIdParam) && in_array($
     $error = 'Invalid asset parameters.';
 }
 
+function updateAssetStatusWarranty(PDO $pdo, string $type, int $assetId, string $status): void {
+    if ($type === 'network') {
+        $stmt = $pdo->prepare("UPDATE net_assets SET status = ? WHERE asset_id = ?");
+    } else {
+        $stmt = $pdo->prepare("UPDATE av_assets SET status = ? WHERE asset_id = ?");
+    }
+    $stmt->execute([$status, $assetId]);
+}
+
+$isWarrantyStatus = stripos($assetStatus, 'WARRANTY') === 0;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
+    $mode = $_POST['mode'] ?? 'send';
     $postAssetType = trim($_POST['asset_type'] ?? '');
     $postAssetId = trim($_POST['asset_id'] ?? '');
-    $sendDate = trim($_POST['send_date'] ?? '');
-    $vendorName = trim($_POST['vendor_name'] ?? '');
-    $remarks = trim($_POST['remarks'] ?? '');
 
     if (!in_array($postAssetType, $allowedTypes, true) || !ctype_digit($postAssetId)) {
         $error = 'Invalid asset data.';
-    } elseif ($sendDate === '') {
-        $error = 'Send date is required.';
-    } elseif ($vendorName === '') {
-        $error = 'Vendor name is required.';
     } else {
-        try {
-            $insert = $pdo->prepare("
-                INSERT INTO warranty (asset_type, asset_id, send_date, vendor_name, remarks, created_by)
-                VALUES (:asset_type, :asset_id, :send_date, :vendor_name, :remarks, :created_by)
-            ");
-            $insert->execute([
-                ':asset_type' => $postAssetType,
-                ':asset_id' => (int)$postAssetId,
-                ':send_date' => $sendDate,
-                ':vendor_name' => $vendorName,
-                ':remarks' => $remarks ?: null,
-                ':created_by' => $_SESSION['user_id'] ?? null
-            ]);
-            $message = 'Warranty record saved.';
-        } catch (PDOException $e) {
-            $error = 'Unable to save warranty record.';
+        if ($mode === 'send') {
+            $sendDate = trim($_POST['send_date'] ?? '');
+            $vendorName = trim($_POST['vendor_name'] ?? '');
+            $remarks = trim($_POST['remarks'] ?? '');
+
+            if ($sendDate === '') {
+                $error = 'Send date is required.';
+            } elseif ($vendorName === '') {
+                $error = 'Vendor name is required.';
+            } else {
+                try {
+                    $insert = $pdo->prepare("
+                        INSERT INTO warranty (asset_type, asset_id, send_date, receive_date, vendor_name, remarks, created_by)
+                        VALUES (:asset_type, :asset_id, :send_date, :receive_date, :vendor_name, :remarks, :created_by)
+                    ");
+                    $insert->execute([
+                        ':asset_type' => $postAssetType,
+                        ':asset_id' => (int)$postAssetId,
+                        ':send_date' => $sendDate,
+                        ':receive_date' => $sendDate, // temporary until receive is captured
+                        ':vendor_name' => $vendorName,
+                        ':remarks' => $remarks ?: null,
+                        ':created_by' => $_SESSION['user_id'] ?? null
+                    ]);
+
+                    updateAssetStatusWarranty($pdo, $postAssetType, (int)$postAssetId, 'WARRANTY COVER');
+                    $message = 'Warranty dispatched. Asset status set to WARRANTY COVER.';
+                    $assetStatus = 'WARRANTY COVER';
+                } catch (PDOException $e) {
+                    $error = 'Unable to save warranty record.';
+                }
+            }
+        } elseif ($mode === 'receive') {
+            $receiveDate = trim($_POST['receive_date'] ?? '');
+            if ($receiveDate === '') {
+                $error = 'Receive date is required.';
+            } elseif (!$latestWarranty) {
+                $error = 'No warranty record found to update.';
+            } else {
+                try {
+                    $upd = $pdo->prepare("UPDATE warranty SET receive_date = :receive_date WHERE warranty_id = :id");
+                    $upd->execute([
+                        ':receive_date' => $receiveDate,
+                        ':id' => $latestWarranty['warranty_id']
+                    ]);
+                    updateAssetStatusWarranty($pdo, $postAssetType, (int)$postAssetId, 'OFFLINE');
+                    $message = 'Warranty completed. Asset status set to OFFLINE.';
+                    $assetStatus = 'OFFLINE';
+                } catch (PDOException $e) {
+                    $error = 'Unable to update warranty record.';
+                }
+            }
         }
     }
 }
@@ -135,51 +191,94 @@ function formatAssetIdWarranty($id, $type) {
                 <div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div>
             <?php endif; ?>
 
-            <?php if ($asset && empty($message)) : ?>
+            <?php if ($asset) : ?>
                 <div class="asset-summary">
                     <div><strong>Asset ID:</strong> <?php echo htmlspecialchars(formatAssetIdWarranty($asset['asset_id'], $assetTypeParam)); ?></div>
                     <div><strong>Type:</strong> <?php echo htmlspecialchars(strtoupper($assetTypeParam)); ?></div>
                     <div><strong>Brand / Model:</strong> <?php echo htmlspecialchars(trim(($asset['brand'] ?? '') . ' ' . ($asset['model'] ?? '')) ?: '-'); ?></div>
                     <div><strong>Serial:</strong> <?php echo htmlspecialchars($asset['serial'] ?? '-'); ?></div>
-                    <div><strong>Status:</strong> <?php echo htmlspecialchars($asset['status'] ?? '-'); ?></div>
+                    <div><strong>Status:</strong> <?php echo htmlspecialchars($assetStatus ?: ($asset['status'] ?? '-')); ?></div>
+                    <?php if ($latestWarranty) : ?>
+                        <div><strong>Last Send Date:</strong> <?php echo htmlspecialchars($latestWarranty['send_date']); ?></div>
+                        <div><strong>Vendor:</strong> <?php echo htmlspecialchars($latestWarranty['vendor_name']); ?></div>
+                        <div><strong>Remarks:</strong> <?php echo htmlspecialchars($latestWarranty['remarks'] ?? '-'); ?></div>
+                        <?php if (!empty($latestWarranty['receive_date'])) : ?>
+                            <div><strong>Receive Date:</strong> <?php echo htmlspecialchars($latestWarranty['receive_date']); ?></div>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
 
-                <form method="POST">
-                    <input type="hidden" name="asset_id" value="<?php echo htmlspecialchars($assetIdParam); ?>">
-                    <input type="hidden" name="asset_type" value="<?php echo htmlspecialchars($assetTypeParam); ?>">
+                <?php if (empty($message)) : ?>
+                    <?php if (!$isWarrantyStatus) : ?>
+                        <form method="POST">
+                            <input type="hidden" name="mode" value="send">
+                            <input type="hidden" name="asset_id" value="<?php echo htmlspecialchars($assetIdParam); ?>">
+                            <input type="hidden" name="asset_type" value="<?php echo htmlspecialchars($assetTypeParam); ?>">
 
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="asset_id_display">Asset ID</label>
-                            <input id="asset_id_display" type="text" value="<?php echo htmlspecialchars(formatAssetIdWarranty($assetIdParam, $assetTypeParam)); ?>" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="asset_type_display">Asset Type</label>
-                            <select id="asset_type_display" disabled>
-                                <option value="network" <?php echo $assetTypeParam === 'network' ? 'selected' : ''; ?>>Network</option>
-                                <option value="av" <?php echo $assetTypeParam === 'av' ? 'selected' : ''; ?>>AV</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="send_date">Send Date <span style="color:#dc2626;">*</span></label>
-                            <input type="date" id="send_date" name="send_date" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor_name">Vendor Name <span style="color:#dc2626;">*</span></label>
-                            <input type="text" id="vendor_name" name="vendor_name" placeholder="Enter vendor name" required>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="remarks">Remarks</label>
-                            <textarea id="remarks" name="remarks" placeholder="Notes about the warranty process..."></textarea>
-                        </div>
-                    </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="asset_id_display">Asset ID</label>
+                                    <input id="asset_id_display" type="text" value="<?php echo htmlspecialchars(formatAssetIdWarranty($assetIdParam, $assetTypeParam)); ?>" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="asset_type_display">Asset Type</label>
+                                    <select id="asset_type_display" disabled>
+                                        <option value="network" <?php echo $assetTypeParam === 'network' ? 'selected' : ''; ?>>Network</option>
+                                        <option value="av" <?php echo $assetTypeParam === 'av' ? 'selected' : ''; ?>>AV</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="send_date">Send Date <span style="color:#dc2626;">*</span></label>
+                                    <input type="date" id="send_date" name="send_date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="vendor_name">Vendor Name <span style="color:#dc2626;">*</span></label>
+                                    <input type="text" id="vendor_name" name="vendor_name" placeholder="Enter vendor name" required>
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label for="remarks">Remarks</label>
+                                    <textarea id="remarks" name="remarks" placeholder="Notes about the warranty process..."></textarea>
+                                </div>
+                            </div>
 
-                    <div class="actions">
-                        <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Warranty</button>
-                    </div>
-                </form>
-            <?php elseif (!$asset && empty($error)) : ?>
+                            <div class="actions">
+                                <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Warranty</button>
+                            </div>
+                        </form>
+                    <?php else : ?>
+                        <form method="POST">
+                            <input type="hidden" name="mode" value="receive">
+                            <input type="hidden" name="asset_id" value="<?php echo htmlspecialchars($assetIdParam); ?>">
+                            <input type="hidden" name="asset_type" value="<?php echo htmlspecialchars($assetTypeParam); ?>">
+
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Send Date</label>
+                                    <input type="date" value="<?php echo htmlspecialchars($latestWarranty['send_date'] ?? ''); ?>" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Vendor Name</label>
+                                    <input type="text" value="<?php echo htmlspecialchars($latestWarranty['vendor_name'] ?? ''); ?>" readonly>
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Remarks</label>
+                                    <textarea readonly><?php echo htmlspecialchars($latestWarranty['remarks'] ?? ''); ?></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="receive_date">Receive Date <span style="color:#dc2626;">*</span></label>
+                                    <input type="date" id="receive_date" name="receive_date" required>
+                                </div>
+                            </div>
+
+                            <div class="actions">
+                                <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Receive</button>
+                            </div>
+                        </form>
+                    <?php endif; ?>
+                <?php endif; ?>
+            <?php elseif (empty($error)) : ?>
                 <div class="alert alert-error">Asset data is required.</div>
             <?php endif; ?>
         </div>

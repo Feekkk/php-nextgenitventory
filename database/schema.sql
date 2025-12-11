@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS `warranty` (
     `asset_type` ENUM('av', 'network') NOT NULL,
     `asset_id` INT(11) NOT NULL,
     `send_date` DATE NOT NULL,
+    `receive_date` DATE NOT NULL,
     `vendor_name` VARCHAR(255) NOT NULL,
     `remarks` TEXT DEFAULT NULL,
     `created_by` INT(11) DEFAULT NULL,
@@ -331,5 +332,6 @@ CREATE TABLE IF NOT EXISTS `warranty` (
     INDEX `idx_created_by` (`created_by`),
     INDEX `idx_created_at` (`created_at`),
     INDEX `idx_asset_composite` (`asset_type`, `asset_id`),
+    INDEX `idx_receive_date` (`receive_date`),
     FOREIGN KEY (`created_by`) REFERENCES `technician`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

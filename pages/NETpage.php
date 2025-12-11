@@ -61,6 +61,7 @@ function formatStatusClass($status)
         'NON-ACTIVE' => 'non-active',
         'LOST' => 'lost',
         'UNAVAILABLE' => 'unavailable',
+        'WARRANTY COVER' => 'warranty',
     ];
     return $map[$status] ?? 'unknown';
 }
@@ -88,6 +89,7 @@ function formatStatusIcon($status)
         'NON-ACTIVE' => 'fa-circle-pause',
         'LOST' => 'fa-circle-question',
         'UNAVAILABLE' => 'fa-circle-xmark',
+        'WARRANTY COVER' => 'fa-shield-halved',
     ];
     return $iconMap[$status] ?? 'fa-circle-question';
 }
@@ -429,6 +431,11 @@ function formatStatusIcon($status)
         .status-badge.lost {
             background: rgba(214, 48, 49, 0.15);
             color: #d63031;
+        }
+
+        .status-badge.warranty {
+            background: rgba(108, 92, 231, 0.15);
+            color: #6c5ce7;
         }
 
         .status-badge.spare {
@@ -828,7 +835,7 @@ function formatStatusIcon($status)
 
     <script>
         const inStockStatuses = [ 'OFFLINE', 'FAULTY', 'MAINTENANCE', 'DISPOSE'];
-        const outStockStatuses = ['ONLINE'];
+        const outStockStatuses = ['ONLINE','WARRANTY COVER'];
         let currentStockType = 'in-stock';
 
         const stockTabs = document.querySelectorAll('.stock-tab');
