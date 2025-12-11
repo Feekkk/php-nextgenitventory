@@ -837,8 +837,8 @@ function formatCategoryClass($category)
                                                 <span class="action-tooltip">Set to Maintenance</span>
                                             </button>
                                         <?php elseif ($rawStatus === 'FAULTY') : ?>
-                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'laptop_desktop')" aria-label="Repair asset">
-                                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                                            <button class="btn-action repair" onclick="window.location.href='FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=laptop_desktop'" aria-label="Repair asset">
+                                                <i class="fa-solid fa-toolbox"></i>
                                                 <span class="action-tooltip">Repair</span>
                                             </button>
                                         <?php elseif ($rawStatus === 'MAINTENANCE') : ?>
