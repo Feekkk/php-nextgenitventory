@@ -13,6 +13,7 @@ $error = '';
 
 $assetId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $assetTrails = [];
+$warrantyHistory = [];
 
 if ($assetId > 0) {
     try {
@@ -37,6 +38,15 @@ if ($assetId > 0) {
             ");
             $trailStmt->execute([':id' => $assetId]);
             $assetTrails = $trailStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $wStmt = $pdo->prepare("
+                SELECT warranty_id, send_date, receive_date, vendor_name, remarks, created_at
+                FROM warranty
+                WHERE asset_type = 'network' AND asset_id = :id
+                ORDER BY created_at DESC
+            ");
+            $wStmt->execute([':id' => $assetId]);
+            $warrantyHistory = $wStmt->fetchAll(PDO::FETCH_ASSOC);
             
             $hasCreateEntry = false;
             foreach ($assetTrails as $trail) {
@@ -835,6 +845,9 @@ function getStatusTrailClassFromValue($value) {
                     <button class="tab-btn" onclick="switchTab('trails')">
                         <i class="fa-solid fa-history"></i> Asset Trails
                     </button>
+                            <button class="tab-btn" onclick="switchTab('warranty')">
+                                <i class="fa-solid fa-shield-halved"></i> Warranty
+                            </button>
                 </div>
 
                 <div id="tab-info" class="tab-content active">
@@ -1109,6 +1122,51 @@ function getStatusTrailClassFromValue($value) {
                                 <div class="trail-changed-by">
                                     <i class="fa-solid fa-user"></i>
                                     <span class="trail-changed-by-name"><?php echo htmlspecialchars($trail['tech_name'] ?: ($trail['tech_id'] ? 'Tech #' . $trail['tech_id'] : 'System')); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <div id="tab-warranty" class="tab-content">
+                    <?php if (empty($warrantyHistory)) : ?>
+                        <div class="trail-empty">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <p>No warranty records found for this asset.</p>
+                        </div>
+                    <?php else : ?>
+                        <?php foreach ($warrantyHistory as $wr) : ?>
+                            <div class="trail-item status">
+                                <div class="trail-header">
+                                    <div class="trail-action-wrapper">
+                                        <div class="trail-action-icon">
+                                            <i class="fa-solid fa-shield-halved"></i>
+                                        </div>
+                                        <div class="trail-action">Warranty</div>
+                                    </div>
+                                    <div class="trail-date">
+                                        <?php echo date('d M Y, H:i', strtotime($wr['created_at'])); ?>
+                                    </div>
+                                </div>
+                                <div class="trail-details">
+                                    <div class="trail-field">
+                                        <span class="trail-field-label">Send Date:</span>
+                                        <span class="trail-field-value"><?php echo htmlspecialchars(formatDate($wr['send_date'])); ?></span>
+                                    </div>
+                                    <div class="trail-field">
+                                        <span class="trail-field-label">Receive Date:</span>
+                                        <span class="trail-field-value"><?php echo !empty($wr['receive_date']) ? htmlspecialchars(formatDate($wr['receive_date'])) : 'Pending'; ?></span>
+                                    </div>
+                                    <div class="trail-field">
+                                        <span class="trail-field-label">Vendor:</span>
+                                        <span class="trail-field-value"><?php echo htmlspecialchars($wr['vendor_name']); ?></span>
+                                    </div>
+                                    <?php if (!empty($wr['remarks'])) : ?>
+                                        <div class="trail-field">
+                                            <span class="trail-field-label">Remarks:</span>
+                                            <span class="trail-field-value"><?php echo htmlspecialchars($wr['remarks']); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
