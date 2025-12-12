@@ -847,7 +847,7 @@ function getStatusTrailClassFromValue($value) {
                     </button>
                             <button class="tab-btn" onclick="switchTab('warranty')">
                                 <i class="fa-solid fa-shield-halved"></i> Warranty
-                            </button>
+                    </button>
                 </div>
 
                 <div id="tab-info" class="tab-content active">

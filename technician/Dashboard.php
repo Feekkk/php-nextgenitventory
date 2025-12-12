@@ -275,7 +275,7 @@ try {
 
         .chart-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 18px;
             margin-top: 20px;
         }
@@ -287,6 +287,11 @@ try {
             padding: 18px;
             box-shadow: 0 12px 25px rgba(15, 23, 42, 0.05);
             min-height: 260px;
+        }
+
+        .chart-box.full-width {
+            grid-column: 1 / -1;
+            min-height: 400px;
         }
 
         .chart-box h3 {
@@ -315,6 +320,14 @@ try {
 
             .welcome-card h1 {
                 font-size: 1.6rem;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-box.full-width {
+                grid-column: 1;
             }
         }
     </style>
@@ -425,12 +438,12 @@ try {
                         <canvas id="assetTypeChart"></canvas>
                     </div>
                     <div class="chart-box">
-                        <h3>Status Distribution by Category</h3>
-                        <canvas id="statusChart"></canvas>
-                    </div>
-                    <div class="chart-box">
                         <h3>Last 6 Months Additions</h3>
                         <canvas id="monthlyChart"></canvas>
+                    </div>
+                    <div class="chart-box full-width">
+                        <h3>Status Distribution by Category</h3>
+                        <canvas id="statusChart"></canvas>
                     </div>
                 </div>
             </div>
