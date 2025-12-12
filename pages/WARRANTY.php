@@ -171,8 +171,32 @@ function formatAssetIdWarranty($id, $type) {
         .btn-primary:hover { background: #0f0f1a; box-shadow: 0 8px 18px rgba(26,26,46,0.2); }
         .btn-secondary { background: #f3f4f6; color: #111827; }
         .btn-secondary:hover { background: #e5e7eb; }
-        .asset-summary { background: #f8fafc; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
-        .asset-summary strong { display: inline-block; width: 110px; color: #111827; }
+        .asset-summary {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 20px 0;
+            margin-bottom: 24px;
+        }
+        .asset-summary > div {
+            display: flex;
+            align-items: baseline;
+            padding: 8px 0;
+            font-size: 0.95rem;
+            color: #2d3436;
+        }
+        .asset-summary strong {
+            display: inline-block;
+            min-width: 120px;
+            color: #636e72;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .asset-summary > div:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
