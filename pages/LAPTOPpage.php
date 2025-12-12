@@ -16,13 +16,51 @@ $brands = [];
 $assignmentTypes = [];
 $locations = [];
 
+$currentPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
+$itemsPerPage = 10;
+$offset = ($currentPage - 1) * $itemsPerPage;
+$totalAssets = 0;
+$totalPages = 0;
+
 try {
-    $stmt = $pdo->query("
+    $searchCondition = '';
+    $searchParams = [];
+    
+    if ($searchTerm) {
+        $searchCondition = "WHERE (
+            CONCAT('LAP-', LPAD(la.asset_id, 5, '0')) LIKE :search
+            OR la.serial_num LIKE :search
+            OR la.brand LIKE :search
+            OR la.model LIKE :search
+            OR sl.staff_name LIKE :search
+        )";
+        $searchParams[':search'] = '%' . $searchTerm . '%';
+    }
+    
+    $countQuery = "SELECT COUNT(*) FROM laptop_desktop_assets la LEFT JOIN staff_list sl ON la.staff_id = sl.staff_id $searchCondition";
+    $countStmt = $pdo->prepare($countQuery);
+    foreach ($searchParams as $key => $value) {
+        $countStmt->bindValue($key, $value, PDO::PARAM_STR);
+    }
+    $countStmt->execute();
+    $totalAssets = (int)$countStmt->fetchColumn();
+    $totalPages = (int)ceil($totalAssets / $itemsPerPage);
+    
+    $stmt = $pdo->prepare("
         SELECT la.*, sl.staff_name AS assigned_to_name
         FROM laptop_desktop_assets la
         LEFT JOIN staff_list sl ON la.staff_id = sl.staff_id
+        $searchCondition
         ORDER BY la.created_at DESC, la.asset_id DESC
+        LIMIT :limit OFFSET :offset
     ");
+    foreach ($searchParams as $key => $value) {
+        $stmt->bindValue($key, $value, PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', $itemsPerPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $laptopAssets = $stmt->fetchAll();
     
     $categoryStmt = $pdo->query("SELECT DISTINCT category FROM laptop_desktop_assets WHERE category IS NOT NULL AND category != '' ORDER BY category");
@@ -663,6 +701,47 @@ function formatCategoryClass($category)
             font-weight: 600;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        .pagination-info {
+            color: #636e72;
+            font-size: 0.95rem;
+            margin: 0 10px;
+        }
+
+        .btn-pagination {
+            padding: 10px 20px;
+            background: #ffffff;
+            color: #1a1a2e;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-pagination:hover:not(:disabled) {
+            background: #1a1a2e;
+            color: #ffffff;
+            border-color: #1a1a2e;
+        }
+
+        .btn-pagination:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         @media (max-width: 768px) {
             .page-header {
                 flex-direction: column;
@@ -729,10 +808,12 @@ function formatCategoryClass($category)
         </div>
 
         <div class="search-section">
-            <div class="search-box">
-                <i class="fa-solid fa-search"></i>
-                <input type="text" placeholder="Search Asset ID, Serial, Brand, Model, Assigned To..." id="searchInput">
-            </div>
+            <form method="GET" action="" id="searchForm">
+                <div class="search-box">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" name="search" placeholder="Search Asset ID, Serial, Brand, Model, Assigned To..." id="searchInput" value="<?php echo htmlspecialchars($searchTerm); ?>">
+                </div>
+            </form>
         </div>
 
         <div class="assets-table-container">
@@ -855,6 +936,22 @@ function formatCategoryClass($category)
                 </tbody>
             </table>
         </div>
+
+        <?php if ($totalPages > 1) : ?>
+            <div class="pagination">
+                <button class="btn-pagination" onclick="goToPage(<?php echo $currentPage - 1; ?>)" <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>>
+                    <i class="fa-solid fa-chevron-left"></i>
+                    Previous
+                </button>
+                <span class="pagination-info">
+                    Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?> (<?php echo $totalAssets; ?> total)
+                </span>
+                <button class="btn-pagination" onclick="goToPage(<?php echo $currentPage + 1; ?>)" <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>>
+                    Next
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        <?php endif; ?>
     </div>
 
     <footer>
@@ -887,7 +984,6 @@ function formatCategoryClass($category)
         }
 
         function updateStockView() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             const rows = document.querySelectorAll('.assets-table tbody tr');
             
             rows.forEach(row => {
@@ -899,28 +995,24 @@ function formatCategoryClass($category)
                 const status = row.dataset.status || '';
                 const stockType = getStockType(status);
                 
-                let show = stockType === currentStockType;
-                
-                if (show && searchTerm) {
-                    const assetId = (row.dataset.assetId || '').toLowerCase();
-                    const serial = row.dataset.serial || '';
-                    const brand = row.dataset.brand || '';
-                    const model = row.dataset.model || '';
-                    const assigned = row.dataset.assigned || '';
-                    
-                    show = assetId.includes(searchTerm) ||
-                           serial.includes(searchTerm) ||
-                           brand.includes(searchTerm) ||
-                           model.includes(searchTerm) ||
-                           assigned.includes(searchTerm);
-                }
-                
-                row.style.display = show ? '' : 'none';
+                row.style.display = stockType === currentStockType ? '' : 'none';
             });
         }
 
-        document.getElementById('searchInput').addEventListener('input', updateStockView);
         updateStockView();
+        
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = new URL(window.location.href);
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (searchTerm) {
+                url.searchParams.set('search', searchTerm);
+            } else {
+                url.searchParams.delete('search');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        });
 
         const addButton = document.getElementById('btn-add');
         const dropdown = document.getElementById('addDropdown');
@@ -984,6 +1076,16 @@ function formatCategoryClass($category)
                 console.error('Error:', error);
                 alert('An error occurred while updating asset status. Please try again.');
             });
+        }
+
+        function goToPage(page) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', page);
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (searchTerm) {
+                url.searchParams.set('search', searchTerm);
+            }
+            window.location.href = url.toString();
         }
     </script>
 </body>
