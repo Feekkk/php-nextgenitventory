@@ -58,6 +58,7 @@ $formData = [
     'INVOICE_DATE' => '',
     'INVOICE_NUM' => '',
     'PURCHASE_COST' => '',
+    'warranty_expiry' => '',
     'remarks' => '',
 ];
 
@@ -98,17 +99,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO av_assets (
                     asset_id, class, brand, model, serial_num, location, status,
                     `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
-                    `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
+                    `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, warranty_expiry, remarks, created_by
                 ) VALUES (
                     :asset_id, :class, :brand, :model, :serial_num, :location, :status,
                     :po_date, :po_num, :do_date, :do_num,
-                    :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
+                    :invoice_date, :invoice_num, :purchase_cost, :warranty_expiry, :remarks, :created_by
                 )
             ");
 
             $poDate = $formData['PO_DATE'] ?: null;
             $invoiceDate = $formData['INVOICE_DATE'] ?: null;
             $purchaseCost = $formData['PURCHASE_COST'] !== '' ? $formData['PURCHASE_COST'] : null;
+            $warrantyExpiry = $formData['warranty_expiry'] ?: null;
 
             $stmt->execute([
                 ':asset_id' => $assetId,
@@ -125,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':invoice_date' => $invoiceDate,
                 ':invoice_num' => $formData['INVOICE_NUM'] ?: null,
                 ':purchase_cost' => $purchaseCost,
+                ':warranty_expiry' => $warrantyExpiry,
                 ':remarks' => $formData['remarks'] ?: null,
                 ':created_by' => $_SESSION['user_id'],
             ]);
@@ -427,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="form-group">
                         <label for="DO_DATE">D.O. Date</label>
-                        <input type="text" id="DO_DATE" name="DO_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>">
+                        <input type="date" id="DO_DATE" name="DO_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="DO_NUM">D.O. Number</label>
@@ -444,6 +447,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label for="PURCHASE_COST">Purchase Cost (MYR)</label>
                         <input type="number" step="0.01" id="PURCHASE_COST" name="PURCHASE_COST" placeholder="Enter cost" value="<?php echo htmlspecialchars($formData['PURCHASE_COST']); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="warranty_expiry">Warranty Expiry Date</label>
+                        <input type="date" id="warranty_expiry" name="warranty_expiry" value="<?php echo htmlspecialchars($formData['warranty_expiry']); ?>">
                     </div>
                 </div>
             </div>
