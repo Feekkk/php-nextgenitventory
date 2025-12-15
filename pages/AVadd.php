@@ -45,6 +45,7 @@ function generateAssetId($pdo, $categoryCode) {
     throw new Exception('Unable to generate unique asset ID after multiple attempts');
 }
 $formData = [
+    'asset_id' => '',
     'class' => '',
     'brand' => '',
     'model' => '',
@@ -91,9 +92,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Purchase cost must be a valid number.';
     }
 
+    if ($formData['asset_id'] !== '' && !is_numeric($formData['asset_id'])) {
+        $errors[] = 'Asset ID must be a valid number.';
+    }
+
     if (empty($errors)) {
-        try {
-            $assetId = generateAssetId($pdo, 22);
+        $assetId = null;
+        if ($formData['asset_id'] !== '') {
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM av_assets WHERE asset_id = ?");
+            $checkStmt->execute([$formData['asset_id']]);
+            if ($checkStmt->fetchColumn() > 0) {
+                $errors[] = 'Asset ID already exists. Please use a different ID or leave it blank to auto-generate.';
+            } else {
+                $assetId = (int)$formData['asset_id'];
+            }
+        }
+        
+        if (empty($errors)) {
+            if ($assetId === null) {
+                $assetId = generateAssetId($pdo, 22);
+            }
+            
+            try {
             
             $stmt = $pdo->prepare("
                 INSERT INTO av_assets (
@@ -160,16 +180,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach (array_keys($formData) as $field) {
                 $formData[$field] = '';
             }
-        } catch (PDOException $e) {
-            error_log('AVadd.php INSERT Error: ' . $e->getMessage());
-            if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), 'PRIMARY') !== false) {
-                $errors[] = 'Asset ID already exists. The system will auto-generate a unique Asset ID.';
-            } else {
-                $errors[] = 'Unable to save asset right now. Please try again.';
+            } catch (PDOException $e) {
+                error_log('AVadd.php INSERT Error: ' . $e->getMessage());
+                if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false || strpos($e->getMessage(), 'PRIMARY') !== false) {
+                    $errors[] = 'Asset ID already exists. The system will auto-generate a unique Asset ID.';
+                } else {
+                    $errors[] = 'Unable to save asset right now. Please try again.';
+                }
             }
         }
+        }
     }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -369,6 +390,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-section">
                 <h3 class="form-section-title">Asset Information</h3>
                 <div class="form-grid">
+                    <div class="form-group">
+                        <label for="asset_id">Asset ID</label>
+                        <input type="number" id="asset_id" name="asset_id" placeholder="Leave blank to auto-generate" value="<?php echo htmlspecialchars($formData['asset_id']); ?>">
+                        <small style="color: #636e72; font-size: 0.85rem;">If not provided, a unique ID will be auto-generated</small>
+                    </div>
                     <div class="form-group">
                         <label for="class">Category <span style="color:#c0392b;">*</span></label>
                         <select id="class" name="class" required>
