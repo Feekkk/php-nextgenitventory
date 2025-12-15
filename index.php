@@ -46,11 +46,6 @@
                 <p>Manage the end-of-life cycle for equipment. Compliant disposal tracking and documentation.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon"><i class="fa-solid fa-chart-pie"></i></div>
-                <h3>Data Analytics</h3>
-                <p>Visual insights into asset utilization, age distribution, and department allocation.</p>
-            </div>
-            <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
                 <h3>History</h3>
                 <p>Complete audit trails for every item. Track movement, maintenance, and ownership history.</p>

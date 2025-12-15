@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="auth-card">
             <div class="auth-header">
                 <a href="../index.php" class="auth-logo">
-                    <img src="../public/unikl-rcmp.png" alt="UniKL RCMP Logo">
+                    <img src="../public/official-logo.png" alt="UniKL RCMP Logo" style="height:80px; max-width:240px;">
                 </a>
                 <h1>Create your account</h1>
                 <p>Get started with your IT inventory management</p>
