@@ -537,6 +537,7 @@ function formatStatusIcon($status)
         .btn-action.view { color: #0984e3; }
         .btn-action.repair { color: #d35400; }
         .btn-action.warranty { color: #6c5ce7; }
+        .btn-action.instock { color: #00b894; }
 
         .empty-state {
             text-align: center;
@@ -762,6 +763,11 @@ function formatStatusIcon($status)
                                         <button class="btn-action view" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
                                             <i class="fa-solid fa-eye"></i>
                                         </button>
+                                        <?php if ($rawStatus === 'DEPLOY') : ?>
+                                            <button class="btn-action instock" onclick="markInStock(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as in stock">
+                                                <i class="fa-solid fa-warehouse"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($isUnderWarranty) : ?>
                                             <button class="btn-action warranty" onclick="window.location.href='WARRANTY.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'" aria-label="Warranty details">
                                                 <i class="fa-solid fa-shield-halved"></i>
@@ -902,6 +908,33 @@ function formatStatusIcon($status)
                 url.searchParams.set('search', searchTerm);
             }
             window.location.href = url.toString();
+        }
+
+        function markInStock(assetId) {
+            if (!confirm('Are you sure you want to mark this asset as in stock? The status will change from DEPLOY to ACTIVE.')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+
+            fetch('../services/mark_av_in_stock.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Asset has been successfully marked as in stock.');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating asset status. Please try again.');
+            });
         }
     </script>
 </body>
