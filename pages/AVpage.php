@@ -539,6 +539,7 @@ function formatStatusIcon($status)
         .btn-action.repair { color: #d35400; }
         .btn-action.warranty { color: #6c5ce7; }
         .btn-action.instock { color: #00b894; }
+        .btn-action.maintenance { color: #f39c12; }
 
         .action-tooltip {
             position: absolute;
@@ -803,6 +804,12 @@ function formatStatusIcon($status)
                                                 <span class="action-tooltip">Mark as in stock</span>
                                             </button>
                                         <?php endif; ?>
+                                        <?php if ($rawStatus === 'ACTIVE') : ?>
+                                            <button class="btn-action maintenance" onclick="markAsMaintenance(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as maintenance" title="Mark as maintenance">
+                                                <i class="fa-solid fa-wrench"></i>
+                                                <span class="action-tooltip">Mark as maintenance</span>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($isUnderWarranty) : ?>
                                             <button class="btn-action warranty" onclick="window.location.href='WARRANTY.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'" aria-label="Warranty" title="Warranty details">
                                                 <i class="fa-solid fa-shield-halved"></i>
@@ -963,6 +970,34 @@ function formatStatusIcon($status)
             .then(data => {
                 if (data.success) {
                     alert('Asset has been successfully marked as in stock.');
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating asset status. Please try again.');
+            });
+        }
+
+        function markAsMaintenance(assetId) {
+            if (!confirm('Are you sure you want to mark this asset as maintenance? The status will change from ACTIVE to MAINTENANCE.')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('asset_id', assetId);
+            formData.append('asset_type', 'av');
+
+            fetch('../services/set_maintenance_status.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Asset has been successfully marked as maintenance.');
                     window.location.reload();
                 } else {
                     alert('Error: ' + data.message);
