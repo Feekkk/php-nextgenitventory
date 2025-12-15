@@ -817,7 +817,7 @@ function formatStatusIcon($status)
                                             </button>
                                         <?php endif; ?>
                                         <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
-                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')" aria-label="Repair asset" title="Repair asset">
+                                            <button class="btn-action repair" onclick="window.location.href='FAULTYform.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'" aria-label="Repair asset" title="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
                                                 <span class="action-tooltip">Repair asset</span>
                                             </button>

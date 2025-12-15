@@ -39,13 +39,13 @@ if ($assetIdParam && $assetTypeParam && is_numeric($assetIdParam)) {
             ");
         } elseif ($assetTypeParam === 'av') {
             $stmt = $pdo->prepare("
-                SELECT asset_id, serial_num, brand, model, class as category, status, staff_id
+                SELECT asset_id, serial_num, brand, model, class as category, status
                 FROM av_assets 
                 WHERE asset_id = ?
             ");
         } elseif ($assetTypeParam === 'network') {
             $stmt = $pdo->prepare("
-                SELECT asset_id, serial, brand, model, status, staff_id
+                SELECT asset_id, serial, brand, model, status
                 FROM net_assets 
                 WHERE asset_id = ?
             ");
