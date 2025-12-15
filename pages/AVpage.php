@@ -514,6 +514,7 @@ function formatStatusIcon($status)
         }
 
         .btn-action {
+            position: relative;
             width: 30px;
             height: 30px;
             border: 1px solid rgba(0, 0, 0, 0.1);
@@ -538,6 +539,38 @@ function formatStatusIcon($status)
         .btn-action.repair { color: #d35400; }
         .btn-action.warranty { color: #6c5ce7; }
         .btn-action.instock { color: #00b894; }
+
+        .action-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 6px 12px;
+            background: #1a1a2e;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .action-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1a1a2e;
+        }
+
+        .btn-action:hover .action-tooltip {
+            opacity: 1;
+        }
 
         .empty-state {
             text-align: center;
@@ -760,22 +793,26 @@ function formatStatusIcon($status)
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-action view" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details">
+                                        <button class="btn-action view" onclick="window.location.href='AVview.php?id=<?php echo $asset['asset_id']; ?>'" aria-label="View details" title="View details">
                                             <i class="fa-solid fa-eye"></i>
+                                            <span class="action-tooltip">View details</span>
                                         </button>
                                         <?php if ($rawStatus === 'DEPLOY') : ?>
-                                            <button class="btn-action instock" onclick="markInStock(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as in stock">
+                                            <button class="btn-action instock" onclick="markInStock(<?php echo $asset['asset_id']; ?>)" aria-label="Mark as in stock" title="Mark as in stock">
                                                 <i class="fa-solid fa-warehouse"></i>
+                                                <span class="action-tooltip">Mark as in stock</span>
                                             </button>
                                         <?php endif; ?>
                                         <?php if ($isUnderWarranty) : ?>
-                                            <button class="btn-action warranty" onclick="window.location.href='WARRANTY.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'" aria-label="Warranty details">
+                                            <button class="btn-action warranty" onclick="window.location.href='WARRANTY.php?asset_id=<?php echo $asset['asset_id']; ?>&asset_type=av'" aria-label="Warranty" title="Warranty details">
                                                 <i class="fa-solid fa-shield-halved"></i>
+                                                <span class="action-tooltip">Warranty details</span>
                                             </button>
                                         <?php endif; ?>
                                         <?php if ($rawStatus === 'FAULTY' || $rawStatus === 'MAINTENANCE') : ?>
-                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')" aria-label="Repair asset">
+                                            <button class="btn-action repair" onclick="openRepairForm(<?php echo $asset['asset_id']; ?>, 'av')" aria-label="Repair asset" title="Repair asset">
                                                 <i class="fa-solid fa-screwdriver-wrench"></i>
+                                                <span class="action-tooltip">Repair asset</span>
                                             </button>
                                         <?php endif; ?>
                                     </div>
