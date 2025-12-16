@@ -31,15 +31,15 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         .page-header h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 10px;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
         }
 
         .page-header p {
             color: #64748b;
-            font-size: 1.05rem;
+            font-size: 0.95rem;
         }
 
         .manual-sections {
@@ -49,26 +49,31 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         .manual-section {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
             overflow: hidden;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-            transition: all 0.3s ease;
+            margin-bottom: 8px;
         }
 
         .manual-section.active {
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+            border-color: #1a1a2e;
         }
 
         .section-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 24px;
+            padding: 16px 20px;
             cursor: pointer;
             background: #ffffff;
-            transition: background 0.2s ease;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.15s ease;
+        }
+
+        .manual-section.active .section-header {
+            background: #f8fafc;
+            border-bottom-color: #cbd5e1;
         }
 
         .section-header:hover {
@@ -78,32 +83,33 @@ if (!isset($_SESSION['user_id'])) {
         .section-header-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .section-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             color: #ffffff;
             flex-shrink: 0;
+            background: #475569;
         }
 
         .section-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #0f172a;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #1e293b;
             margin: 0;
         }
 
         .section-toggle {
-            font-size: 1.2rem;
+            font-size: 0.9rem;
             color: #64748b;
-            transition: transform 0.3s ease;
+            transition: transform 0.2s ease;
         }
 
         .manual-section.active .section-toggle {
@@ -113,8 +119,8 @@ if (!isset($_SESSION['user_id'])) {
         .section-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.4s ease;
-            background: #f8fafc;
+            transition: max-height 0.3s ease;
+            background: #ffffff;
         }
 
         .manual-section.active .section-content {
@@ -122,16 +128,17 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         .section-body {
-            padding: 24px;
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
         }
 
         .section-image-container {
             width: 100%;
-            margin-bottom: 20px;
-            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
             overflow: hidden;
             background: #ffffff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .section-image {
@@ -143,26 +150,24 @@ if (!isset($_SESSION['user_id'])) {
 
         .details-button {
             width: 100%;
-            padding: 14px 24px;
-            background: linear-gradient(135deg, #1a1a2e 0%, #2d3436 100%);
+            padding: 12px 20px;
+            background: #1a1a2e;
             color: #ffffff;
             border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            font-weight: 500;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            transition: all 0.3s ease;
+            gap: 8px;
+            transition: background 0.2s ease;
             text-decoration: none;
         }
 
         .details-button:hover {
-            background: linear-gradient(135deg, #2d3436 0%, #1a1a2e 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(26, 26, 46, 0.3);
+            background: #2d3436;
         }
 
         .details-button i {
@@ -175,7 +180,7 @@ if (!isset($_SESSION['user_id'])) {
             }
 
             .page-header h1 {
-                font-size: 1.8rem;
+                font-size: 1.5rem;
             }
 
             .section-header {
@@ -203,7 +208,7 @@ if (!isset($_SESSION['user_id'])) {
 
     <div class="manual-page-container">
         <div class="page-header">
-            <h1><i class="fa fa-book"></i> User Manual</h1>
+            <h1>User Manual</h1>
             <p>Access comprehensive guides and documentation for the IT Inventory System</p>
         </div>
 
@@ -211,7 +216,7 @@ if (!isset($_SESSION['user_id'])) {
             <div class="manual-section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-header-left">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #6c5ce7 0%, #5a4dd4 100%);">
+                        <div class="section-icon">
                             <i class="fa fa-laptop"></i>
                         </div>
                         <h2 class="section-title">Getting Started</h2>
@@ -234,17 +239,17 @@ if (!isset($_SESSION['user_id'])) {
             <div class="manual-section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-header-left">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #00cec9 0%, #00b894 100%);">
+                        <div class="section-icon">
                             <i class="fa fa-boxes"></i>
                         </div>
-                        <h2 class="section-title">Inventory Management</h2>
+                        <h2 class="section-title">How to Add Assets</h2>
                     </div>
                     <i class="fa fa-chevron-down section-toggle"></i>
                 </div>
                 <div class="section-content">
                     <div class="section-body">
                         <div class="section-image-container">
-                            <img src="../manual/images/inventory-management.jpg" alt="Inventory Management" class="section-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'800\' height=\'400\'%3E%3Crect fill=\'%23f0f0f0\' width=\'800\' height=\'400\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'20\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'middle\'%3EInventory Management Guide%3C/text%3E%3C/svg%3E'">
+                            <img src="../manual/add_assets.png" alt="Add Assets" class="section-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'800\' height=\'400\'%3E%3Crect fill=\'%23f0f0f0\' width=\'800\' height=\'400\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'20\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'middle\'%3EInventory Management Guide%3C/text%3E%3C/svg%3E'">
                         </div>
                         <a href="../manual/inventory-management.pdf" target="_blank" class="details-button">
                             <i class="fa fa-file-pdf"></i>
@@ -257,7 +262,7 @@ if (!isset($_SESSION['user_id'])) {
             <div class="manual-section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-header-left">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);">
+                        <div class="section-icon">
                             <i class="fa fa-handshake"></i>
                         </div>
                         <h2 class="section-title">Handover Process</h2>
@@ -280,7 +285,7 @@ if (!isset($_SESSION['user_id'])) {
             <div class="manual-section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-header-left">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);">
+                        <div class="section-icon">
                             <i class="fa fa-cog"></i>
                         </div>
                         <h2 class="section-title">System Features</h2>
@@ -303,7 +308,7 @@ if (!isset($_SESSION['user_id'])) {
             <div class="manual-section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-header-left">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);">
+                        <div class="section-icon">
                             <i class="fa fa-question-circle"></i>
                         </div>
                         <h2 class="section-title">Troubleshooting</h2>
@@ -326,7 +331,7 @@ if (!isset($_SESSION['user_id'])) {
             <div class="manual-section">
                 <div class="section-header" onclick="toggleSection(this)">
                     <div class="section-header-left">
-                        <div class="section-icon" style="background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);">
+                        <div class="section-icon">
                             <i class="fa fa-shield-alt"></i>
                         </div>
                         <h2 class="section-title">Security & Best Practices</h2>
