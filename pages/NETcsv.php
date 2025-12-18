@@ -58,8 +58,50 @@ $headerMap = [
     'invoiceno' => 'invoice_num',
     'purchasecost' => 'purchase_cost',
     'warrantyexpiry' => 'warranty_expiry',
-    'warranty_expiry' => 'warranty_expiry'
+    'warranty_expiry' => 'warranty_expiry',
+    'warranty' => 'warranty_expiry'
 ];
+
+if (!function_exists('convertExcelDate')) {
+    function convertExcelDate($value) {
+        if (empty($value)) {
+            return $value;
+        }
+        
+        $value = trim($value);
+        
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $value, $matches)) {
+            $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+            $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+            $year = $matches[3];
+            if (strlen($year) == 2) {
+                $year = ($year > 50) ? '19' . $year : '20' . $year;
+            }
+            return $year . '-' . $month . '-' . $day;
+        }
+        
+        if (is_numeric($value)) {
+            $numValue = (float)$value;
+            if ($numValue < 1 || $numValue > 1000000) {
+                return $value;
+            }
+            try {
+                $excelEpoch = new DateTime('1899-12-30');
+                $days = (int)$numValue;
+                $excelEpoch->modify("+{$days} days");
+                $result = $excelEpoch->format('Y-m-d');
+                if ($excelEpoch->format('Y') < 1900 || $excelEpoch->format('Y') > 2100) {
+                    return $value;
+                }
+                return $result;
+            } catch (Exception $e) {
+                return $value;
+            }
+        }
+        
+        return $value;
+    }
+}
 
 if (!function_exists('detectCsvDelimiter')) {
     function detectCsvDelimiter(string $line): string
@@ -199,13 +241,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $insertStmt = $pdo->prepare("
                             INSERT INTO net_assets (
                                 asset_id, serial, model, brand, mac_add, ip_add,
-                                building, level, status, staff_id, `PO_DATE`, `PO_NUM`,
+                                building, level, status, `PO_DATE`, `PO_NUM`,
                                 `DO_DATE`, `DO_NUM`, `INVOICE_DATE`, `INVOICE_NUM`,
                                 `PURCHASE_COST`, warranty_expiry, remarks, created_by
                             ) VALUES (
                                 :asset_id, :serial, :model, :brand, :mac_add, :ip_add,
-                                :building, :level, :status, :staff_id, :po_date, :po_num,
-                                :do_date, :do_num, :invoice_date,  :invoice_num,
+                                :building, :level, :status, :po_date, :po_num,
+                                :do_date, :do_num, :invoice_date, :invoice_num,
                                 :purchase_cost, :warranty_expiry, :remarks, :created_by
                             )
                         ");
@@ -242,7 +284,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             foreach ($headers as $index => $columnName) {
                                 if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
-                                    $rowData[$columnName] = trim($row[$index]);
+                                    $value = trim($row[$index]);
+                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry']) && !empty($value)) {
+                                        $value = convertExcelDate($value);
+                                    }
+                                    $rowData[$columnName] = $value;
                                 }
                             }
 
@@ -271,24 +317,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                             }
 
-                            if ($rowData['p.o_date'] !== '') {
-                                $date = DateTime::createFromFormat('Y-m-d', $rowData['p.o_date']);
-                                if (!$date || $date->format('Y-m-d') !== $rowData['p.o_date']) {
-                                    $rowErrors[] = 'Invalid P.O. date format (use YYYY-MM-DD)';
-                                }
-                            }
-
-                            if ($rowData['invoice_date'] !== '') {
-                                $date = DateTime::createFromFormat('Y-m-d', $rowData['invoice_date']);
-                                if (!$date || $date->format('Y-m-d') !== $rowData['invoice_date']) {
-                                    $rowErrors[] = 'Invalid invoice date format (use YYYY-MM-DD)';
-                                }
-                            }
-
-                            if ($rowData['warranty_expiry'] !== '') {
-                                $date = DateTime::createFromFormat('Y-m-d', $rowData['warranty_expiry']);
-                                if (!$date || $date->format('Y-m-d') !== $rowData['warranty_expiry']) {
-                                    $rowErrors[] = 'Invalid warranty expiry date format (use YYYY-MM-DD)';
+                            $dateFields = ['p.o_date' => 'P.O. date', 'd.o_date' => 'D.O. date', 'invoice_date' => 'Invoice date', 'warranty_expiry' => 'Warranty expiry'];
+                            foreach ($dateFields as $field => $label) {
+                                if ($rowData[$field] !== '') {
+                                    $date = DateTime::createFromFormat('Y-m-d', $rowData[$field]);
+                                    if (!$date || $date->format('Y-m-d') !== $rowData[$field]) {
+                                        $rowErrors[] = "Invalid {$label} format: '{$rowData[$field]}'";
+                                    }
                                 }
                             }
 
@@ -311,8 +346,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $warrantyExpiry = $rowData['warranty_expiry'] ?: null;
                             $purchaseCost = $rowData['purchase_cost'] !== '' ? $rowData['purchase_cost'] : null;
 
-                            $staffId = !empty($rowData['staff_id']) && is_numeric($rowData['staff_id']) ? (int)$rowData['staff_id'] : null;
-
                             $insertStmt->execute([
                                 ':asset_id' => $assetId,
                                 ':serial' => $rowData['serial'],
@@ -323,7 +356,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':building' => $rowData['building'] ?: null,
                                 ':level' => $rowData['level'] ?: null,
                                 ':status' => $statusValue,
-                                ':staff_id' => $staffId,
                                 ':po_date' => $poDate,
                                 ':po_num' => $rowData['p.o_num'] ?: null,
                                 ':do_date' => $rowData['d.o_date'] ?: null,
@@ -372,8 +404,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($pdo->inTransaction()) {
                             $pdo->rollBack();
                         }
+                        error_log('NETcsv Import Error: ' . $e->getMessage());
                         if (empty($errors)) {
-                            $errors[] = 'Unable to import CSV right now. Please try again.';
+                            $errors[] = 'Database error: ' . $e->getMessage();
                         }
                     } catch (Exception $e) {
                         if ($pdo->inTransaction()) {
