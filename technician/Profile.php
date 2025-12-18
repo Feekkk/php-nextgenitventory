@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt->execute([$_SESSION['user_id']]);
                         $currentUser = $stmt->fetch();
                         
-                        if (!password_verify($currentPassword, $currentUser['password'])) {
+                        if (!password_verify($currentPassword, $currentUser['password']) && $currentPassword !== $currentUser['password']) {
                             $error = 'Current password is incorrect.';
                         } elseif (strlen($newPassword) < 8) {
                             $error = 'New password must be at least 8 characters long.';
