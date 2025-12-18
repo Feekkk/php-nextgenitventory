@@ -32,7 +32,7 @@ function generateAssetId($pdo, $categoryCode) {
     return (int)($prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT));
 }
 $requiredHeaders = ['class', 'brand', 'model', 'serial_num', 'status'];
-$optionalHeaders = ['location', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
+$optionalHeaders = ['location', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks', 'warranty_expiry'];
 $headerMap = [
     'asset_id' => 'asset_id',
     'class' => 'class',
@@ -54,8 +54,51 @@ $headerMap = [
     'invoice_date' => 'invoice_date',
     'invoice_no' => 'invoice_num',
     'invoice_num' => 'invoice_num',
-    'purchase_cost' => 'purchase_cost'
+    'purchase_cost' => 'purchase_cost',
+    'warranty' => 'warranty_expiry',
+    'warranty_expiry' => 'warranty_expiry'
 ];
+
+if (!function_exists('convertExcelDate')) {
+    function convertExcelDate($value) {
+        if (empty($value)) {
+            return $value;
+        }
+        
+        $value = trim($value);
+        
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $value, $matches)) {
+            $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+            $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+            $year = $matches[3];
+            if (strlen($year) == 2) {
+                $year = ($year > 50) ? '19' . $year : '20' . $year;
+            }
+            return $year . '-' . $month . '-' . $day;
+        }
+        
+        if (is_numeric($value)) {
+            $numValue = (float)$value;
+            if ($numValue < 1 || $numValue > 1000000) {
+                return $value;
+            }
+            try {
+                $excelEpoch = new DateTime('1899-12-30');
+                $days = (int)$numValue;
+                $excelEpoch->modify("+{$days} days");
+                $result = $excelEpoch->format('Y-m-d');
+                if ($excelEpoch->format('Y') < 1900 || $excelEpoch->format('Y') > 2100) {
+                    return $value;
+                }
+                return $result;
+            } catch (Exception $e) {
+                return $value;
+            }
+        }
+        
+        return $value;
+    }
+}
 
 if (!function_exists('normalizeHeaderKey')) {
     function normalizeHeaderKey(string $header): string
@@ -167,11 +210,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             INSERT INTO av_assets (
                                 asset_id, class, brand, model, serial_num, location, status,
                                 `PO_DATE`, `PO_NUM`, `DO_DATE`, `DO_NUM`,
-                                `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, remarks, created_by
+                                `INVOICE_DATE`, `INVOICE_NUM`, `PURCHASE_COST`, warranty_expiry, remarks, created_by
                             ) VALUES (
                                 :asset_id, :class, :brand, :model, :serial_num, :location, :status,
                                 :po_date, :po_num, :do_date, :do_num,
-                                :invoice_date, :invoice_num, :purchase_cost, :remarks, :created_by
+                                :invoice_date, :invoice_num, :purchase_cost, :warranty_expiry, :remarks, :created_by
                             )
                         ");
                         $importedAssetIds = [];
@@ -198,16 +241,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'invoice_num' => '',
                                 'purchase_cost' => '',
                                 'remarks' => '',
+                                'warranty_expiry' => '',
                             ];
 
                             foreach ($headers as $index => $columnName) {
                                 if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
-                                    $value = $row[$index];
+                                    $value = trim($row[$index]);
+                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry']) && !empty($value)) {
+                                        $value = convertExcelDate($value);
+                                    }
                                     if ($columnName === 'status') {
                                         $value = preg_replace('/[\x00-\x1F\x7F-\x9F]/u', '', $value);
                                         $value = str_replace(["\xEF\xBB\xBF", "\xC2\xA0"], '', $value);
                                     }
-                                    $rowData[$columnName] = trim($value);
+                                    $rowData[$columnName] = $value;
                                 }
                             }
 
@@ -277,6 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ':invoice_date' => $invoiceDate,
                                 ':invoice_num' => $rowData['invoice_num'] ?: null,
                                 ':purchase_cost' => $purchaseCost,
+                                ':warranty_expiry' => $rowData['warranty_expiry'] ?: null,
                                 ':remarks' => $rowData['remarks'] ?: null,
                                 ':created_by' => $_SESSION['user_id'],
                             ]);
