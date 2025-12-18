@@ -119,6 +119,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
+        // Set default location to IT Office if status is not ONLINE
+        if ($formData['status'] !== 'ONLINE') {
+            $formData['building'] = 'IT Office';
+            $formData['level'] = '';
+        }
+        
         if (empty($errors)) {
             if ($assetId === null) {
                 $assetId = generateAssetId($pdo, 33);
@@ -477,7 +483,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="form-group">
                         <label for="DO_DATE">D.O. Date</label>
-                        <input type="text" id="DO_DATE" name="DO_DATE" placeholder="Enter D.O. date" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>">
+                        <input type="date" id="DO_DATE" name="DO_DATE" value="<?php echo htmlspecialchars($formData['DO_DATE']); ?>">
                     </div>
                     <div class="form-group">
                         <label for="DO_NUM">D.O. Number</label>
@@ -526,18 +532,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         function toggleDeploymentFields() {
             const status = document.getElementById('status').value;
-            const isDeploy = status === 'DEPLOY';
+            const isOnline = status === 'ONLINE';
             
-            const deploymentFields = ['building', 'level'];
+            const buildingField = document.getElementById('building');
+            const levelField = document.getElementById('level');
             
-            deploymentFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    field.disabled = !isDeploy;
-                    field.style.backgroundColor = isDeploy ? '' : '#f5f5f5';
-                    field.style.cursor = isDeploy ? '' : 'not-allowed';
+            if (buildingField) {
+                buildingField.disabled = !isOnline;
+                buildingField.style.backgroundColor = isOnline ? '' : '#f5f5f5';
+                buildingField.style.cursor = isOnline ? '' : 'not-allowed';
+                if (!isOnline) {
+                    buildingField.value = 'IT Office';
                 }
-            });
+            }
+            
+            if (levelField) {
+                levelField.disabled = !isOnline;
+                levelField.style.backgroundColor = isOnline ? '' : '#f5f5f5';
+                levelField.style.cursor = isOnline ? '' : 'not-allowed';
+                if (!isOnline) {
+                    levelField.value = '';
+                }
+            }
         }
         
         document.getElementById('status').addEventListener('change', toggleDeploymentFields);
