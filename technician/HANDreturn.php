@@ -120,12 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
         $errors[] = 'Return date is required.';
     }
     
-    if (empty($returnCondition)) {
-        $errors[] = 'Please select the condition of the returned asset.';
-    }
-    
     if (empty($newAssetStatus)) {
         $errors[] = 'Please select the new status for the asset.';
+    }
+    
+    // Set return condition based on component conditions
+    if (empty($returnCondition)) {
+        $conditions = [$desktopCondition, $harddiskCondition, $monitorCondition, $mouseCondition, $keyboardCondition];
+        $returnCondition = in_array('Damage', $conditions) ? 'Damaged' : 'Good';
     }
     
     // Validate return date is not in the future
@@ -379,7 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assetDetails) {
         } catch (PDOException $e) {
             $pdo->rollBack();
             error_log('HANDreturn.php Error: ' . $e->getMessage());
-            $errors[] = 'Unable to process return. Please try again.';
+            $errors[] = 'Database error: ' . $e->getMessage();
         }
     }
 }
