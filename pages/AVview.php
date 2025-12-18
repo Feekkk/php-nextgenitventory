@@ -943,6 +943,12 @@ function getStatusTrailClassFromValue($value) {
                             </div>
                         </div>
                         <div class="detail-item">
+                            <div class="detail-label">Warranty Expiry</div>
+                            <div class="detail-value <?php echo empty($asset['warranty_expiry']) ? 'empty' : ''; ?>">
+                                <?php echo !empty($asset['warranty_expiry']) ? formatDate($asset['warranty_expiry']) : '-'; ?>
+                            </div>
+                        </div>
+                        <div class="detail-item">
                             <div class="detail-label">Created By</div>
                             <div class="detail-value <?php echo empty($asset['created_by_name']) ? 'empty' : ''; ?>">
                                 <?php echo htmlspecialchars($asset['created_by_name'] ?: 'Unknown'); ?>
