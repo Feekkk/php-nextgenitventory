@@ -648,7 +648,7 @@ if (!empty($formData['staff_id']) && is_numeric($formData['staff_id'])) {
 
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Asset</button>
+                <button type="submit" class="btn btn-primary" onclick="event.preventDefault(); this.form.submit(); setTimeout(function(){ window.location.href = 'LAPTOPpage.php'; }, 100);">Save Asset</button>
             </div>
         </form>
     </div>
