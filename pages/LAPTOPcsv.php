@@ -35,25 +35,44 @@ $requiredHeaders = ['serial_num', 'brand', 'model', 'status'];
 
 if (!function_exists('convertExcelDate')) {
     function convertExcelDate($value) {
-        if (empty($value) || !is_numeric($value)) {
+        if (empty($value)) {
             return $value;
         }
-        $numValue = (float)$value;
-        if ($numValue < 1 || $numValue > 1000000) {
-            return $value;
+        
+        $value = trim($value);
+        
+        // Handle dd/mm/yy or dd/mm/yyyy format
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $value, $matches)) {
+            $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+            $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+            $year = $matches[3];
+            if (strlen($year) == 2) {
+                $year = ($year > 50) ? '19' . $year : '20' . $year;
+            }
+            return $year . '-' . $month . '-' . $day;
         }
-        try {
-            $excelEpoch = new DateTime('1899-12-30');
-            $days = (int)$numValue;
-            $excelEpoch->modify("+{$days} days");
-            $result = $excelEpoch->format('Y-m-d');
-            if ($excelEpoch->format('Y') < 1900 || $excelEpoch->format('Y') > 2100) {
+        
+        // Handle Excel numeric date
+        if (is_numeric($value)) {
+            $numValue = (float)$value;
+            if ($numValue < 1 || $numValue > 1000000) {
                 return $value;
             }
-            return $result;
-        } catch (Exception $e) {
-            return $value;
+            try {
+                $excelEpoch = new DateTime('1899-12-30');
+                $days = (int)$numValue;
+                $excelEpoch->modify("+{$days} days");
+                $result = $excelEpoch->format('Y-m-d');
+                if ($excelEpoch->format('Y') < 1900 || $excelEpoch->format('Y') > 2100) {
+                    return $value;
+                }
+                return $result;
+            } catch (Exception $e) {
+                return $value;
+            }
         }
+        
+        return $value;
     }
 }
 $optionalHeaders = ['category', 'staff_id', 'assignment_type', 'location', 'processor', 'memory', 'os', 'storage', 'gpu', 'warranty_expiry', 'part_number', 'supplier', 'period', 'activity_log', 'p.o_date', 'p.o_num', 'd.o_date', 'd.o_num', 'invoice_date', 'invoice_num', 'purchase_cost', 'remarks'];
@@ -99,11 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'warranty_expires' => 'warranty_expiry',
                         'warranty' => 'warranty_expiry',
                         'warranty_expiry' => 'warranty_expiry',
+                        'po_date' => 'p.o_date',
+                        'p.o_date' => 'p.o_date',
                         'p.0_number' => 'p.o_num',
                         'p.o_number' => 'p.o_num',
                         'p.o_num' => 'p.o_num',
                         'po_number' => 'p.o_num',
                         'po_num' => 'p.o_num',
+                        'do_date' => 'd.o_date',
+                        'd.o_date' => 'd.o_date',
                         'd.o_no' => 'd.o_num',
                         'd.o_number' => 'd.o_num',
                         'd.o_num' => 'd.o_num',
@@ -266,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             foreach ($headers as $index => $columnName) {
                                 if ($columnName && array_key_exists($columnName, $rowData) && isset($row[$index])) {
                                     $value = trim($row[$index]);
-                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry', 'handover_date']) && is_numeric($value) && $value > 0) {
+                                    if (in_array($columnName, ['p.o_date', 'd.o_date', 'invoice_date', 'warranty_expiry', 'handover_date']) && !empty($value)) {
                                         $value = convertExcelDate($value);
                                     }
                                     if ($columnName === 'status') {
